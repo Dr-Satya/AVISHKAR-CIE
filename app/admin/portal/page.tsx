@@ -120,6 +120,10 @@ export default function AdminPortalPage() {
   // Faculty Access Management State
   const [faculties, setFaculties] = useState<any[]>([]);
   const [loadingFacultyAccess, setLoadingFacultyAccess] = useState(false);
+  const [selectedResetFaculty, setSelectedResetFaculty] = useState<any | null>(null);
+  const [newPasscodeInput, setNewPasscodeInput] = useState("gdgu@2026");
+  const [resetPasscodeLoading, setResetPasscodeLoading] = useState(false);
+  const [resetPasscodeMessage, setResetPasscodeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // SPOC Management State
   const [spocDepartments, setSpocDepartments] = useState<string[]>([]);
@@ -439,6 +443,39 @@ export default function AdminPortalPage() {
       });
       await fetchFacultyAccess();
     } catch (err) {}
+  };
+
+  // Reset Faculty Passcode by Admin
+  const handleResetFacultyPasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedResetFaculty || !newPasscodeInput) return;
+    setResetPasscodeLoading(true);
+    setResetPasscodeMessage(null);
+    try {
+      const res = await fetch("/api/admin/faculty-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          facultyId: selectedResetFaculty.id,
+          newPasscode: newPasscodeInput,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResetPasscodeMessage({ type: "error", text: data.error || "Failed to reset passcode." });
+      } else {
+        setResetPasscodeMessage({ type: "success", text: "Passcode updated successfully!" });
+        setTimeout(() => {
+          setSelectedResetFaculty(null);
+          setNewPasscodeInput("gdgu@2026");
+          setResetPasscodeMessage(null);
+        }, 1200);
+      }
+    } catch {
+      setResetPasscodeMessage({ type: "error", text: "Network error. Please try again." });
+    } finally {
+      setResetPasscodeLoading(false);
+    }
   };
 
   if (loading) {
@@ -1376,7 +1413,7 @@ export default function AdminPortalPage() {
                   <th className="py-2.5 px-3 font-semibold">EMAIL</th>
                   <th className="py-2.5 px-3 font-semibold">DEPARTMENT</th>
                   <th className="py-2.5 px-3 font-semibold text-center">SPOC STATUS</th>
-                  <th className="py-2.5 px-3 font-semibold text-center">ADMIN ACCESS</th>
+                  <th className="py-2.5 px-3 font-semibold text-center">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1395,16 +1432,28 @@ export default function AdminPortalPage() {
                       )}
                     </td>
                     <td className="py-2.5 px-3 text-center">
-                      <button
-                        onClick={() => handleToggleFacultyAdmin(f.id, f.isAdmin)}
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                          f.isAdmin
-                            ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
-                      >
-                        {f.isAdmin ? "Revoke Admin" : "Grant Admin"}
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => handleToggleFacultyAdmin(f.id, f.isAdmin)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                            f.isAdmin
+                              ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {f.isAdmin ? "Revoke Admin" : "Grant Admin"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedResetFaculty(f);
+                            setNewPasscodeInput("gdgu@2026");
+                            setResetPasscodeMessage(null);
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                        >
+                          Reset Passcode
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1447,6 +1496,91 @@ export default function AdminPortalPage() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {/* Faculty Password Reset Modal */}
+        {selectedResetFaculty && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full border border-slate-200 shadow-xl relative">
+              <div className="w-10 h-1 bg-[#cda34f] rounded-full mb-3" />
+              <h3 className="text-lg font-bold text-[#0d2137]">
+                Reset Passcode
+              </h3>
+              <p className="text-xs text-slate-600 mt-1">
+                Assign a new passcode for{" "}
+                <span className="font-semibold text-[#0d2137]">
+                  {selectedResetFaculty.name}
+                </span>{" "}
+                ({selectedResetFaculty.email})
+              </p>
+
+              {resetPasscodeMessage && (
+                <div
+                  className={`mt-4 p-3 rounded-xl text-xs font-medium border ${
+                    resetPasscodeMessage.type === "success"
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                      : "bg-red-50 text-red-800 border-red-200"
+                  }`}
+                >
+                  {resetPasscodeMessage.text}
+                </div>
+              )}
+
+              <form onSubmit={handleResetFacultyPasscode} className="mt-4 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    New Passcode
+                  </label>
+                  <input
+                    type="text"
+                    value={newPasscodeInput}
+                    onChange={(e) => setNewPasscodeInput(e.target.value)}
+                    placeholder="Enter new passcode (min 6 chars)"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewPasscodeInput("gdgu@2026")}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  >
+                    Set to default (gdgu@2026)
+                  </button>
+                </div>
+
+                <div className="mt-5 flex gap-2 justify-end pt-2">
+                  <button
+                    type="button"
+                    disabled={resetPasscodeLoading}
+                    onClick={() => {
+                      setSelectedResetFaculty(null);
+                      setResetPasscodeMessage(null);
+                    }}
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetPasscodeLoading || !newPasscodeInput}
+                    className="px-4 py-2 rounded-xl bg-[#0d2137] text-white text-xs font-semibold hover:bg-[#163456] transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {resetPasscodeLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <span>Save New Passcode</span>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

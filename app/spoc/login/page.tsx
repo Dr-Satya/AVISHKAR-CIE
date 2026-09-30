@@ -77,11 +77,6 @@ export default function SpocLoginPage() {
             </div>
           )}
 
-          <div className="mt-6 p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-600 leading-relaxed">
-            <p className="font-semibold text-slate-800 mb-0.5">Role-Based Access Verification:</p>
-            Sign in using your official faculty email and passcode. The system will verify your active SPOC delegation before granting dashboard access.
-          </div>
-
           <form onSubmit={handleLogin} className="mt-6 space-y-4 text-xs">
             <div>
               <label className="block font-semibold text-slate-700 mb-1.5">

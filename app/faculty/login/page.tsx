@@ -13,6 +13,7 @@ export default function FacultyLoginPage() {
   const [passcode, setPasscode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,9 +91,18 @@ export default function FacultyLoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Passcode
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-700">
+                  Passcode
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-xs font-medium text-[#cda34f] hover:text-[#b88c3a] transition-colors"
+                >
+                  Forgot passcode?
+                </button>
+              </div>
               <div className="relative">
                 <input
                   type="password"
@@ -126,6 +136,32 @@ export default function FacultyLoginPage() {
             </Link>
           </div>
         </div>
+
+        {/* Forgot Passcode Modal */}
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full border border-slate-200 shadow-xl relative">
+              <div className="w-10 h-1 bg-[#cda34f] rounded-full mb-3" />
+              <h3 className="text-lg font-bold text-[#0d2137]">Forgot Your Passcode?</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                If you have forgotten your passcode or need a reset, please contact the System Administrator directly at:
+              </p>
+              <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-[#0d2137]">
+                📧 <span className="font-semibold">admin@gdgu.org</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2">
+                The administrator can reset your passcode instantly from the Faculty Access Management panel.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="mt-5 w-full py-2.5 rounded-xl bg-[#0d2137] text-white text-xs font-semibold hover:bg-[#163456] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </main>
       <Footer />
     </>

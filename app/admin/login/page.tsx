@@ -71,11 +71,6 @@ export default function AdminLoginPage() {
             </div>
           )}
 
-          <div className="mt-6 p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-600 leading-relaxed">
-            <p className="font-semibold text-slate-800 mb-0.5">Role-Based Access Verification:</p>
-            Log in using administrator credentials or authorized faculty email and passcode. Administrator privileges are confirmed before dashboard access is granted.
-          </div>
-
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const { facultyId, isAdmin, isSpoc, spocDepartment } = await req.json();
+  const { facultyId, isAdmin, isSpoc, spocDepartment, newPasscode } = await req.json();
 
   if (!facultyId) {
     return NextResponse.json({ error: "Faculty ID is required." }, { status: 400 });
@@ -44,6 +45,15 @@ export async function POST(req: NextRequest) {
     updateData.isSpoc = Boolean(isSpoc);
     updateData.spocDepartment = isSpoc ? spocDepartment || null : null;
   }
+  if (newPasscode) {
+    if (typeof newPasscode !== "string" || newPasscode.length < 6) {
+      return NextResponse.json(
+        { error: "New passcode must be at least 6 characters long." },
+        { status: 400 }
+      );
+    }
+    updateData.passcodeHash = await bcrypt.hash(newPasscode, 10);
+  }
 
   const updated = await prisma.faculty.update({
     where: { id: facultyId },
@@ -54,9 +64,12 @@ export async function POST(req: NextRequest) {
     data: {
       actor: session.name,
       actorRole: "ADMIN",
-      action: "FACULTY_ACCESS_UPDATE",
+      action: newPasscode ? "ADMIN_PASSWORD_RESET" : "FACULTY_ACCESS_UPDATE",
       target: updated.email,
-      metadata: JSON.stringify(updateData),
+      metadata: JSON.stringify({
+        ...updateData,
+        passcodeHash: updateData.passcodeHash ? "[REDACTED]" : undefined,
+      }),
     },
   });
 

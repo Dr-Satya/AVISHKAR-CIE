@@ -81,11 +81,6 @@ export default function StudentLoginPage() {
           )}
 
           <div className="mt-8 space-y-4">
-            <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-600 leading-relaxed">
-              <p className="font-medium text-slate-800 mb-1">Official GDGU Authentication Requirement:</p>
-              Students must sign in using their institution-issued Google account ending with <span className="font-bold text-[#0d2137]">@gdgu.org</span>. External email domains (e.g. @gmail.com) are rejected by server policy.
-            </div>
-
             {/* Official Google OAuth Trigger */}
             <form
               onSubmit={(e) => {
