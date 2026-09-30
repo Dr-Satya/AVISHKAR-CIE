@@ -1,0 +1,196 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Student {
+  id               String            @id @default(cuid())
+  enrollmentNumber String            @unique
+  admissionNumber  String?
+  name             String
+  department       String
+  programme        String?
+  semester         Int               @default(3)
+  batch            String            @default("2025")
+  email            String?           @unique
+  googleId         String?           @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  registration     Registration?
+  identities       StudentIdentity[]
+
+  @@index([enrollmentNumber])
+  @@index([department])
+  @@index([email])
+}
+
+model StudentIdentity {
+  id        String   @id @default(cuid())
+  studentId String
+  email     String   @unique
+  googleId  String   @unique
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+model Faculty {
+  id                String            @id @default(cuid())
+  name              String
+  email             String            @unique
+  department        String
+  phone             String?
+  passcodeHash      String
+  isAdmin           Boolean           @default(false)
+  isSpoc            Boolean           @default(false)
+  spocDepartment    String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  projects          Project[]
+  reviewedArtifacts ProjectArtifact[] @relation("SpocArtifactReviews")
+  spocProfile       Spoc?
+
+  @@index([email])
+  @@index([department])
+  @@index([isSpoc])
+  @@index([spocDepartment])
+}
+
+model Spoc {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  department   String    @unique
+  passcodeHash String
+  facultyId    String?   @unique
+  faculty      Faculty?  @relation(fields: [facultyId], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([email])
+  @@index([department])
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passcodeHash String
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Project {
+  id               String            @id @default(cuid())
+  projectId        String            @unique
+  title            String
+  description      String?
+  facultyId        String
+  department       String
+  theme            String
+  category         String
+  sdgMapping       String?
+  maxSeats         Int?
+  sameDeptLimit    Int?
+  otherDeptLimit   Int?
+  submissionStatus String            @default("NOT_SUBMITTED")
+  spocReviewNote   String?
+  reviewedAt       DateTime?
+  reviewedById     String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  faculty          Faculty           @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  registrations    Registration[]
+  artifacts        ProjectArtifact[]
+
+  @@index([projectId])
+  @@index([category, theme])
+  @@index([department])
+  @@index([facultyId])
+  @@index([submissionStatus])
+}
+
+model ProjectArtifact {
+  id                String    @id @default(cuid())
+  projectId         String
+  type              String    // REPORT, PPT, OTHER
+  title             String
+  fileName          String
+  fileUrl           String
+  fileSize          Int?
+  mimeType          String?
+  similarityPercent Float?
+  aiPercent         Float?
+  similarityChecked Boolean   @default(false)
+  aiChecked         Boolean   @default(false)
+  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  spocNote          String?
+  submittedAt       DateTime  @default(now())
+  reviewedAt        DateTime?
+  reviewedById      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewedBy        Faculty?  @relation("SpocArtifactReviews", fields: [reviewedById], references: [id])
+
+  @@index([projectId])
+  @@index([status])
+  @@index([type])
+}
+
+model Registration {
+  id        String   @id @default(cuid())
+  studentId String   @unique
+  projectId String
+  status    String   @default("Approved")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+model GlobalConfig {
+  id               String   @id @default("default")
+  registrationOpen Boolean  @default(true)
+  maxSeats         Int      @default(10)
+  sameDeptLimit    Int      @default(4)
+  otherDeptLimit   Int      @default(6)
+  updatedAt        DateTime @updatedAt
+}
+
+model DepartmentRegistrationLimit {
+  id             String   @id @default(cuid())
+  department     String   @unique
+  sameDeptLimit  Int
+  otherDeptLimit Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([department])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  actor     String
+  actorRole String
+  action    String
+  target    String?
+  metadata  String?
+
+  @@index([timestamp])
+  @@index([action])
+}

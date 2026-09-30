@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gdgu-idp-portal",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2024-12-30",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gdgu_idp_db",
+      "database_id": "0982c4c1-1050-4358-8a48-54eac5a93b23"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "gdgu-idp-artifacts"
+    }
+  ],
+  "vars": {
+    "JWT_SECRET": "gdgu-super-secret-jwt-key-2026-production-ready",
+    "DEFAULT_FACULTY_PASSCODE": "gdgu@2026",
+    "ADMIN_PASSCODE": "admin@gdgu2026",
+    "NEXT_PUBLIC_APP_URL": "https://gdgu-idp-portal.cie-1e4.workers.dev"
+  }
+}
