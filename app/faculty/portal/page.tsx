@@ -346,8 +346,40 @@ export default function FacultyPortalPage() {
     return (
       <>
         <Header role="Faculty" />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#0d2137]" />
+        <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-10 space-y-6 animate-pulse">
+          {/* Top Profile Card Skeleton */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="h-7 w-52 bg-slate-200 rounded-lg" />
+              <div className="h-4 w-72 bg-slate-100 rounded-md" />
+            </div>
+            <div className="flex gap-2">
+              <div className="h-9 w-28 bg-slate-100 rounded-xl" />
+              <div className="h-9 w-24 bg-slate-200 rounded-xl" />
+            </div>
+          </div>
+
+          {/* Metric Cards Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-2">
+                <div className="h-3 w-28 bg-slate-200 rounded" />
+                <div className="h-7 w-16 bg-slate-300 rounded-lg" />
+              </div>
+            ))}
+          </div>
+
+          {/* Project Cohorts Skeleton */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
+            <div className="w-10 h-1 bg-[#cda34f]/50 rounded-full mb-2" />
+            <div className="h-6 w-48 bg-slate-200 rounded-lg" />
+            <div className="h-4 w-96 bg-slate-100 rounded-md mb-6" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-16 w-full bg-slate-50 border border-slate-100 rounded-xl" />
+              ))}
+            </div>
+          </div>
         </main>
         <Footer />
       </>

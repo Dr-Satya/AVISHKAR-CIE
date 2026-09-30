@@ -482,8 +482,39 @@ export default function AdminPortalPage() {
     return (
       <>
         <Header role="Admin" />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#0d2137]" />
+        <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-6 animate-pulse">
+          {/* Top Header Card Skeleton */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-7 w-48 bg-slate-200 rounded-lg" />
+              <div className="h-3.5 w-32 bg-slate-100 rounded-md" />
+            </div>
+            <div className="h-9 w-24 bg-slate-200 rounded-xl" />
+          </div>
+
+          {/* KPI Grid Skeleton */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-3">
+                <div className="h-3 w-24 bg-slate-200 rounded" />
+                <div className="h-8 w-20 bg-slate-300 rounded-lg" />
+                <div className="h-2.5 w-32 bg-slate-100 rounded" />
+              </div>
+            ))}
+          </div>
+
+          {/* Config & Table Card Skeleton */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
+            <div className="w-10 h-1 bg-[#cda34f]/50 rounded-full mb-3" />
+            <div className="h-6 w-56 bg-slate-200 rounded-lg" />
+            <div className="h-4 w-72 bg-slate-100 rounded mb-4" />
+            <div className="h-10 w-full bg-slate-100 rounded-xl mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-12 w-full bg-slate-50 border border-slate-100 rounded-xl" />
+              ))}
+            </div>
+          </div>
         </main>
         <Footer />
       </>

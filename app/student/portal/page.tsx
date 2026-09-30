@@ -181,8 +181,31 @@ export default function StudentPortalPage() {
     return (
       <>
         <Header role="Student" />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#0d2137]" />
+        <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-10 space-y-6 animate-pulse">
+          {/* Student Profile Card Skeleton */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="h-7 w-48 bg-slate-200 rounded-lg" />
+              <div className="h-4 w-64 bg-slate-100 rounded-md" />
+              <div className="h-3.5 w-72 bg-slate-100 rounded-md" />
+            </div>
+            <div className="h-9 w-24 bg-slate-200 rounded-xl" />
+          </div>
+
+          {/* Registration / Exploration Card Skeleton */}
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
+            <div className="w-10 h-1 bg-[#cda34f]/50 rounded-full mb-3" />
+            <div className="h-6 w-52 bg-slate-200 rounded-lg" />
+            <div className="h-4 w-80 bg-slate-100 rounded mb-6" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-28 bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2">
+                  <div className="h-4 w-28 bg-slate-200 rounded" />
+                  <div className="h-3 w-40 bg-slate-100 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
         </main>
         <Footer />
       </>
