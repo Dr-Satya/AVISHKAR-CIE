@@ -17,6 +17,8 @@ export function Header({ role }: HeaderProps) {
             <img
               src="/gdgu-logo.jpeg"
               alt="GDGU Logo"
+              width="36"
+              height="36"
               className="w-full h-full object-cover scale-110"
             />
           </div>
