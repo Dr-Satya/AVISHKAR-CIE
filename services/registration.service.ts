@@ -165,7 +165,7 @@ export async function registerStudentForProject(
     }
   }
 
-  // 6. Create Registration record and Audit Log
+  // 6. Create Registration record
   const newRegistration = await prisma.registration.create({
     data: {
       studentId: student.id,
@@ -179,6 +179,43 @@ export async function registerStudentForProject(
       },
     },
   });
+
+  // 7. Atomic Concurrency Lock Guard:
+  // Query all registrations ordered chronologically to detect and rollback simultaneous race attempts
+  const allCurrentRegs = await prisma.registration.findMany({
+    where: { projectId: project.id },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    include: {
+      student: { select: { department: true } },
+    },
+  });
+
+  const overallRank = allCurrentRegs.findIndex((r) => r.id === newRegistration.id) + 1;
+
+  if (overallRank > limits.maxSeats) {
+    await prisma.registration.delete({ where: { id: newRegistration.id } });
+    throw new Error(`Project reached capacity just now (${limits.maxSeats}/${limits.maxSeats} seats filled). Please select another project.`);
+  }
+
+  if (isSameDept) {
+    const sameDeptRegs = allCurrentRegs.filter(
+      (r) => normalizeDept(r.student.department) === normalizeDept(project.department)
+    );
+    const sameDeptRank = sameDeptRegs.findIndex((r) => r.id === newRegistration.id) + 1;
+    if (sameDeptRank > limits.sameDeptLimit) {
+      await prisma.registration.delete({ where: { id: newRegistration.id } });
+      throw new Error(`Same-department quota reached just now (${limits.sameDeptLimit} seats filled). Please select another project.`);
+    }
+  } else {
+    const otherDeptRegs = allCurrentRegs.filter(
+      (r) => normalizeDept(r.student.department) !== normalizeDept(project.department)
+    );
+    const otherDeptRank = otherDeptRegs.findIndex((r) => r.id === newRegistration.id) + 1;
+    if (otherDeptRank > limits.otherDeptLimit) {
+      await prisma.registration.delete({ where: { id: newRegistration.id } });
+      throw new Error(`Other-department quota reached just now (${limits.otherDeptLimit} seats filled). Please select another project.`);
+    }
+  }
 
   await prisma.auditLog.create({
     data: {

@@ -5,6 +5,8 @@ import { resolveProjectLimits, normalizeDept } from "@/services/registration.ser
 
 export const dynamic = "force-dynamic";
 
+const projectQueryCache = new Map<string, { data: any[]; time: number }>();
+
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session || session.role !== "STUDENT") {
@@ -27,32 +29,41 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Student not found." }, { status: 404 });
   }
 
-  const projects = await prisma.project.findMany({
-    where: {
-      category: category,
-      theme: theme,
-    },
-    include: {
-      faculty: {
-        select: { name: true, department: true, email: true },
+  const studentDeptNorm = normalizeDept(student.department);
+
+  // Micro-cache projects query for 3 seconds per category+theme to absorb heavy traffic bursts
+  const cacheKey = `${category}:${theme}`;
+  let projects = projectQueryCache.get(cacheKey)?.data;
+  const cachedAt = projectQueryCache.get(cacheKey)?.time || 0;
+
+  if (!projects || Date.now() - cachedAt > 3000) {
+    projects = await prisma.project.findMany({
+      where: {
+        category: category,
+        theme: theme,
       },
-      registrations: {
-        include: {
-          student: {
-            select: { department: true },
+      include: {
+        faculty: {
+          select: { name: true, department: true, email: true },
+        },
+        registrations: {
+          include: {
+            student: {
+              select: { department: true },
+            },
           },
         },
       },
-    },
-    orderBy: {
-      projectId: "asc",
-    },
-  });
+      orderBy: {
+        projectId: "asc",
+      },
+    });
 
-  const studentDeptNorm = normalizeDept(student.department);
+    projectQueryCache.set(cacheKey, { data: projects, time: Date.now() });
+  }
 
   const enrichedProjects = await Promise.all(
-    projects.map(async (p) => {
+    projects.map(async (p: any) => {
       const limits = await resolveProjectLimits(
         p.id,
         p.department,
@@ -65,7 +76,7 @@ export async function GET(req: NextRequest) {
       const isSameDept = studentDeptNorm === normalizeDept(p.department);
 
       const sameDeptCount = p.registrations.filter(
-        (r) => normalizeDept(r.student.department) === normalizeDept(p.department)
+        (r: any) => normalizeDept(r.student.department) === normalizeDept(p.department)
       ).length;
       const otherDeptCount = totalSeatsFilled - sameDeptCount;
 
