@@ -31,6 +31,8 @@ export interface ArtifactData {
   fileUrl: string;
   fileSize?: number;
   mimeType?: string;
+  academicYear?: string;
+  semester?: number;
   similarityPercent?: number;
   aiPercent?: number;
   similarityChecked: boolean;
@@ -51,6 +53,8 @@ export interface AssignedProject {
   description?: string;
   theme: string;
   category: string;
+  academicYear?: string;
+  semester?: number;
   maxSeats: number;
   currentRegistrations: number;
   availableSeats: number;

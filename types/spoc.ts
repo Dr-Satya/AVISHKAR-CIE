@@ -79,6 +79,10 @@ export interface StudentRecord {
   semester: number;
   batch: string;
   email?: string;
+  phone?: string;
+  internalMarks?: number | null;
+  externalMarks?: number | null;
+  attendancePercent?: number | null;
   projectId: string;
   projectTitle: string;
   facultyName: string;

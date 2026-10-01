@@ -23,6 +23,7 @@ export default function FacultyPortalPage() {
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [targetProject, setTargetProject] = useState<AssignedProject | null>(null);
+  const [uploadSemester, setUploadSemester] = useState<number | undefined>(undefined);
 
   const fetchFacultyData = async () => {
     try {
@@ -63,8 +64,9 @@ export default function FacultyPortalPage() {
     router.push("/");
   };
 
-  const handleOpenUpload = (proj: AssignedProject) => {
+  const handleOpenUpload = (proj: AssignedProject, sem?: number) => {
     setTargetProject(proj);
+    setUploadSemester(sem);
     setShowUploadModal(true);
   };
 
@@ -278,7 +280,11 @@ export default function FacultyPortalPage() {
       {showUploadModal && targetProject && (
         <ArtifactUploadModal
           project={targetProject}
-          onClose={() => setShowUploadModal(false)}
+          initialSemester={uploadSemester}
+          onClose={() => {
+            setShowUploadModal(false);
+            setUploadSemester(undefined);
+          }}
           onSuccess={fetchFacultyData}
         />
       )}

@@ -6,17 +6,25 @@ import { AssignedProject } from "@/types/faculty";
 
 interface ArtifactUploadModalProps {
   project: AssignedProject;
+  initialSemester?: number;
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export function ArtifactUploadModal({
   project,
+  initialSemester,
   onClose,
   onSuccess,
 }: ArtifactUploadModalProps) {
+  const baseSem = project.semester || 3;
+  const nextSem = baseSem + 1;
+  const [selectedSemester, setSelectedSemester] = useState<number>(initialSemester || baseSem);
   const [artifactType, setArtifactType] = useState<"REPORT" | "PPT" | "OTHER">("REPORT");
-  const [artifactTitle, setArtifactTitle] = useState(`${project.projectId} Project Report`);
+  const [titleManuallyEdited, setTitleManuallyEdited] = useState(false);
+  const [artifactTitle, setArtifactTitle] = useState(
+    `${project.projectId} Sem ${initialSemester || baseSem} Project Report`
+  );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPlagiarismFile, setSelectedPlagiarismFile] = useState<File | null>(null);
   const [similarityChecked, setSimilarityChecked] = useState(false);
@@ -27,6 +35,32 @@ export function ArtifactUploadModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const handleSemesterChange = (sem: number) => {
+    setSelectedSemester(sem);
+    if (!titleManuallyEdited) {
+      const typeLabel =
+        artifactType === "REPORT"
+          ? "Project Report"
+          : artifactType === "PPT"
+          ? "Presentation PPT"
+          : "Supporting Document";
+      setArtifactTitle(`${project.projectId} Sem ${sem} ${typeLabel}`);
+    }
+  };
+
+  const handleTypeChange = (t: "REPORT" | "PPT" | "OTHER") => {
+    setArtifactType(t);
+    if (!titleManuallyEdited) {
+      const typeLabel =
+        t === "REPORT"
+          ? "Project Report"
+          : t === "PPT"
+          ? "Presentation PPT"
+          : "Supporting Document";
+      setArtifactTitle(`${project.projectId} Sem ${selectedSemester} ${typeLabel}`);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +119,7 @@ export function ArtifactUploadModal({
     try {
       const formData = new FormData();
       formData.append("projectId", project.id);
+      formData.append("semester", String(selectedSemester));
       formData.append("type", artifactType);
       formData.append("title", artifactTitle);
       formData.append("similarityChecked", similarityChecked ? "true" : "false");
@@ -111,7 +146,7 @@ export function ArtifactUploadModal({
         return;
       }
 
-      setSuccess("Artifact uploaded and submitted to Department SPOC!");
+      setSuccess(`Artifact for Semester ${selectedSemester} uploaded and submitted to Department SPOC!`);
       onSuccess();
       setTimeout(() => onClose(), 1200);
     } catch (err: any) {
@@ -123,7 +158,7 @@ export function ArtifactUploadModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-base font-bold text-[#0d2137]">Upload Project Artifact</h3>
@@ -154,6 +189,50 @@ export function ArtifactUploadModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Dual-Semester Selection */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span>Select Submission Semester</span>
+              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                Both Semesters Required
+              </span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleSemesterChange(baseSem)}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-left flex flex-col gap-0.5 ${
+                  selectedSemester === baseSem
+                    ? "bg-[#0d2137] text-white border-[#0d2137] shadow-sm"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <span className={`text-[10px] uppercase tracking-wider ${selectedSemester === baseSem ? "text-amber-300" : "text-slate-400"}`}>
+                  Phase I · Odd Sem
+                </span>
+                <span>Semester {baseSem} (Interim)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSemesterChange(nextSem)}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-left flex flex-col gap-0.5 ${
+                  selectedSemester === nextSem
+                    ? "bg-[#0d2137] text-white border-[#0d2137] shadow-sm"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <span className={`text-[10px] uppercase tracking-wider ${selectedSemester === nextSem ? "text-amber-300" : "text-slate-400"}`}>
+                  Phase II · Even Sem
+                </span>
+                <span>Semester {nextSem} (Final Defense)</span>
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Faculty mentors are required to submit reports and presentation slides for <strong>both</strong> semesters.
+            </p>
+          </div>
+
           {/* Artifact Type Selection */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -164,7 +243,7 @@ export function ArtifactUploadModal({
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setArtifactType(t)}
+                  onClick={() => handleTypeChange(t)}
                   className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
                     artifactType === t
                       ? "bg-[#0d2137] text-white border-[#0d2137]"
@@ -185,7 +264,10 @@ export function ArtifactUploadModal({
             <input
               type="text"
               value={artifactTitle}
-              onChange={(e) => setArtifactTitle(e.target.value)}
+              onChange={(e) => {
+                setArtifactTitle(e.target.value);
+                setTitleManuallyEdited(true);
+              }}
               placeholder="Enter document title"
               className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
               required

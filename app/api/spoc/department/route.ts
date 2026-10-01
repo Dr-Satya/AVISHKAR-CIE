@@ -123,6 +123,10 @@ export async function GET(req: NextRequest) {
             semester: reg.student.semester,
             batch: reg.student.batch,
             email: reg.student.email,
+            phone: reg.student.phone,
+            internalMarks: reg.student.internalMarks,
+            externalMarks: reg.student.externalMarks,
+            attendancePercent: reg.student.attendancePercent,
             projectId: proj.projectId,
             projectTitle: proj.title,
             facultyName: proj.faculty.name,
@@ -230,3 +234,94 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || (session.role !== "SPOC" && session.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Unauthorized. SPOC or Admin access required." }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { action, updates, studentId, attendancePercent, internalMarks, externalMarks } = body;
+
+    if (action === "UPDATE_STUDENT_MARKS" || action === "BULK_UPDATE_MARKS") {
+      let recordsToUpdate: Array<{
+        studentId?: string;
+        enrollmentNumber?: string;
+        attendancePercent?: number | null;
+        internalMarks?: number | null;
+        externalMarks?: number | null;
+      }> = [];
+
+      if (Array.isArray(updates) && updates.length > 0) {
+        recordsToUpdate = updates;
+      } else if (studentId) {
+        recordsToUpdate = [
+          {
+            studentId,
+            attendancePercent: attendancePercent !== undefined ? Number(attendancePercent) : undefined,
+            internalMarks: internalMarks !== undefined ? Number(internalMarks) : undefined,
+            externalMarks: externalMarks !== undefined ? Number(externalMarks) : undefined,
+          },
+        ];
+      } else {
+        return NextResponse.json({ error: "No student update data provided." }, { status: 400 });
+      }
+
+      let updatedCount = 0;
+      for (const item of recordsToUpdate) {
+        const updateData: any = {};
+        if (item.attendancePercent !== undefined && item.attendancePercent !== null && !isNaN(Number(item.attendancePercent))) {
+          updateData.attendancePercent = Math.min(100, Math.max(0, Number(item.attendancePercent)));
+        }
+        if (item.internalMarks !== undefined && item.internalMarks !== null && !isNaN(Number(item.internalMarks))) {
+          updateData.internalMarks = Math.max(0, Number(item.internalMarks));
+        }
+        if (item.externalMarks !== undefined && item.externalMarks !== null && !isNaN(Number(item.externalMarks))) {
+          updateData.externalMarks = Math.max(0, Number(item.externalMarks));
+        }
+
+        if (Object.keys(updateData).length === 0) continue;
+
+        if (item.studentId) {
+          await prisma.student.update({
+            where: { id: item.studentId },
+            data: updateData,
+          });
+          updatedCount++;
+        } else if (item.enrollmentNumber) {
+          const res = await prisma.student.updateMany({
+            where: { enrollmentNumber: String(item.enrollmentNumber).trim() },
+            data: updateData,
+          });
+          if (res.count > 0) updatedCount += res.count;
+        }
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          actor: session.name,
+          actorRole: session.role,
+          action: "SPOC_STUDENT_MARKS_UPLOADED",
+          metadata: JSON.stringify({ count: updatedCount }),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Successfully updated attendance & assessment for ${updatedCount} student(s).`,
+        updatedCount,
+      });
+    }
+
+    return NextResponse.json({ error: "Invalid action." }, { status: 400 });
+  } catch (error: any) {
+    console.error("SPOC marks update error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to update student assessments." },
+      { status: 500 }
+    );
+  }
+}
+

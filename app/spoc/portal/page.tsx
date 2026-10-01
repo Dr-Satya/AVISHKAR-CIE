@@ -416,6 +416,7 @@ export default function SpocPortalPage() {
             studentList={studentList}
             department={department}
             onExport={(fmt) => handleExportData("STUDENTS", fmt)}
+            onRefresh={() => fetchSpocData(department)}
           />
         )}
 

@@ -73,6 +73,231 @@ export function SpocProjectVerificationTab({
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  const renderArtifactCard = (art: ProjectData["artifacts"][0], proj: ProjectData) => (
+    <div
+      key={art.id}
+      className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3"
+    >
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex items-start gap-3">
+          <span
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+              art.type === "REPORT"
+                ? "bg-blue-100 text-blue-800 border border-blue-200"
+                : art.type === "PPT"
+                ? "bg-purple-100 text-purple-800 border border-purple-200"
+                : "bg-slate-100 text-slate-800 border border-slate-200"
+            }`}
+          >
+            {art.type === "REPORT"
+              ? "Project Report"
+              : art.type === "PPT"
+              ? "Presentation Slide"
+              : "Project Document"}
+          </span>
+          <div>
+            <h5 className="font-bold text-sm text-[#0d2137]">
+              {art.title}
+            </h5>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 mt-1">
+              <span className="font-mono text-slate-700 font-medium">
+                {art.fileName.split("/").pop()}
+              </span>
+              <span>·</span>
+              <span>Size: {formatFileSize(art.fileSize)}</span>
+              <span>·</span>
+              <span>
+                Submitted: {art.submittedAt.split("T")[0]}
+              </span>
+              {art.semester && (
+                <>
+                  <span>·</span>
+                  <span className="font-semibold text-blue-700">Semester {art.semester}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Status and View link */}
+        <div className="flex items-center gap-2 self-start lg:self-center">
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-bold ${
+              art.status === "APPROVED"
+                ? "bg-green-100 text-green-800 border border-green-200"
+                : art.status === "REJECTED"
+                ? "bg-red-100 text-red-800 border border-red-200"
+                : "bg-amber-100 text-amber-800 border border-amber-200"
+            }`}
+          >
+            {art.status}
+          </span>
+
+          <a
+            href={art.fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-600" />
+            <span>Download File</span>
+            <ExternalLink className="w-3 h-3 text-slate-400" />
+          </a>
+
+          {art.plagiarismReportUrl && (
+            <a
+              href={art.plagiarismReportUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+              title="Download official plagiarism report"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-700" />
+              <span>Plagiarism Report</span>
+              <ExternalLink className="w-3 h-3 text-amber-600" />
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Academic Integrity Inspection Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        {/* Similarity check */}
+        <div
+          className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+            art.similarityPercent !== null &&
+            art.similarityPercent !== undefined &&
+            art.similarityPercent <= 10
+              ? "bg-emerald-50/70 border-emerald-200 text-emerald-900"
+              : "bg-red-50/70 border-red-200 text-red-900"
+          }`}
+        >
+          <div>
+            <div className="font-bold flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-700" />
+              <span>Plagiarism Count / Similarity</span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-0.5">
+              Turnitin / Urkund Verification (&lt; 10% Required)
+            </p>
+            {art.plagiarismReportUrl && (
+              <p className="text-[10px] text-amber-800 font-semibold mt-1 flex items-center gap-1">
+                <FileText className="w-3 h-3" /> Report File Attached
+              </p>
+            )}
+          </div>
+          <div className="text-right">
+            <span className="text-base font-bold font-mono">
+              {art.similarityPercent ?? "N/A"}%
+            </span>
+            <span className="block text-[10px] font-semibold">
+              {art.similarityPercent !== null &&
+              art.similarityPercent !== undefined &&
+              art.similarityPercent <= 10
+                ? "✓ Pass (<10%)"
+                : "⚠ Exceeds Limit"}
+            </span>
+          </div>
+        </div>
+
+        {/* AI generation check */}
+        <div
+          className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+            art.aiPercent !== null &&
+            art.aiPercent !== undefined &&
+            art.aiPercent <= 20
+              ? "bg-indigo-50/70 border-indigo-200 text-indigo-900"
+              : "bg-red-50/70 border-red-200 text-red-900"
+          }`}
+        >
+          <div>
+            <div className="font-bold flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-indigo-700" />
+              <span>AI-Generated Content Score</span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-0.5">
+              Passage Detection (&lt; 20% Permitted)
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-base font-bold font-mono">
+              {art.aiPercent ?? "N/A"}%
+            </span>
+            <span className="block text-[10px] font-semibold">
+              {art.aiPercent !== null &&
+              art.aiPercent !== undefined &&
+              art.aiPercent <= 20
+                ? "✓ Pass (<20%)"
+                : "⚠ Exceeds Limit"}
+            </span>
+          </div>
+        </div>
+
+        {/* Faculty Self Declaration Card */}
+        <div
+          className={`p-3 rounded-xl border text-xs flex items-center justify-between sm:col-span-2 ${
+            art.selfDeclaration
+              ? "bg-emerald-50/60 border-emerald-200 text-emerald-900"
+              : "bg-slate-50 border-slate-200 text-slate-700"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle2
+              className={`w-4 h-4 ${
+                art.selfDeclaration ? "text-emerald-600" : "text-slate-400"
+              }`}
+            />
+            <div>
+              <span className="font-bold">Faculty Self-Declaration:</span>
+              <p className="text-[11px] text-slate-600 mt-0.5">
+                {art.selfDeclaration
+                  ? 'Faculty verified: "All the above info is correct, genuine, and verified in compliance with academic integrity guidelines."'
+                  : "No self-declaration recorded for this artifact."}
+              </p>
+            </div>
+          </div>
+          {art.selfDeclaration && (
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200 whitespace-nowrap">
+              Consent Verified ✓
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Per-document SPOC action triggers */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
+        <div className="text-[11px] text-slate-500">
+          {art.spocNote && (
+            <span>
+              <strong>Note:</strong> {art.spocNote}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() =>
+              onOpenReview(proj, "APPROVE", art.id, art.title)
+            }
+            className="px-3 py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 border border-green-300 font-semibold text-xs flex items-center gap-1 transition-colors"
+          >
+            <CheckCircle2 className="w-3 h-3 text-green-600" />
+            <span>Approve Document</span>
+          </button>
+          <button
+            onClick={() =>
+              onOpenReview(proj, "REJECT", art.id, art.title)
+            }
+            className="px-3 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 font-semibold text-xs flex items-center gap-1 transition-colors"
+          >
+            <XCircle className="w-3 h-3 text-red-600" />
+            <span>Reject Document</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {/* Filter and Search Bar */}
@@ -151,6 +376,13 @@ export function SpocProjectVerificationTab({
         <div className="space-y-4">
           {filteredProjects.map((proj) => {
             const isExpanded = Boolean(expandedProjects[proj.id]);
+            const baseSem = proj.semester || 3;
+            const nextSem = baseSem + 1;
+            const sem1Artifacts = proj.artifacts.filter((a) => (a.semester || baseSem) === baseSem);
+            const sem2Artifacts = proj.artifacts.filter((a) => a.semester === nextSem);
+            const sem1HasReport = sem1Artifacts.some((a) => a.type === "REPORT");
+            const sem2HasReport = sem2Artifacts.some((a) => a.type === "REPORT");
+            const bothComplete = sem1HasReport && sem2HasReport;
             return (
               <div
                 key={proj.id}
@@ -235,35 +467,55 @@ export function SpocProjectVerificationTab({
                         </span>
                       </div>
 
-                      {/* Faculty Uploaded Files & Plagiarism Summary */}
-                      {proj.artifacts.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 pt-1.5">
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 flex items-center gap-1">
-                            <FileText className="w-3 h-3 text-blue-600" />
-                            {proj.artifacts.length} {proj.artifacts.length === 1 ? "File Uploaded" : "Files Uploaded"}
+                      {/* Faculty Uploaded Files & Dual-Semester Summary */}
+                      <div className="flex flex-wrap items-center gap-2 pt-1.5">
+                        <span
+                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                            sem1HasReport
+                              ? "bg-blue-50 text-blue-800 border-blue-200"
+                              : "bg-red-50 text-red-700 border-red-200"
+                          }`}
+                        >
+                          <FileText className="w-3 h-3" />
+                          Sem {baseSem}: {sem1Artifacts.length} docs {sem1HasReport ? "(Report ✓)" : "(Report Missing)"}
+                        </span>
+
+                        <span
+                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                            sem2HasReport
+                              ? "bg-purple-50 text-purple-800 border-purple-200"
+                              : "bg-amber-50 text-amber-800 border-amber-200"
+                          }`}
+                        >
+                          <FileText className="w-3 h-3" />
+                          Sem {nextSem}: {sem2Artifacts.length} docs {sem2HasReport ? "(Report ✓)" : "(Report Missing)"}
+                        </span>
+
+                        {bothComplete ? (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Both Semesters Uploaded ✓
                           </span>
+                        ) : (
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                            Sem {nextSem} Required
+                          </span>
+                        )}
 
-                          {proj.artifacts.some((a) => a.similarityPercent !== null && a.similarityPercent !== undefined) && (
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                              Plagiarism Count: {proj.artifacts.find((a) => a.similarityPercent !== null && a.similarityPercent !== undefined)?.similarityPercent}% (&lt;10% ✓)
-                            </span>
-                          )}
+                        {proj.artifacts.some((a) => a.similarityPercent !== null && a.similarityPercent !== undefined) && (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            Turnitin: {proj.artifacts.find((a) => a.similarityPercent !== null && a.similarityPercent !== undefined)?.similarityPercent}% (&lt;10% ✓)
+                          </span>
+                        )}
 
-                          {proj.artifacts.some((a) => a.plagiarismReportUrl) && (
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-                              <Download className="w-3 h-3 text-amber-600" />
-                              Plagiarism Report Attached
-                            </span>
-                          )}
-
-                          {proj.artifacts.some((a) => a.selfDeclaration) && (
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-                              ✓ Faculty Declared Info Correct
-                            </span>
-                          )}
-                        </div>
-                      )}
+                        {proj.artifacts.some((a) => a.plagiarismReportUrl) && (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                            <Download className="w-3 h-3 text-amber-600" />
+                            Plagiarism Report Attached
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Top Right Actions */}
@@ -342,257 +594,88 @@ export function SpocProjectVerificationTab({
                 {/* EXPANDABLE INSPECTION DRAWER: ALL SEMESTER DOCUMENTS & DETAILS */}
                 {isExpanded && (
                   <div className="border-t border-slate-200 bg-slate-50/70 p-5 sm:p-7 space-y-6">
-                    {/* SECTION 1: DOCUMENTS UPLOADED IN THIS SEMESTER */}
-                    <div>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                    {/* DUAL-SEMESTER SUBMISSIONS INSPECTION */}
+                    <div className="space-y-6">
+                      {/* University Requirement Notice */}
+                      <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-start gap-2.5 text-xs text-blue-900">
+                        <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-blue-600" />
-                            <span>
-                              Semester {proj.semester || 3} Faculty Uploads ({proj.artifacts.length})
-                            </span>
-                          </h4>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
-                            Examine full document contents, Turnitin similarity, and AI generation parameters before approving or rejecting.
+                          <p className="font-bold">Dual-Semester Verification Protocol:</p>
+                          <p className="text-[11px] text-blue-800 mt-0.5">
+                            Faculty mentors must submit project documentation for <strong>both Semester {baseSem} (Interim)</strong> and <strong>Semester {nextSem} (Final Defense)</strong>. Check Turnitin plagiarism similarity (&lt;10%), AI score (&lt;20%), and report files before granting approval.
                           </p>
                         </div>
                       </div>
 
-                      {proj.artifacts.length === 0 ? (
-                        <div className="bg-white rounded-xl p-6 text-center text-xs text-slate-500 border border-slate-200">
-                          <p className="font-medium text-slate-700">No documents uploaded yet.</p>
-                          <p className="text-[11px] text-slate-400 mt-1">
-                            The faculty mentor has not submitted any reports or presentations for this project yet.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {proj.artifacts.map((art) => (
-                            <div
-                              key={art.id}
-                              className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3"
+                      {/* SEMESTER 1 (ODD / INTERIM) */}
+                      <div className="bg-white rounded-xl border border-slate-200/90 p-5 space-y-3.5 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-blue-600" />
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                              Semester {baseSem} Uploads (Phase I · Interim) ({sem1Artifacts.length})
+                            </h4>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                sem1HasReport ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                              }`}
                             >
-                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                                <div className="flex items-start gap-3">
-                                  <span
-                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                                      art.type === "REPORT"
-                                        ? "bg-blue-100 text-blue-800 border border-blue-200"
-                                        : art.type === "PPT"
-                                        ? "bg-purple-100 text-purple-800 border border-purple-200"
-                                        : "bg-slate-100 text-slate-800 border border-slate-200"
-                                    }`}
-                                  >
-                                    {art.type === "REPORT"
-                                      ? "Project Report"
-                                      : art.type === "PPT"
-                                      ? "Presentation Slide"
-                                      : "Project Document"}
-                                  </span>
-                                  <div>
-                                    <h5 className="font-bold text-sm text-[#0d2137]">
-                                      {art.title}
-                                    </h5>
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 mt-1">
-                                      <span className="font-mono text-slate-700 font-medium">
-                                        {art.fileName}
-                                      </span>
-                                      <span>·</span>
-                                      <span>Size: {formatFileSize(art.fileSize)}</span>
-                                      <span>·</span>
-                                      <span>
-                                        Submitted: {art.submittedAt.split("T")[0]}
-                                      </span>
-                                      {art.mimeType && (
-                                        <>
-                                          <span>·</span>
-                                          <span className="text-slate-400">{art.mimeType}</span>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Status and View link */}
-                                <div className="flex items-center gap-2 self-start lg:self-center">
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                      art.status === "APPROVED"
-                                        ? "bg-green-100 text-green-800 border border-green-200"
-                                        : art.status === "REJECTED"
-                                        ? "bg-red-100 text-red-800 border border-red-200"
-                                        : "bg-amber-100 text-amber-800 border border-amber-200"
-                                    }`}
-                                  >
-                                    {art.status}
-                                  </span>
-
-                                  <a
-                                    href={art.fileUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
-                                  >
-                                    <Download className="w-3.5 h-3.5 text-slate-600" />
-                                    <span>Download File</span>
-                                    <ExternalLink className="w-3 h-3 text-slate-400" />
-                                  </a>
-
-                                  {art.plagiarismReportUrl && (
-                                    <a
-                                      href={art.plagiarismReportUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
-                                      title="Download official plagiarism report"
-                                    >
-                                      <Download className="w-3.5 h-3.5 text-amber-700" />
-                                      <span>Plagiarism Report</span>
-                                      <ExternalLink className="w-3 h-3 text-amber-600" />
-                                    </a>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Academic Integrity Inspection Metrics */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                                {/* Similarity check */}
-                                <div
-                                  className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
-                                    art.similarityPercent !== null &&
-                                    art.similarityPercent !== undefined &&
-                                    art.similarityPercent <= 10
-                                      ? "bg-emerald-50/70 border-emerald-200 text-emerald-900"
-                                      : "bg-red-50/70 border-red-200 text-red-900"
-                                  }`}
-                                >
-                                  <div>
-                                    <div className="font-bold flex items-center gap-1.5">
-                                      <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                                      <span>Plagiarism Count / Similarity</span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-600 mt-0.5">
-                                      Turnitin / Urkund Verification (&lt; 10% Required)
-                                    </p>
-                                    {art.plagiarismReportUrl && (
-                                      <p className="text-[10px] text-amber-800 font-semibold mt-1 flex items-center gap-1">
-                                        <FileText className="w-3 h-3" /> Report File Attached
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <span className="text-base font-bold font-mono">
-                                      {art.similarityPercent ?? "N/A"}%
-                                    </span>
-                                    <span className="block text-[10px] font-semibold">
-                                      {art.similarityPercent !== null &&
-                                      art.similarityPercent !== undefined &&
-                                      art.similarityPercent <= 10
-                                        ? "✓ Pass (<10%)"
-                                        : "⚠ Exceeds Limit"}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* AI generation check */}
-                                <div
-                                  className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
-                                    art.aiPercent !== null &&
-                                    art.aiPercent !== undefined &&
-                                    art.aiPercent <= 20
-                                      ? "bg-indigo-50/70 border-indigo-200 text-indigo-900"
-                                      : "bg-red-50/70 border-red-200 text-red-900"
-                                  }`}
-                                >
-                                  <div>
-                                    <div className="font-bold flex items-center gap-1.5">
-                                      <ShieldCheck className="w-4 h-4 text-indigo-700" />
-                                      <span>AI-Generated Content Score</span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-600 mt-0.5">
-                                      Passage Detection (&lt; 20% Permitted)
-                                    </p>
-                                  </div>
-                                  <div className="text-right">
-                                    <span className="text-base font-bold font-mono">
-                                      {art.aiPercent ?? "N/A"}%
-                                    </span>
-                                    <span className="block text-[10px] font-semibold">
-                                      {art.aiPercent !== null &&
-                                      art.aiPercent !== undefined &&
-                                      art.aiPercent <= 20
-                                        ? "✓ Pass (<20%)"
-                                        : "⚠ Exceeds Limit"}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Faculty Self Declaration Card */}
-                                <div
-                                  className={`p-3 rounded-xl border text-xs flex items-center justify-between sm:col-span-2 ${
-                                    art.selfDeclaration
-                                      ? "bg-emerald-50/60 border-emerald-200 text-emerald-900"
-                                      : "bg-slate-50 border-slate-200 text-slate-700"
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <CheckCircle2
-                                      className={`w-4 h-4 ${
-                                        art.selfDeclaration ? "text-emerald-600" : "text-slate-400"
-                                      }`}
-                                    />
-                                    <div>
-                                      <span className="font-bold">Faculty Self-Declaration:</span>
-                                      <p className="text-[11px] text-slate-600 mt-0.5">
-                                        {art.selfDeclaration
-                                          ? 'Faculty verified: "All the above info is correct, genuine, and verified in compliance with academic integrity guidelines."'
-                                          : "No self-declaration recorded for this artifact."}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  {art.selfDeclaration && (
-                                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200 whitespace-nowrap">
-                                      Consent Verified ✓
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Per-document SPOC action triggers */}
-                              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
-                                <div className="text-[11px] text-slate-500">
-                                  {art.spocNote && (
-                                    <span>
-                                      <strong>Note:</strong> {art.spocNote}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() =>
-                                      onOpenReview(proj, "APPROVE", art.id, art.title)
-                                    }
-                                    className="px-3 py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 border border-green-300 font-semibold text-xs flex items-center gap-1 transition-colors"
-                                  >
-                                    <CheckCircle2 className="w-3 h-3 text-green-600" />
-                                    <span>Approve Document</span>
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      onOpenReview(proj, "REJECT", art.id, art.title)
-                                    }
-                                    className="px-3 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 font-semibold text-xs flex items-center gap-1 transition-colors"
-                                  >
-                                    <XCircle className="w-3 h-3 text-red-600" />
-                                    <span>Reject Document</span>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                              {sem1HasReport ? "Report Uploaded" : "Report Missing"}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            Turnitin &lt; 10% · AI &lt; 20%
+                          </span>
                         </div>
-                      )}
+
+                        {sem1Artifacts.length === 0 ? (
+                          <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
+                            <p className="text-xs text-slate-600 font-medium">No documents uploaded for Semester {baseSem} yet.</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Faculty mentor must submit the interim report and presentation slides.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {sem1Artifacts.map((art) => renderArtifactCard(art, proj))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* SEMESTER 2 (EVEN / FINAL) */}
+                      <div className="bg-white rounded-xl border border-slate-200/90 p-5 space-y-3.5 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-purple-600" />
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                              Semester {nextSem} Uploads (Phase II · Final Defense) ({sem2Artifacts.length})
+                            </h4>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                sem2HasReport ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {sem2HasReport ? "Report Uploaded" : "Report Missing"}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            Turnitin &lt; 10% · AI &lt; 20%
+                          </span>
+                        </div>
+
+                        {sem2Artifacts.length === 0 ? (
+                          <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
+                            <p className="text-xs text-slate-600 font-medium">No documents uploaded for Semester {nextSem} yet.</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Faculty mentor must submit the final capstone report and defense slides.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {sem2Artifacts.map((art) => renderArtifactCard(art, proj))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* SECTION 2: APPLICATION VERDICT & DECISION PANEL */}

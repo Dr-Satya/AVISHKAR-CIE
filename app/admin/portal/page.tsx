@@ -4,7 +4,14 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { Settings, Users, FileSpreadsheet } from "lucide-react";
+import {
+  Settings,
+  Users,
+  FileSpreadsheet,
+  LayoutDashboard,
+  FolderKanban,
+  ShieldCheck,
+} from "lucide-react";
 
 // Modular Components
 import { AdminBanner } from "@/components/admin/AdminBanner";
@@ -65,8 +72,10 @@ export default function AdminPortalPage() {
   const [otherDeptInput, setOtherDeptInput] = useState("2");
   const [deptSaving, setDeptSaving] = useState(false);
 
-  // Active Dashboard Tab
-  const [activeDashboardTab, setActiveDashboardTab] = useState<"MAIN" | "REGISTRATION" | "SUBMISSIONS">("MAIN");
+  // Active Dashboard Tab (Segregated into 4 Core Operations)
+  const [activeDashboardTab, setActiveDashboardTab] = useState<
+    "DASHBOARD" | "REGISTRATION" | "PROJECTS" | "FACULTY"
+  >("DASHBOARD");
 
   // Bulk Registration State
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -797,32 +806,37 @@ export default function AdminPortalPage() {
           </button>
         </div>
 
-        {/* Three-Dashboard Navigation Switcher */}
+        {/* Four-Part Segregated Navigation Switcher */}
         <div className="bg-white rounded-2xl p-2 border border-slate-200/80 shadow-sm flex items-center gap-2 overflow-x-auto">
+          {/* Part 1: Dashboard */}
           <button
             type="button"
-            onClick={() => setActiveDashboardTab("MAIN")}
-            className={`flex-1 min-w-[180px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-              activeDashboardTab === "MAIN"
+            onClick={() => setActiveDashboardTab("DASHBOARD")}
+            className={`flex-1 min-w-[170px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              activeDashboardTab === "DASHBOARD"
                 ? "bg-[#0d2137] text-white shadow-md"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
-            <Settings className="w-4 h-4 text-[#cda34f]" />
-            <span>Dashboard (Main)</span>
+            <LayoutDashboard className="w-4 h-4 text-[#cda34f]" />
+            <span>Dashboard</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-200 font-bold ml-1">
+              {kpi.totalRegistrations} Registered
+            </span>
           </button>
 
+          {/* Part 2: Registrations & Students */}
           <button
             type="button"
             onClick={() => setActiveDashboardTab("REGISTRATION")}
-            className={`flex-1 min-w-[200px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[210px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
               activeDashboardTab === "REGISTRATION"
                 ? "bg-[#0d2137] text-white shadow-md"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
             <Users className="w-4 h-4 text-[#cda34f]" />
-            <span>Registration Dashboard</span>
+            <span>Registrations & Students</span>
             {unregisteredStats && unregisteredStats.totalUnregistered > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold ml-1">
                 {unregisteredStats.totalUnregistered} Unregistered
@@ -830,32 +844,52 @@ export default function AdminPortalPage() {
             )}
           </button>
 
+          {/* Part 3: Projects & Submissions */}
           <button
             type="button"
-            onClick={() => setActiveDashboardTab("SUBMISSIONS")}
-            className={`flex-1 min-w-[200px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-              activeDashboardTab === "SUBMISSIONS"
+            onClick={() => setActiveDashboardTab("PROJECTS")}
+            className={`flex-1 min-w-[190px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              activeDashboardTab === "PROJECTS"
                 ? "bg-[#0d2137] text-white shadow-md"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
-            <FileSpreadsheet className="w-4 h-4 text-[#cda34f]" />
-            <span>Submissions Dashboard</span>
+            <FolderKanban className="w-4 h-4 text-[#cda34f]" />
+            <span>Projects & Submissions</span>
             {completionStats && (
               <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-600 text-white font-bold ml-1">
                 {completionStats.completionPercentage}% Done
               </span>
             )}
           </button>
+
+          {/* Part 4: Faculty & SPOC Management */}
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab("FACULTY")}
+            className={`flex-1 min-w-[190px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              activeDashboardTab === "FACULTY"
+                ? "bg-[#0d2137] text-white shadow-md"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-[#cda34f]" />
+            <span>Faculty & SPOCs</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700 font-bold ml-1">
+              {faculties.length}
+            </span>
+          </button>
         </div>
 
         {/* ======================================================== */}
-        {/* VIEW 1: DASHBOARD (MAIN)                                 */}
-        {/* Core Controls, Year Rollover, Faculty Access, SPOC       */}
+        {/* PART 1: DASHBOARD (Overview, KPIs, Rollover, Config)    */}
         {/* ======================================================== */}
-        {activeDashboardTab === "MAIN" && (
+        {activeDashboardTab === "DASHBOARD" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Academic Year Banner */}
+            {/* KPI Stats Overview */}
+            <KpiStats kpi={kpi} />
+
+            {/* Academic Year Banner & Cohort Controls */}
             <AdminBanner
               activeAcademicYear={activeAcademicYear}
               activeSemester={activeSemester}
@@ -874,95 +908,6 @@ export default function AdminPortalPage() {
               onSave={handleSaveConfig}
             />
 
-            {/* SPOC Management */}
-            <SpocManagementCard
-              spocDepartments={spocDepartments}
-              spocsByDept={spocsByDept}
-              faculties={faculties}
-              selectedFacultyForDept={selectedFacultyForDept}
-              setSelectedFacultyForDept={setSelectedFacultyForDept}
-              spocUpdating={spocUpdating}
-              onAssignSpoc={handleAssignSpoc}
-              onRevokeSpoc={handleRevokeSpoc}
-            />
-
-            {/* Faculty Access Management */}
-            <FacultyAccessCard
-              faculties={faculties}
-              onAddClick={() => {
-                setFacultyCrudError(null);
-                setFacultyForm({
-                  id: "",
-                  name: "",
-                  email: "",
-                  department: "School of Engineering & Sciences",
-                  phone: "",
-                  passcode: "gdgu@2026",
-                  isAdmin: false,
-                  isSpoc: false,
-                  spocDepartment: "",
-                });
-                setShowAddFacultyModal(true);
-              }}
-              onEditClick={(f) => {
-                setFacultyCrudError(null);
-                setFacultyForm({
-                  id: f.id,
-                  name: f.name,
-                  email: f.email,
-                  department: f.department,
-                  phone: f.phone || "",
-                  passcode: "",
-                  isAdmin: f.isAdmin,
-                  isSpoc: f.isSpoc,
-                  spocDepartment: f.spocDepartment || "",
-                });
-                setShowEditFacultyModal(true);
-              }}
-              onDeleteClick={(f) => {
-                setFacultyCrudError(null);
-                setFacultyForm({
-                  id: f.id,
-                  name: f.name,
-                  email: f.email,
-                  department: f.department,
-                  phone: f.phone || "",
-                  passcode: "",
-                  isAdmin: f.isAdmin,
-                  isSpoc: f.isSpoc,
-                  spocDepartment: f.spocDepartment || "",
-                });
-                setShowDeleteFacultyModal(true);
-              }}
-              onToggleAdmin={handleToggleFacultyAdmin}
-              onResetPasscodeClick={(f) => {
-                setSelectedResetFaculty(f);
-                setNewPasscodeInput("gdgu@2026");
-                setResetPasscodeMessage(null);
-              }}
-            />
-
-            {/* Targeted SMS Broadcast Center (Admin Only) */}
-            <SmsBroadcastCard schools={spocDepartments} />
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* VIEW 2: REGISTRATION DASHBOARD                           */}
-        {/* Roster, Unregistered Audit, Limit Overrides, FIFO Queue   */}
-        {/* ======================================================== */}
-        {activeDashboardTab === "REGISTRATION" && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* KPI Stats */}
-            <KpiStats kpi={kpi} />
-
-            {/* Bulk Registration */}
-            <BulkRegistrationCard
-              bulkRunning={bulkRunning}
-              bulkResult={bulkResult}
-              onRunBulkRegistration={handleRunBulkRegistration}
-            />
-
             {/* Department-wise Registration Limits */}
             <DepartmentLimitsCard
               deptLimits={deptLimits}
@@ -977,6 +922,23 @@ export default function AdminPortalPage() {
               onDelete={handleDeleteDeptLimit}
             />
 
+            {/* Bulk Registration Engine */}
+            <BulkRegistrationCard
+              bulkRunning={bulkRunning}
+              bulkResult={bulkResult}
+              onRunBulkRegistration={handleRunBulkRegistration}
+            />
+
+            {/* Targeted SMS Broadcast Center (Admin Only) */}
+            <SmsBroadcastCard schools={spocDepartments} />
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* PART 2: REGISTRATION & STUDENTS (Roster, Sort, Assessments) */}
+        {/* ======================================================== */}
+        {activeDashboardTab === "REGISTRATION" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
             {/* Students Table with School, Branch, Gender, Attendance, Assessment Sorting */}
             <StudentsTableCard
               students={students}
@@ -1078,10 +1040,9 @@ export default function AdminPortalPage() {
         )}
 
         {/* ======================================================== */}
-        {/* VIEW 3: SUBMISSIONS DASHBOARD                            */}
-        {/* Completion KPIs, Progress Bars, Plagiarism Audit, Status */}
+        {/* PART 3: PROJECTS & SUBMISSIONS                            */}
         {/* ======================================================== */}
-        {activeDashboardTab === "SUBMISSIONS" && (
+        {activeDashboardTab === "PROJECTS" && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <ProjectsTableCard
               projects={projects}
@@ -1099,6 +1060,81 @@ export default function AdminPortalPage() {
               projectTotalPages={projectTotalPages}
               loadingProjects={loadingProjects}
               onFetchProjects={fetchProjects}
+            />
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* PART 4: FACULTY & SPOC MANAGEMENT                         */}
+        {/* ======================================================== */}
+        {activeDashboardTab === "FACULTY" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* SPOC Management */}
+            <SpocManagementCard
+              spocDepartments={spocDepartments}
+              spocsByDept={spocsByDept}
+              faculties={faculties}
+              selectedFacultyForDept={selectedFacultyForDept}
+              setSelectedFacultyForDept={setSelectedFacultyForDept}
+              spocUpdating={spocUpdating}
+              onAssignSpoc={handleAssignSpoc}
+              onRevokeSpoc={handleRevokeSpoc}
+            />
+
+            {/* Faculty Access Management */}
+            <FacultyAccessCard
+              faculties={faculties}
+              onAddClick={() => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: "",
+                  name: "",
+                  email: "",
+                  department: "School of Engineering & Sciences",
+                  phone: "",
+                  passcode: "gdgu@2026",
+                  isAdmin: false,
+                  isSpoc: false,
+                  spocDepartment: "",
+                });
+                setShowAddFacultyModal(true);
+              }}
+              onEditClick={(f) => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: f.id,
+                  name: f.name,
+                  email: f.email,
+                  department: f.department,
+                  phone: f.phone || "",
+                  passcode: "",
+                  isAdmin: f.isAdmin,
+                  isSpoc: f.isSpoc,
+                  spocDepartment: f.spocDepartment || "",
+                });
+                setShowEditFacultyModal(true);
+              }}
+              onDeleteClick={(f) => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: f.id,
+                  name: f.name,
+                  email: f.email,
+                  department: f.department,
+                  phone: f.phone || "",
+                  passcode: "",
+                  isAdmin: f.isAdmin,
+                  isSpoc: f.isSpoc,
+                  spocDepartment: f.spocDepartment || "",
+                });
+                setShowDeleteFacultyModal(true);
+              }}
+              onToggleAdmin={handleToggleFacultyAdmin}
+              onResetPasscodeClick={(f) => {
+                setSelectedResetFaculty(f);
+                setNewPasscodeInput("gdgu@2026");
+                setResetPasscodeMessage(null);
+              }}
             />
           </div>
         )}

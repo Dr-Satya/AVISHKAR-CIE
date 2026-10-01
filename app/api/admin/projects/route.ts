@@ -70,6 +70,8 @@ export async function GET(req: NextRequest) {
             title: true,
             fileName: true,
             fileUrl: true,
+            semester: true,
+            academicYear: true,
             similarityPercent: true,
             aiPercent: true,
             plagiarismReportUrl: true,
@@ -84,10 +86,35 @@ export async function GET(req: NextRequest) {
     prisma.project.count({ where: { submissionStatus: "PENDING" } }),
     prisma.project.count({ where: { submissionStatus: "REJECTED" } }),
     prisma.project.count({ where: { submissionStatus: "NOT_SUBMITTED" } }),
-    prisma.project.findMany({ select: { department: true, submissionStatus: true } }),
+    prisma.project.findMany({
+      select: {
+        department: true,
+        submissionStatus: true,
+        semester: true,
+        artifacts: { select: { semester: true, type: true } },
+      },
+    }),
   ]);
 
-  // Aggregate completion rates school-wise
+  // Aggregate completion rates school-wise and dual-semester compliance
+  let bothSemestersCompletedCount = 0;
+  let sem1OnlyCount = 0;
+  let sem2PendingCount = 0;
+
+  for (const p of allProjectsSample) {
+    const baseSem = p.semester || 3;
+    const nextSem = baseSem + 1;
+    const hasSem1Report = p.artifacts.some((a) => (a.semester || baseSem) === baseSem && a.type === "REPORT");
+    const hasSem2Report = p.artifacts.some((a) => a.semester === nextSem && a.type === "REPORT");
+
+    if (hasSem1Report && hasSem2Report) {
+      bothSemestersCompletedCount += 1;
+    } else if (hasSem1Report && !hasSem2Report) {
+      sem1OnlyCount += 1;
+      sem2PendingCount += 1;
+    }
+  }
+
   const schoolBreakdown: Record<string, { total: number; completed: number; pending: number }> = {};
   for (const p of allProjectsSample) {
     const d = p.department || "Other";
@@ -113,7 +140,20 @@ export async function GET(req: NextRequest) {
       );
 
       const artifacts = p.artifacts || [];
-      const reportArtifact = artifacts.find((a) => a.type === "REPORT") || artifacts[0];
+      const baseSem = p.semester || 3;
+      const nextSem = baseSem + 1;
+
+      const sem1Artifacts = artifacts.filter((a) => (a.semester || baseSem) === baseSem);
+      const sem2Artifacts = artifacts.filter((a) => a.semester === nextSem);
+
+      const sem1Report = sem1Artifacts.find((a) => a.type === "REPORT");
+      const sem2Report = sem2Artifacts.find((a) => a.type === "REPORT");
+
+      const sem1HasReport = Boolean(sem1Report);
+      const sem2HasReport = Boolean(sem2Report);
+      const bothSemestersSubmitted = sem1HasReport && sem2HasReport;
+
+      const reportArtifact = sem2Report || sem1Report || artifacts[0];
 
       return {
         id: p.id,
@@ -123,6 +163,8 @@ export async function GET(req: NextRequest) {
         department: p.department,
         theme: p.theme,
         category: p.category,
+        baseSem,
+        nextSem,
         seatsFilled: p.registrations.length,
         maxSeats: limits.maxSeats,
         seatsRatio: `${p.registrations.length} / ${limits.maxSeats}`,
@@ -131,12 +173,21 @@ export async function GET(req: NextRequest) {
         spocReviewNote: p.spocReviewNote || null,
         reviewedAt: p.reviewedAt || null,
         artifactsCount: artifacts.length,
+        sem1DocsCount: sem1Artifacts.length,
+        sem2DocsCount: sem2Artifacts.length,
+        sem1HasReport,
+        sem2HasReport,
+        bothSemestersSubmitted,
+        sem1Similarity: sem1Report?.similarityPercent ?? null,
+        sem2Similarity: sem2Report?.similarityPercent ?? null,
         artifacts: artifacts.map((a) => ({
           id: a.id,
           type: a.type,
           title: a.title,
           fileName: a.fileName,
           fileUrl: a.fileUrl,
+          semester: a.semester,
+          academicYear: a.academicYear,
           similarityPercent: a.similarityPercent,
           aiPercent: a.aiPercent,
           status: a.status,
@@ -163,6 +214,9 @@ export async function GET(req: NextRequest) {
       pending: pendingCount,
       rejected: rejectedCount,
       notSubmitted: notSubmittedCount,
+      bothSemestersCompleted: bothSemestersCompletedCount,
+      sem1Only: sem1OnlyCount,
+      sem2Pending: sem2PendingCount,
       completionPercentage:
         totalProjectsCount > 0 ? Math.round((completedCount / totalProjectsCount) * 100) : 0,
       schoolBreakdown,
