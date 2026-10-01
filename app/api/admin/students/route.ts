@@ -98,7 +98,14 @@ export async function GET(req: NextRequest) {
         registration: {
           include: {
             project: {
-              select: { projectId: true, title: true },
+              select: {
+                projectId: true,
+                title: true,
+                category: true,
+                faculty: {
+                  select: { name: true, email: true, phone: true },
+                },
+              },
             },
           },
         },
@@ -146,6 +153,7 @@ export async function GET(req: NextRequest) {
     id: s.id,
     enrollment: s.enrollmentNumber,
     name: s.name,
+    email: s.email || null,
     department: s.department,
     program: s.programme || "N/A",
     gender: s.gender || "Unspecified",
@@ -161,6 +169,11 @@ export async function GET(req: NextRequest) {
     registered: !!s.registration,
     projectCode: s.registration?.project?.projectId || "—",
     projectTitle: s.registration?.project?.title || "",
+    projectCategory: s.registration?.project?.category || "",
+    facultyName: s.registration?.project?.faculty?.name || "—",
+    facultyEmail: s.registration?.project?.faculty?.email || "",
+    facultyPhone: s.registration?.project?.faculty?.phone || "",
+    registeredAt: s.registration?.createdAt ? s.registration.createdAt.toISOString() : null,
   }));
 
   return NextResponse.json({

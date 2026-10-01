@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, RefreshCw, Download, Upload, Shield } from "lucide-react";
+import { Calendar, RefreshCw, Download, Upload, Shield, FileSpreadsheet } from "lucide-react";
 
 interface AdminBannerProps {
   activeAcademicYear: string;
@@ -8,6 +8,7 @@ interface AdminBannerProps {
   onOpenTemplates: () => void;
   onOpenImport: () => void;
   onOpenRollover: () => void;
+  onDownloadCohorts?: () => void;
 }
 
 export function AdminBanner({
@@ -17,6 +18,7 @@ export function AdminBanner({
   onOpenTemplates,
   onOpenImport,
   onOpenRollover,
+  onDownloadCohorts,
 }: AdminBannerProps) {
   return (
     <div className="bg-gradient-to-r from-[#0d2137] via-[#163456] to-[#0d2137] rounded-2xl p-6 sm:p-7 text-white shadow-lg border border-[#cda34f]/30 relative overflow-hidden">
@@ -52,6 +54,17 @@ export function AdminBanner({
             <RefreshCw className="w-3.5 h-3.5 text-[#cda34f]" />
             <span>Switch to Sem {activeSemester === 3 ? "4 (Report)" : "3 (PPT)"}</span>
           </button>
+          {onDownloadCohorts && (
+            <button
+              type="button"
+              onClick={onDownloadCohorts}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-700/80 hover:bg-emerald-700 text-white transition-all flex items-center gap-1.5 shadow-sm border border-emerald-500/40"
+              title="Download full student cohorts spreadsheet in official IDP Cohorts Details (.xlsx) format"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Download Cohorts (.xlsx)</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenTemplates}

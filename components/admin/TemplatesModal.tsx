@@ -38,6 +38,13 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
       downloadUrl: "/api/export?type=TEMPLATE_PROJECTS",
       filename: "TEMPLATE_GDGU_Projects.xlsx",
     },
+    {
+      title: "IDP Cohort Details (Live .xlsx)",
+      description:
+        "Official 11-column format: Faculty Name, School, Email, Contact No., Projet Title, Category, Theme, Description, Project ID, Enrollment, Student Name.",
+      downloadUrl: "/api/export?scope=IDP_COHORTS&format=xlsx",
+      filename: "IDP_Cohorts_Details.xlsx",
+    },
   ];
 
   return (

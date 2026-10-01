@@ -17,6 +17,12 @@ import {
   School,
   CheckCircle2,
   XCircle,
+  X,
+  Eye,
+  Phone,
+  Mail,
+  Award,
+  BookOpen,
 } from "lucide-react";
 import { PaginationBar } from "@/components/common/PaginationBar";
 import { exportToCsv, exportToXlsx, exportToPdf } from "@/lib/export";
@@ -101,6 +107,8 @@ export function StudentsTableCard({
   onEditClick,
   onDeleteClick,
 }: StudentsTableCardProps) {
+  const [selectedStudentDetails, setSelectedStudentDetails] = React.useState<any | null>(null);
+
   const handleSortToggle = (columnKey: string) => {
     let nextOrder: "asc" | "desc" = "asc";
     if (studentSortBy === columnKey) {
@@ -135,18 +143,26 @@ export function StudentsTableCard({
   const handleExportCsv = () => {
     const rows = students.map((s, idx) => ({
       "Sr. No": idx + 1,
-      Enrollment: s.enrollment,
-      Name: s.name,
-      Gender: s.gender || "Unspecified",
-      School: s.department,
-      Branch: s.program || "N/A",
-      Semester: s.sem,
-      Batch: s.batch,
-      "Attendance %": `${s.attendance}%`,
-      "Internals (/40)": s.internals,
-      "Externals (/60)": s.externals,
-      Registered: s.registered ? "Yes" : "No",
+      "Enrollment Number": s.enrollment,
+      "Student Name": s.name,
+      "Gender": s.gender || "Unspecified",
+      "School": s.department,
+      "Branch": s.program || "N/A",
+      "Semester": s.sem,
+      "Batch": s.batch,
+      "Academic Year": s.academicYear || "2025-2026",
+      "Phone": s.phone || "N/A",
+      "Phone Verified": s.phoneVerified ? "Yes" : "No",
+      "Attendance (%)": `${s.attendance}%`,
+      "Internal Marks (/40)": s.internals,
+      "External Marks (/60)": s.externals,
+      "Total Marks (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
+      "Registered": s.registered ? "Yes" : "No",
       "Project Code": s.projectCode || "N/A",
+      "Project Title": s.projectTitle || "N/A",
+      "Project Category": s.projectCategory || "N/A",
+      "Faculty Guide": s.facultyName || "N/A",
+      "Faculty Email": s.facultyEmail || "N/A",
     }));
     exportToCsv(rows, `GDGU_Students_${studentFilter.toUpperCase()}`);
   };
@@ -154,18 +170,26 @@ export function StudentsTableCard({
   const handleExportXlsx = () => {
     const rows = students.map((s, idx) => ({
       "Sr. No": idx + 1,
-      Enrollment: s.enrollment,
-      Name: s.name,
-      Gender: s.gender || "Unspecified",
-      School: s.department,
-      Branch: s.program || "N/A",
-      Semester: s.sem,
-      Batch: s.batch,
-      "Attendance %": `${s.attendance}%`,
-      "Internals (/40)": s.internals,
-      "Externals (/60)": s.externals,
-      Registered: s.registered ? "Yes" : "No",
+      "Enrollment Number": s.enrollment,
+      "Student Name": s.name,
+      "Gender": s.gender || "Unspecified",
+      "School": s.department,
+      "Branch": s.program || "N/A",
+      "Semester": s.sem,
+      "Batch": s.batch,
+      "Academic Year": s.academicYear || "2025-2026",
+      "Phone": s.phone || "N/A",
+      "Phone Verified": s.phoneVerified ? "Yes" : "No",
+      "Attendance (%)": `${s.attendance}%`,
+      "Internal Marks (/40)": s.internals,
+      "External Marks (/60)": s.externals,
+      "Total Marks (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
+      "Registered": s.registered ? "Yes" : "No",
       "Project Code": s.projectCode || "N/A",
+      "Project Title": s.projectTitle || "N/A",
+      "Project Category": s.projectCategory || "N/A",
+      "Faculty Guide": s.facultyName || "N/A",
+      "Faculty Email": s.facultyEmail || "N/A",
     }));
     exportToXlsx(rows, `GDGU_Students_${studentFilter.toUpperCase()}`, "Students");
   };
@@ -173,16 +197,16 @@ export function StudentsTableCard({
   const handleExportPdf = () => {
     const rows = students.map((s, idx) => ({
       "Sr. No": idx + 1,
-      Enrollment: s.enrollment,
-      Name: s.name,
-      Gender: s.gender || "Unspecified",
-      School: s.department,
-      Branch: s.program || "N/A",
+      "Enrollment": s.enrollment,
+      "Name": s.name,
+      "School": s.department,
+      "Branch": s.program || "N/A",
       "Attendance %": `${s.attendance}%`,
       "Internals (/40)": s.internals,
       "Externals (/60)": s.externals,
-      Registered: s.registered ? "Yes" : "No",
-      Project: s.projectCode || "N/A",
+      "Total (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
+      "Status": s.registered ? "Registered" : "Unregistered",
+      "Project": s.projectCode || "N/A",
     }));
     exportToPdf(rows, `GDGU Student Academic & Registration Roster (${studentFilter.toUpperCase()})`);
   };
@@ -575,6 +599,112 @@ export function StudentsTableCard({
             )}
           </button>
         </div>
+      </div>
+
+      {/* Quick Sort Bar - One-click sorting by Name, Enroll No, School Wise, Attendance, Internals, Externals */}
+      <div className="flex items-center gap-1.5 flex-wrap text-xs bg-slate-50/90 p-2.5 rounded-xl border border-slate-200">
+        <span className="font-bold text-slate-700 flex items-center gap-1 text-[11px] uppercase tracking-wider mr-1">
+          <ArrowUpDown className="w-3.5 h-3.5 text-[#cda34f]" />
+          <span>Quick Sort:</span>
+        </span>
+
+        {/* Name */}
+        <button
+          type="button"
+          onClick={() => handleSortToggle("name")}
+          className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${
+            studentSortBy === "name"
+              ? "bg-[#0d2137] text-white shadow-xs"
+              : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <span>Name</span>
+          {renderSortIcon("name")}
+        </button>
+
+        {/* Enroll No */}
+        <button
+          type="button"
+          onClick={() => handleSortToggle("enrollmentNumber")}
+          className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${
+            studentSortBy === "enrollmentNumber"
+              ? "bg-[#0d2137] text-white shadow-xs"
+              : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <span>Enroll No</span>
+          {renderSortIcon("enrollmentNumber")}
+        </button>
+
+        {/* School Wise */}
+        <button
+          type="button"
+          onClick={() => handleSortToggle("department")}
+          className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${
+            studentSortBy === "department"
+              ? "bg-[#0d2137] text-white shadow-xs"
+              : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <span>School Wise</span>
+          {renderSortIcon("department")}
+        </button>
+
+        {/* Branch Wise */}
+        <button
+          type="button"
+          onClick={() => handleSortToggle("programme")}
+          className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${
+            studentSortBy === "programme"
+              ? "bg-[#0d2137] text-white shadow-xs"
+              : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <span>Branch</span>
+          {renderSortIcon("programme")}
+        </button>
+
+        {/* Attendance */}
+        <button
+          type="button"
+          onClick={() => handleSortToggle("attendance")}
+          className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${
+            studentSortBy === "attendance"
+              ? "bg-[#0d2137] text-white shadow-xs"
+              : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <span>Attendance</span>
+          {renderSortIcon("attendance")}
+        </button>
+
+        {/* Internals */}
+        <button
+          type="button"
+          onClick={() => handleSortToggle("internals")}
+          className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${
+            studentSortBy === "internals"
+              ? "bg-[#0d2137] text-white shadow-xs"
+              : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <span>Internals (/40)</span>
+          {renderSortIcon("internals")}
+        </button>
+
+        {/* Externals */}
+        <button
+          type="button"
+          onClick={() => handleSortToggle("externals")}
+          className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-all ${
+            studentSortBy === "externals"
+              ? "bg-[#0d2137] text-white shadow-xs"
+              : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          <span>Externals (/60)</span>
+          {renderSortIcon("externals")}
+        </button>
       </div>
 
       {/* Main Student Data Table */}

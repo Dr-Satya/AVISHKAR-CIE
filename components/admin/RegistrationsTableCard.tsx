@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Search, Loader2, FileText, FileSpreadsheet, Download } from "lucide-react";
 import { PaginationBar } from "@/components/common/PaginationBar";
-import { exportToCsv, exportToXlsx, exportToPdf } from "@/lib/export";
+import { exportToCsv, exportToXlsx, exportToPdf, downloadIdpCohortsXlsx } from "@/lib/export";
 
 interface RegistrationsTableCardProps {
   registrations: any[];
@@ -12,6 +12,7 @@ interface RegistrationsTableCardProps {
   registrationTotalPages: number;
   loadingRegistrations: boolean;
   onFetchRegistrations: (page: number, search?: string) => void;
+  onDownloadCohorts?: () => void;
 }
 
 export function RegistrationsTableCard({
@@ -23,7 +24,25 @@ export function RegistrationsTableCard({
   registrationTotalPages,
   loadingRegistrations,
   onFetchRegistrations,
+  onDownloadCohorts,
 }: RegistrationsTableCardProps) {
+  const [downloadingCohorts, setDownloadingCohorts] = useState(false);
+
+  const handleDownloadFullCohorts = async () => {
+    if (onDownloadCohorts) {
+      onDownloadCohorts();
+      return;
+    }
+    try {
+      setDownloadingCohorts(true);
+      await downloadIdpCohortsXlsx("registered");
+    } catch (err: any) {
+      alert("Error exporting cohort details: " + err.message);
+    } finally {
+      setDownloadingCohorts(false);
+    }
+  };
+
   const handleExportCsv = () => {
     const rows = registrations.map((r, idx) => ({
       "Sr. No": idx + 1,
@@ -40,18 +59,7 @@ export function RegistrationsTableCard({
   };
 
   const handleExportXlsx = () => {
-    const rows = registrations.map((r, idx) => ({
-      "Sr. No": idx + 1,
-      Timestamp: r.timestamp,
-      Enrollment: r.enrollment,
-      "Student Name": r.studentName,
-      Department: r.department,
-      "Project Code": r.projectCode,
-      "Faculty Mentor": r.facultyName,
-      Status: r.status,
-      Theme: r.theme,
-    }));
-    exportToXlsx(rows, "GDGU_Admin_Registrations", "Registrations");
+    handleDownloadFullCohorts();
   };
 
   const handleExportPdf = () => {
@@ -94,24 +102,29 @@ export function RegistrationsTableCard({
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
           </div>
 
-          <div className="flex items-center gap-1 border-l pl-2 border-slate-200">
+          <div className="flex items-center gap-1.5 border-l pl-2 border-slate-200">
+            <button
+              type="button"
+              onClick={handleDownloadFullCohorts}
+              disabled={downloadingCohorts}
+              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm transition-all"
+              title="Download entire student cohort database in official IDP Cohorts Details (.xlsx) format"
+            >
+              {downloadingCohorts ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-3 h-3" />
+              )}
+              <span>Cohort Details (.xlsx)</span>
+            </button>
             <button
               type="button"
               onClick={handleExportCsv}
               className="px-2 py-1 text-[11px] font-semibold rounded border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1"
-              title="Export Registrations CSV"
+              title="Export Current View CSV"
             >
               <FileText className="w-3 h-3 text-blue-600" />
               <span>CSV</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleExportXlsx}
-              className="px-2 py-1 text-[11px] font-semibold rounded border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1"
-              title="Export Registrations Excel"
-            >
-              <FileSpreadsheet className="w-3 h-3 text-green-600" />
-              <span>Excel</span>
             </button>
             <button
               type="button"

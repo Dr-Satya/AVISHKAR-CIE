@@ -84,3 +84,29 @@ export function exportToPdf(data: Record<string, any>[], title: string) {
   printWindow.document.write(html);
   printWindow.document.close();
 }
+
+export async function downloadIdpCohortsXlsx(filter = "registered", school?: string): Promise<void> {
+  const params = new URLSearchParams({
+    scope: "IDP_COHORTS",
+    format: "xlsx",
+  });
+  if (filter && filter !== "registered") params.set("filter", filter);
+  if (school && school !== "all") params.set("school", school);
+
+  const res = await fetch(`/api/export?${params.toString()}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to download cohort details.");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const dateStr = new Date().toISOString().split("T")[0];
+  a.download = `IDP_Cohorts_Details_${dateStr}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+

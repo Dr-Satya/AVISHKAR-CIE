@@ -30,6 +30,7 @@ import { YearRolloverModal } from "@/components/admin/YearRolloverModal";
 import { TemplatesModal } from "@/components/admin/TemplatesModal";
 import { BulkImportModal } from "@/components/admin/BulkImportModal";
 import { SmsBroadcastCard } from "@/components/admin/SmsBroadcastCard";
+import { downloadIdpCohortsXlsx } from "@/lib/export";
 
 // Types
 import {
@@ -222,6 +223,14 @@ export default function AdminPortalPage() {
     } catch {
     } finally {
       setSpocUpdating(null);
+    }
+  };
+
+  const handleDownloadCohorts = async () => {
+    try {
+      await downloadIdpCohortsXlsx("registered", studentSchool !== "all" ? studentSchool : undefined);
+    } catch (err: any) {
+      alert("Error downloading cohort details: " + err.message);
     }
   };
 
@@ -897,6 +906,7 @@ export default function AdminPortalPage() {
               onOpenTemplates={() => setShowTemplatesModal(true)}
               onOpenImport={() => setShowImportModal(true)}
               onOpenRollover={() => setShowYearModal(true)}
+              onDownloadCohorts={handleDownloadCohorts}
             />
 
             {/* Global Configuration */}
@@ -1035,6 +1045,7 @@ export default function AdminPortalPage() {
               registrationTotalPages={registrationTotalPages}
               loadingRegistrations={loadingRegistrations}
               onFetchRegistrations={fetchRegistrations}
+              onDownloadCohorts={handleDownloadCohorts}
             />
           </div>
         )}

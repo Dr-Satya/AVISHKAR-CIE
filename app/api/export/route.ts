@@ -5,6 +5,20 @@ import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
 
+const IDP_COHORT_HEADERS = [
+  "Faculty Name",
+  "School",
+  "Email ID",
+  "Contact No.",
+  "Projet Title",
+  "Project  Category  (IDP2501/IDP2502)",
+  "Theme",
+  "Description  of IDP  project",
+  "Project ID",
+  "Enrollment",
+  "Student Name",
+] as const;
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
@@ -114,6 +128,129 @@ export async function GET(req: NextRequest) {
           "Description": "Optimizing FMCG supply routes with lower carbon footprint.",
         },
       ];
+    }
+    // 0. IDP_COHORTS scope (Admin-Only - exact IDP Cohorts Details 5Sep-2026 format)
+    else if (scope === "IDP_COHORTS") {
+      if (session.role !== "ADMIN" && !session.isAdmin) {
+        return NextResponse.json(
+          { error: "Forbidden. Only administrators can download IDP cohort details." },
+          { status: 403 }
+        );
+      }
+
+      const schoolParam = searchParams.get("school") || searchParams.get("department");
+      const filterParam = searchParams.get("filter") || "registered"; // "registered" | "all" | "unregistered"
+      const academicYearParam = searchParams.get("academicYear");
+
+      if (filterParam === "all" || filterParam === "unregistered") {
+        const whereStudent: any = {};
+        if (schoolParam && schoolParam !== "all") {
+          whereStudent.department = schoolParam;
+        }
+        if (academicYearParam && academicYearParam !== "all") {
+          whereStudent.academicYear = academicYearParam;
+        }
+        if (filterParam === "unregistered") {
+          whereStudent.registration = null;
+        }
+
+        const studentsList = await prisma.student.findMany({
+          where: whereStudent,
+          include: {
+            registration: {
+              include: {
+                project: {
+                  include: { faculty: true },
+                },
+              },
+            },
+          },
+          orderBy: [
+            { department: "asc" },
+            { enrollmentNumber: "asc" },
+          ],
+        });
+
+        rows = studentsList.map((st) => {
+          const reg = st.registration;
+          const proj = reg?.project;
+          const fac = proj?.faculty;
+
+          const enrNum = /^\d+$/.test(st.enrollmentNumber)
+            ? Number(st.enrollmentNumber)
+            : st.enrollmentNumber;
+
+          return {
+            "Faculty Name": fac?.name || "",
+            "School": proj?.department || fac?.department || st.department || "",
+            "Email ID": fac?.email || "",
+            "Contact No.": fac?.phone || "",
+            "Projet Title": proj?.title || (reg ? "Allocated" : "UNREGISTERED"),
+            "Project  Category  (IDP2501/IDP2502)": proj?.category || "",
+            "Theme": proj?.theme || "",
+            "Description  of IDP  project": proj?.description || "",
+            "Project ID": proj?.projectId || (reg ? "N/A" : "UNREGISTERED"),
+            "Enrollment": enrNum,
+            "Student Name": st.name || "",
+          };
+        });
+      } else {
+        const whereRegistration: any = {};
+        if (schoolParam && schoolParam !== "all") {
+          whereRegistration.OR = [
+            { project: { department: schoolParam } },
+            { project: { faculty: { department: schoolParam } } },
+            { student: { department: schoolParam } },
+          ];
+        }
+        if (academicYearParam && academicYearParam !== "all") {
+          whereRegistration.project = {
+            academicYear: academicYearParam,
+          };
+        }
+
+        const registrations = await prisma.registration.findMany({
+          where: whereRegistration,
+          include: {
+            student: true,
+            project: {
+              include: { faculty: true },
+            },
+          },
+          orderBy: [
+            { project: { department: "asc" } },
+            { project: { projectId: "asc" } },
+            { student: { enrollmentNumber: "asc" } },
+          ],
+        });
+
+        rows = registrations.map((r) => {
+          const st = r.student;
+          const proj = r.project;
+          const fac = proj?.faculty;
+
+          const enrNum = /^\d+$/.test(st.enrollmentNumber)
+            ? Number(st.enrollmentNumber)
+            : st.enrollmentNumber;
+
+          return {
+            "Faculty Name": fac?.name || "",
+            "School": proj?.department || fac?.department || st?.department || "",
+            "Email ID": fac?.email || "",
+            "Contact No.": fac?.phone || "",
+            "Projet Title": proj?.title || "",
+            "Project  Category  (IDP2501/IDP2502)": proj?.category || "",
+            "Theme": proj?.theme || "",
+            "Description  of IDP  project": proj?.description || "",
+            "Project ID": proj?.projectId || "",
+            "Enrollment": enrNum,
+            "Student Name": st?.name || "",
+          };
+        });
+      }
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      title = `IDP_Cohorts_Details_${dateStr}`;
     }
     // 1. FACULTY_STUDENTS scope
     else if (scope === "FACULTY_STUDENTS") {
@@ -277,7 +414,10 @@ export async function GET(req: NextRequest) {
     // 1. CSV
     if (format === "csv") {
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(rows);
+      const ws = XLSX.utils.json_to_sheet(
+        rows,
+        scope === "IDP_COHORTS" ? { header: [...IDP_COHORT_HEADERS] } : undefined
+      );
       const csvOutput = XLSX.utils.sheet_to_csv(ws);
 
       return new NextResponse(csvOutput, {
@@ -292,8 +432,31 @@ export async function GET(req: NextRequest) {
     // 2. XLSX (Excel)
     if (format === "xlsx") {
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(rows);
-      XLSX.utils.book_append_sheet(wb, ws, "Data");
+      const isCohortScope = scope === "IDP_COHORTS";
+      const ws = XLSX.utils.json_to_sheet(
+        rows,
+        isCohortScope ? { header: [...IDP_COHORT_HEADERS] } : undefined
+      );
+
+      if (isCohortScope) {
+        ws["!cols"] = [
+          { wch: 28 }, // Faculty Name
+          { wch: 40 }, // School
+          { wch: 30 }, // Email ID
+          { wch: 18 }, // Contact No.
+          { wch: 45 }, // Projet Title
+          { wch: 25 }, // Project  Category  (IDP2501/IDP2502)
+          { wch: 32 }, // Theme
+          { wch: 60 }, // Description  of IDP  project
+          { wch: 14 }, // Project ID
+          { wch: 18 }, // Enrollment
+          { wch: 30 }, // Student Name
+        ];
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      } else {
+        XLSX.utils.book_append_sheet(wb, ws, "Data");
+      }
+
       const excelBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
       return new NextResponse(excelBuffer, {
