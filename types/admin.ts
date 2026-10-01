@@ -8,6 +8,7 @@ export interface KpiData {
 
 export interface GlobalConfigData {
   registrationOpen: boolean;
+  smsOtpEnabled?: boolean;
   maxSeats: number;
   sameDeptLimit: number;
   otherDeptLimit: number;
@@ -37,6 +38,12 @@ export interface StudentRecord {
   name: string;
   department: string;
   programme: string;
+  gender?: string | null;
+  phone?: string | null;
+  phoneVerified?: boolean;
+  internalMarks?: number | null;
+  externalMarks?: number | null;
+  attendancePercent?: number | null;
   semester: number;
   batch: string;
   admissionNumber?: string;
@@ -52,6 +59,10 @@ export interface StudentFormData {
   name: string;
   department: string;
   programme: string;
+  gender?: string;
+  internalMarks?: number;
+  externalMarks?: number;
+  attendancePercent?: number;
   semester: number;
   batch: string;
   admissionNumber: string;

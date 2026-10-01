@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Phone, User } from "lucide-react";
 import { ProjectCardData } from "@/types/student";
 
 interface AvailableProjectsListProps {
@@ -89,10 +89,36 @@ export function AvailableProjectsList({
                     </p>
                   )}
 
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                    <span>
-                      <strong className="text-slate-700">Faculty:</strong> {proj.facultyName}
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                    <span className="flex items-center gap-1 font-semibold text-slate-800">
+                      <User className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{proj.facultyName}</span>
                     </span>
+
+                    {proj.facultyEmail && (
+                      <a
+                        href={`mailto:${proj.facultyEmail}`}
+                        className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-medium"
+                        title="Email Faculty Mentor"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-blue-500" />
+                        <span>{proj.facultyEmail}</span>
+                      </a>
+                    )}
+
+                    {proj.facultyPhone && (
+                      <a
+                        href={`tel:${proj.facultyPhone}`}
+                        className="text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1"
+                        title="Call Faculty Mentor"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{proj.facultyPhone}</span>
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                     <span>
                       <strong className="text-slate-700">Available Seats:</strong>{" "}
                       <span

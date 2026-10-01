@@ -11,6 +11,7 @@ import {
   Download,
   Trash2,
   Users,
+  Phone,
 } from "lucide-react";
 import { AssignedProject } from "@/types/faculty";
 
@@ -292,6 +293,7 @@ export function FacultyProjectCard({
                 <tr className="border-b border-slate-200/80 text-slate-500 font-semibold">
                   <th className="pb-3 pr-4">Enrollment No.</th>
                   <th className="pb-3 px-4">Student Name</th>
+                  <th className="pb-3 px-4">Mobile No.</th>
                   <th className="pb-3 px-4">Department</th>
                   <th className="pb-3 px-4">Programme</th>
                   <th className="pb-3 px-4">Semester</th>
@@ -307,6 +309,20 @@ export function FacultyProjectCard({
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-800">
                       {std.name}
+                    </td>
+                    <td className="py-3 px-4 text-slate-700 whitespace-nowrap">
+                      {std.phone ? (
+                        <a
+                          href={`tel:${std.phone}`}
+                          className="inline-flex items-center gap-1.5 font-mono text-xs text-[#0d2137] hover:text-[#cda34f] font-semibold transition-colors"
+                          title="Click to call"
+                        >
+                          <Phone className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                          <span>+91 {std.phone}</span>
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">Not provided</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-slate-600">{std.department}</td>
                     <td className="py-3 px-4 text-slate-600">{std.programme || "—"}</td>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { Settings, Users, FileSpreadsheet } from "lucide-react";
 
 // Modular Components
 import { AdminBanner } from "@/components/admin/AdminBanner";
@@ -21,6 +22,7 @@ import { FacultyModals } from "@/components/admin/FacultyModals";
 import { YearRolloverModal } from "@/components/admin/YearRolloverModal";
 import { TemplatesModal } from "@/components/admin/TemplatesModal";
 import { BulkImportModal } from "@/components/admin/BulkImportModal";
+import { SmsBroadcastCard } from "@/components/admin/SmsBroadcastCard";
 
 // Types
 import {
@@ -63,6 +65,9 @@ export default function AdminPortalPage() {
   const [otherDeptInput, setOtherDeptInput] = useState("2");
   const [deptSaving, setDeptSaving] = useState(false);
 
+  // Active Dashboard Tab
+  const [activeDashboardTab, setActiveDashboardTab] = useState<"MAIN" | "REGISTRATION" | "SUBMISSIONS">("MAIN");
+
   // Bulk Registration State
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkProgressState | null>(null);
@@ -74,15 +79,25 @@ export default function AdminPortalPage() {
   const [studentTotalPages, setStudentTotalPages] = useState(1);
   const [studentTotal, setStudentTotal] = useState(0);
   const [studentFilter, setStudentFilter] = useState("all");
+  const [studentSchool, setStudentSchool] = useState("all");
+  const [studentBranch, setStudentBranch] = useState("all");
+  const [studentGender, setStudentGender] = useState("all");
+  const [studentSortBy, setStudentSortBy] = useState("enrollmentNumber");
+  const [studentSortOrder, setStudentSortOrder] = useState<"asc" | "desc">("asc");
+  const [unregisteredStats, setUnregisteredStats] = useState<any | null>(null);
+  const [studentFilterOptions, setStudentFilterOptions] = useState<any | null>(null);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-  // Projects Table State
+  // Projects / Submissions Table State
   const [projects, setProjects] = useState<any[]>([]);
   const [projectSearch, setProjectSearch] = useState("");
   const [projectPage, setProjectPage] = useState(1);
   const [projectTotalPages, setProjectTotalPages] = useState(1);
   const [projectTotal, setProjectTotal] = useState(0);
   const [projectCategoryFilter, setProjectCategoryFilter] = useState("all");
+  const [projectStatusFilter, setProjectStatusFilter] = useState("all");
+  const [projectSchoolFilter, setProjectSchoolFilter] = useState("all");
+  const [completionStats, setCompletionStats] = useState<any | null>(null);
   const [loadingProjects, setLoadingProjects] = useState(false);
 
   // Registrations Table State
@@ -127,6 +142,10 @@ export default function AdminPortalPage() {
     name: "",
     department: "School of Engineering & Sciences",
     programme: "",
+    gender: "Male",
+    internalMarks: 32,
+    externalMarks: 48,
+    attendancePercent: 85,
     semester: 3,
     batch: "2025",
     admissionNumber: "",
@@ -234,22 +253,39 @@ export default function AdminPortalPage() {
 
   const fetchStudents = async (
     page = 1,
-    search = "",
-    filter = "all",
-    year = studentAcademicYear
+    search = studentSearch,
+    filter = studentFilter,
+    year = studentAcademicYear,
+    school = studentSchool,
+    branch = studentBranch,
+    gender = studentGender,
+    sortBy = studentSortBy,
+    sortOrder = studentSortOrder
   ) => {
     setLoadingStudents(true);
     try {
       const res = await fetch(
         `/api/admin/students?page=${page}&limit=10&search=${encodeURIComponent(
           search
-        )}&registered=${filter}&academicYear=${encodeURIComponent(year)}`
+        )}&registered=${filter}&academicYear=${encodeURIComponent(
+          year
+        )}&school=${encodeURIComponent(school)}&branch=${encodeURIComponent(
+          branch
+        )}&gender=${encodeURIComponent(gender)}&sortBy=${encodeURIComponent(
+          sortBy
+        )}&sortOrder=${encodeURIComponent(sortOrder)}`
       );
       const data = await res.json();
       setStudents(data.students || []);
-      setStudentPage(data.pagination.page);
-      setStudentTotalPages(data.pagination.totalPages);
-      setStudentTotal(data.pagination.total);
+      setStudentPage(data.pagination?.page || 1);
+      setStudentTotalPages(data.pagination?.totalPages || 1);
+      setStudentTotal(data.pagination?.total || 0);
+      if (data.unregisteredStats) {
+        setUnregisteredStats(data.unregisteredStats);
+      }
+      if (data.filterOptions) {
+        setStudentFilterOptions(data.filterOptions);
+      }
     } catch {
     } finally {
       setLoadingStudents(false);
@@ -450,19 +486,28 @@ export default function AdminPortalPage() {
     }
   };
 
-  const fetchProjects = async (page = 1, search = "", cat = "all") => {
+  const fetchProjects = async (
+    page = 1,
+    search = projectSearch,
+    cat = projectCategoryFilter,
+    status = projectStatusFilter,
+    school = projectSchoolFilter
+  ) => {
     setLoadingProjects(true);
     try {
       const res = await fetch(
         `/api/admin/projects?page=${page}&limit=10&search=${encodeURIComponent(
           search
-        )}&category=${cat}`
+        )}&category=${cat}&status=${status}&school=${encodeURIComponent(school)}`
       );
       const data = await res.json();
       setProjects(data.projects || []);
-      setProjectPage(data.pagination.page);
-      setProjectTotalPages(data.pagination.totalPages);
-      setProjectTotal(data.pagination.total);
+      setProjectPage(data.pagination?.page || 1);
+      setProjectTotalPages(data.pagination?.totalPages || 1);
+      setProjectTotal(data.pagination?.total || 0);
+      if (data.completionStats) {
+        setCompletionStats(data.completionStats);
+      }
     } catch {
     } finally {
       setLoadingProjects(false);
@@ -752,204 +797,311 @@ export default function AdminPortalPage() {
           </button>
         </div>
 
-        {/* Academic Year Banner */}
-        <AdminBanner
-          activeAcademicYear={activeAcademicYear}
-          activeSemester={activeSemester}
-          onToggleSemester={handleToggleSemester}
-          onOpenTemplates={() => setShowTemplatesModal(true)}
-          onOpenImport={() => setShowImportModal(true)}
-          onOpenRollover={() => setShowYearModal(true)}
-        />
+        {/* Three-Dashboard Navigation Switcher */}
+        <div className="bg-white rounded-2xl p-2 border border-slate-200/80 shadow-sm flex items-center gap-2 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab("MAIN")}
+            className={`flex-1 min-w-[180px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              activeDashboardTab === "MAIN"
+                ? "bg-[#0d2137] text-white shadow-md"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <Settings className="w-4 h-4 text-[#cda34f]" />
+            <span>Dashboard (Main)</span>
+          </button>
 
-        {/* KPI Stats */}
-        <KpiStats kpi={kpi} />
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab("REGISTRATION")}
+            className={`flex-1 min-w-[200px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              activeDashboardTab === "REGISTRATION"
+                ? "bg-[#0d2137] text-white shadow-md"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <Users className="w-4 h-4 text-[#cda34f]" />
+            <span>Registration Dashboard</span>
+            {unregisteredStats && unregisteredStats.totalUnregistered > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold ml-1">
+                {unregisteredStats.totalUnregistered} Unregistered
+              </span>
+            )}
+          </button>
 
-        {/* Global Configuration */}
-        <GlobalConfigCard
-          config={config}
-          setConfig={setConfig}
-          configSaving={configSaving}
-          configMessage={configMessage}
-          onSave={handleSaveConfig}
-        />
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab("SUBMISSIONS")}
+            className={`flex-1 min-w-[200px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              activeDashboardTab === "SUBMISSIONS"
+                ? "bg-[#0d2137] text-white shadow-md"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4 text-[#cda34f]" />
+            <span>Submissions Dashboard</span>
+            {completionStats && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-600 text-white font-bold ml-1">
+                {completionStats.completionPercentage}% Done
+              </span>
+            )}
+          </button>
+        </div>
 
-        {/* Department-wise Registration Limits */}
-        <DepartmentLimitsCard
-          deptLimits={deptLimits}
-          deptInput={deptInput}
-          setDeptInput={setDeptInput}
-          sameDeptInput={sameDeptInput}
-          setSameDeptInput={setSameDeptInput}
-          otherDeptInput={otherDeptInput}
-          setOtherDeptInput={setOtherDeptInput}
-          deptSaving={deptSaving}
-          onSave={handleSaveDeptLimit}
-          onDelete={handleDeleteDeptLimit}
-        />
+        {/* ======================================================== */}
+        {/* VIEW 1: DASHBOARD (MAIN)                                 */}
+        {/* Core Controls, Year Rollover, Faculty Access, SPOC       */}
+        {/* ======================================================== */}
+        {activeDashboardTab === "MAIN" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Academic Year Banner */}
+            <AdminBanner
+              activeAcademicYear={activeAcademicYear}
+              activeSemester={activeSemester}
+              onToggleSemester={handleToggleSemester}
+              onOpenTemplates={() => setShowTemplatesModal(true)}
+              onOpenImport={() => setShowImportModal(true)}
+              onOpenRollover={() => setShowYearModal(true)}
+            />
 
-        {/* Bulk Registration */}
-        <BulkRegistrationCard
-          bulkRunning={bulkRunning}
-          bulkResult={bulkResult}
-          onRunBulkRegistration={handleRunBulkRegistration}
-        />
+            {/* Global Configuration */}
+            <GlobalConfigCard
+              config={config}
+              setConfig={setConfig}
+              configSaving={configSaving}
+              configMessage={configMessage}
+              onSave={handleSaveConfig}
+            />
 
-        {/* Students Table */}
-        <StudentsTableCard
-          students={students}
-          studentTotal={studentTotal}
-          studentSearch={studentSearch}
-          setStudentSearch={setStudentSearch}
-          studentFilter={studentFilter}
-          setStudentFilter={setStudentFilter}
-          studentAcademicYear={studentAcademicYear}
-          setStudentAcademicYear={setStudentAcademicYear}
-          activeAcademicYear={activeAcademicYear}
-          studentPage={studentPage}
-          studentTotalPages={studentTotalPages}
-          loadingStudents={loadingStudents}
-          onFetchStudents={fetchStudents}
-          onAddClick={() => {
-            setStudentCrudError(null);
-            setStudentForm({
-              id: "",
-              enrollmentNumber: "",
-              name: "",
-              department: "School of Engineering & Sciences",
-              programme: "B.Tech CSE",
-              semester: activeSemester,
-              batch: "2025",
-              admissionNumber: "",
-              academicYear: activeAcademicYear,
-            });
-            setShowAddStudentModal(true);
-          }}
-          onEditClick={(st) => {
-            setStudentCrudError(null);
-            setStudentForm({
-              id: st.id,
-              enrollmentNumber: st.enrollment,
-              name: st.name,
-              department: st.department,
-              programme: st.program || "",
-              semester: st.sem || 3,
-              batch: st.batch || "2025",
-              admissionNumber: st.admissionNumber || "",
-              academicYear: st.academicYear || activeAcademicYear,
-            });
-            setShowEditStudentModal(true);
-          }}
-          onDeleteClick={(st) => {
-            setStudentCrudError(null);
-            setStudentForm({
-              id: st.id,
-              enrollmentNumber: st.enrollment,
-              name: st.name,
-              department: st.department,
-              programme: st.program || "",
-              semester: st.sem || 3,
-              batch: st.batch || "2025",
-              admissionNumber: st.admissionNumber || "",
-              academicYear: st.academicYear || activeAcademicYear,
-            });
-            setShowDeleteStudentModal(true);
-          }}
-        />
+            {/* SPOC Management */}
+            <SpocManagementCard
+              spocDepartments={spocDepartments}
+              spocsByDept={spocsByDept}
+              faculties={faculties}
+              selectedFacultyForDept={selectedFacultyForDept}
+              setSelectedFacultyForDept={setSelectedFacultyForDept}
+              spocUpdating={spocUpdating}
+              onAssignSpoc={handleAssignSpoc}
+              onRevokeSpoc={handleRevokeSpoc}
+            />
 
-        {/* Projects Table */}
-        <ProjectsTableCard
-          projects={projects}
-          projectTotal={projectTotal}
-          projectSearch={projectSearch}
-          setProjectSearch={setProjectSearch}
-          projectCategoryFilter={projectCategoryFilter}
-          setProjectCategoryFilter={setProjectCategoryFilter}
-          projectPage={projectPage}
-          projectTotalPages={projectTotalPages}
-          loadingProjects={loadingProjects}
-          onFetchProjects={fetchProjects}
-        />
+            {/* Faculty Access Management */}
+            <FacultyAccessCard
+              faculties={faculties}
+              onAddClick={() => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: "",
+                  name: "",
+                  email: "",
+                  department: "School of Engineering & Sciences",
+                  phone: "",
+                  passcode: "gdgu@2026",
+                  isAdmin: false,
+                  isSpoc: false,
+                  spocDepartment: "",
+                });
+                setShowAddFacultyModal(true);
+              }}
+              onEditClick={(f) => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: f.id,
+                  name: f.name,
+                  email: f.email,
+                  department: f.department,
+                  phone: f.phone || "",
+                  passcode: "",
+                  isAdmin: f.isAdmin,
+                  isSpoc: f.isSpoc,
+                  spocDepartment: f.spocDepartment || "",
+                });
+                setShowEditFacultyModal(true);
+              }}
+              onDeleteClick={(f) => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: f.id,
+                  name: f.name,
+                  email: f.email,
+                  department: f.department,
+                  phone: f.phone || "",
+                  passcode: "",
+                  isAdmin: f.isAdmin,
+                  isSpoc: f.isSpoc,
+                  spocDepartment: f.spocDepartment || "",
+                });
+                setShowDeleteFacultyModal(true);
+              }}
+              onToggleAdmin={handleToggleFacultyAdmin}
+              onResetPasscodeClick={(f) => {
+                setSelectedResetFaculty(f);
+                setNewPasscodeInput("gdgu@2026");
+                setResetPasscodeMessage(null);
+              }}
+            />
 
-        {/* Registrations Table */}
-        <RegistrationsTableCard
-          registrations={registrations}
-          registrationTotal={registrationTotal}
-          registrationSearch={registrationSearch}
-          setRegistrationSearch={setRegistrationSearch}
-          registrationPage={registrationPage}
-          registrationTotalPages={registrationTotalPages}
-          loadingRegistrations={loadingRegistrations}
-          onFetchRegistrations={fetchRegistrations}
-        />
+            {/* Targeted SMS Broadcast Center (Admin Only) */}
+            <SmsBroadcastCard schools={spocDepartments} />
+          </div>
+        )}
 
-        {/* SPOC Management */}
-        <SpocManagementCard
-          spocDepartments={spocDepartments}
-          spocsByDept={spocsByDept}
-          faculties={faculties}
-          selectedFacultyForDept={selectedFacultyForDept}
-          setSelectedFacultyForDept={setSelectedFacultyForDept}
-          spocUpdating={spocUpdating}
-          onAssignSpoc={handleAssignSpoc}
-          onRevokeSpoc={handleRevokeSpoc}
-        />
+        {/* ======================================================== */}
+        {/* VIEW 2: REGISTRATION DASHBOARD                           */}
+        {/* Roster, Unregistered Audit, Limit Overrides, FIFO Queue   */}
+        {/* ======================================================== */}
+        {activeDashboardTab === "REGISTRATION" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* KPI Stats */}
+            <KpiStats kpi={kpi} />
 
-        {/* Faculty Access Management */}
-        <FacultyAccessCard
-          faculties={faculties}
-          onAddClick={() => {
-            setFacultyCrudError(null);
-            setFacultyForm({
-              id: "",
-              name: "",
-              email: "",
-              department: "School of Engineering & Sciences",
-              phone: "",
-              passcode: "gdgu@2026",
-              isAdmin: false,
-              isSpoc: false,
-              spocDepartment: "",
-            });
-            setShowAddFacultyModal(true);
-          }}
-          onEditClick={(f) => {
-            setFacultyCrudError(null);
-            setFacultyForm({
-              id: f.id,
-              name: f.name,
-              email: f.email,
-              department: f.department,
-              phone: f.phone || "",
-              passcode: "",
-              isAdmin: f.isAdmin,
-              isSpoc: f.isSpoc,
-              spocDepartment: f.spocDepartment || "",
-            });
-            setShowEditFacultyModal(true);
-          }}
-          onDeleteClick={(f) => {
-            setFacultyCrudError(null);
-            setFacultyForm({
-              id: f.id,
-              name: f.name,
-              email: f.email,
-              department: f.department,
-              phone: f.phone || "",
-              passcode: "",
-              isAdmin: f.isAdmin,
-              isSpoc: f.isSpoc,
-              spocDepartment: f.spocDepartment || "",
-            });
-            setShowDeleteFacultyModal(true);
-          }}
-          onToggleAdmin={handleToggleFacultyAdmin}
-          onResetPasscodeClick={(f) => {
-            setSelectedResetFaculty(f);
-            setNewPasscodeInput("gdgu@2026");
-            setResetPasscodeMessage(null);
-          }}
-        />
+            {/* Bulk Registration */}
+            <BulkRegistrationCard
+              bulkRunning={bulkRunning}
+              bulkResult={bulkResult}
+              onRunBulkRegistration={handleRunBulkRegistration}
+            />
+
+            {/* Department-wise Registration Limits */}
+            <DepartmentLimitsCard
+              deptLimits={deptLimits}
+              deptInput={deptInput}
+              setDeptInput={setDeptInput}
+              sameDeptInput={sameDeptInput}
+              setSameDeptInput={setSameDeptInput}
+              otherDeptInput={otherDeptInput}
+              setOtherDeptInput={setOtherDeptInput}
+              deptSaving={deptSaving}
+              onSave={handleSaveDeptLimit}
+              onDelete={handleDeleteDeptLimit}
+            />
+
+            {/* Students Table with School, Branch, Gender, Attendance, Assessment Sorting */}
+            <StudentsTableCard
+              students={students}
+              studentTotal={studentTotal}
+              studentSearch={studentSearch}
+              setStudentSearch={setStudentSearch}
+              studentFilter={studentFilter}
+              setStudentFilter={setStudentFilter}
+              studentAcademicYear={studentAcademicYear}
+              setStudentAcademicYear={setStudentAcademicYear}
+              activeAcademicYear={activeAcademicYear}
+              studentSchool={studentSchool}
+              setStudentSchool={setStudentSchool}
+              studentBranch={studentBranch}
+              setStudentBranch={setStudentBranch}
+              studentGender={studentGender}
+              setStudentGender={setStudentGender}
+              studentSortBy={studentSortBy}
+              setStudentSortBy={setStudentSortBy}
+              studentSortOrder={studentSortOrder}
+              setStudentSortOrder={setStudentSortOrder}
+              unregisteredStats={unregisteredStats}
+              filterOptions={studentFilterOptions}
+              studentPage={studentPage}
+              studentTotalPages={studentTotalPages}
+              loadingStudents={loadingStudents}
+              onFetchStudents={fetchStudents}
+              onAddClick={() => {
+                setStudentCrudError(null);
+                setStudentForm({
+                  id: "",
+                  enrollmentNumber: "",
+                  name: "",
+                  department: "School of Engineering & Sciences",
+                  programme: "B.Tech CSE",
+                  gender: "Male",
+                  internalMarks: 32,
+                  externalMarks: 48,
+                  attendancePercent: 85,
+                  semester: activeSemester,
+                  batch: "2025",
+                  admissionNumber: "",
+                  academicYear: activeAcademicYear,
+                });
+                setShowAddStudentModal(true);
+              }}
+              onEditClick={(st) => {
+                setStudentCrudError(null);
+                setStudentForm({
+                  id: st.id,
+                  enrollmentNumber: st.enrollment,
+                  name: st.name,
+                  department: st.department,
+                  programme: st.program || "",
+                  gender: st.gender || "Male",
+                  internalMarks: st.internals ?? 32,
+                  externalMarks: st.externals ?? 48,
+                  attendancePercent: st.attendance ?? 85,
+                  semester: st.sem || 3,
+                  batch: st.batch || "2025",
+                  admissionNumber: st.admissionNumber || "",
+                  academicYear: st.academicYear || activeAcademicYear,
+                });
+                setShowEditStudentModal(true);
+              }}
+              onDeleteClick={(st) => {
+                setStudentCrudError(null);
+                setStudentForm({
+                  id: st.id,
+                  enrollmentNumber: st.enrollment,
+                  name: st.name,
+                  department: st.department,
+                  programme: st.program || "",
+                  gender: st.gender || "Male",
+                  internalMarks: st.internals ?? 32,
+                  externalMarks: st.externals ?? 48,
+                  attendancePercent: st.attendance ?? 85,
+                  semester: st.sem || 3,
+                  batch: st.batch || "2025",
+                  admissionNumber: st.admissionNumber || "",
+                  academicYear: st.academicYear || activeAcademicYear,
+                });
+                setShowDeleteStudentModal(true);
+              }}
+            />
+
+            {/* Registrations Table */}
+            <RegistrationsTableCard
+              registrations={registrations}
+              registrationTotal={registrationTotal}
+              registrationSearch={registrationSearch}
+              setRegistrationSearch={setRegistrationSearch}
+              registrationPage={registrationPage}
+              registrationTotalPages={registrationTotalPages}
+              loadingRegistrations={loadingRegistrations}
+              onFetchRegistrations={fetchRegistrations}
+            />
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* VIEW 3: SUBMISSIONS DASHBOARD                            */}
+        {/* Completion KPIs, Progress Bars, Plagiarism Audit, Status */}
+        {/* ======================================================== */}
+        {activeDashboardTab === "SUBMISSIONS" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <ProjectsTableCard
+              projects={projects}
+              projectTotal={projectTotal}
+              projectSearch={projectSearch}
+              setProjectSearch={setProjectSearch}
+              projectCategoryFilter={projectCategoryFilter}
+              setProjectCategoryFilter={setProjectCategoryFilter}
+              projectStatusFilter={projectStatusFilter}
+              setProjectStatusFilter={setProjectStatusFilter}
+              projectSchoolFilter={projectSchoolFilter}
+              setProjectSchoolFilter={setProjectSchoolFilter}
+              completionStats={completionStats}
+              projectPage={projectPage}
+              projectTotalPages={projectTotalPages}
+              loadingProjects={loadingProjects}
+              onFetchProjects={fetchProjects}
+            />
+          </div>
+        )}
 
         {/* Modals */}
         <StudentModals

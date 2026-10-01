@@ -15,6 +15,8 @@ export interface StudentInProject {
   name: string;
   department: string;
   programme?: string;
+  phone?: string | null;
+  email?: string | null;
   semester: number;
   batch: string;
   registeredAt: string;

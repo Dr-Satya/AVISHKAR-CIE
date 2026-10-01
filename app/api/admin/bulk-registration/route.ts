@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
           const name = cleanStr(r["Name"] || r["Student Name"] || r["StudentName"]) || "Student";
           const department = cleanStr(r["Department"] || r["School"]) || "School of Engineering & Sciences";
           const programme = cleanStr(r["Programme Name"] || r["Programme"]) || null;
+          const gender = cleanStr(r["Gender"] || r["Sex"] || r["gender"]) || null;
           const semester = parseInt(cleanStr(r["Semester"]), 10) || 3;
           const batch = cleanStr(r["Batch"]) || "2025";
           const admissionNumber = cleanStr(r["Admission No."] || r["AdmissionNumber"]) || null;
@@ -76,12 +77,12 @@ export async function POST(req: NextRequest) {
             if (existing) {
               await prisma.student.update({
                 where: { enrollmentNumber },
-                data: { name, department, programme, semester, batch, admissionNumber, academicYear },
+                data: { name, department, programme, gender, semester, batch, admissionNumber, academicYear },
               });
               updatedCount++;
             } else {
               await prisma.student.create({
-                data: { enrollmentNumber, name, department, programme, semester, batch, admissionNumber, email, academicYear },
+                data: { enrollmentNumber, name, department, programme, gender, semester, batch, admissionNumber, email, academicYear },
               });
               insertedCount++;
             }

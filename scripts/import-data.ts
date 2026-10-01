@@ -71,12 +71,16 @@ async function main() {
 
   console.log(`Loaded rows: CHC=${chcRows.length}, Cohorts=${cohortRows.length}, Students=${studentRows.length}`);
 
-  // Build CHC lookup by normalized title
+  // Build CHC lookup by normalized title and email
   const chcMap = new Map<string, any>();
+  const chcEmailMap = new Map<string, any>();
   for (const row of chcRows) {
     const rawTitle = row["Project  Title  ( Workflow  Version   -   1)"] || row["Project Title"] || "";
     const key = normalizeTitle(rawTitle);
     if (key) chcMap.set(key, row);
+
+    const email = cleanStr(row["Email  ( Workflow  Version   -   1)"] || row["Email"]).toLowerCase();
+    if (email) chcEmailMap.set(email, row);
   }
 
   // 4. Extract Unique Faculty & Projects from Cohort File
@@ -104,7 +108,11 @@ async function main() {
     const category = cleanStr(row["Project  Category  (IDP2501/IDP2502)"]);
     const theme = cleanStr(row["Theme"]);
     const description = cleanStr(row["Description  of IDP  project"]);
-    const phone = cleanStr(row["Contact No."]);
+    
+    const chcRowByEmail = chcEmailMap.get(fEmail);
+    const phone = chcRowByEmail
+      ? cleanStr(chcRowByEmail["Phone  ( Workflow  Version   -   1)"] || chcRowByEmail["Phone"])
+      : cleanStr(row["Contact No."]);
 
     if (fEmail && !facultyMap.has(fEmail)) {
       facultyMap.set(fEmail, {

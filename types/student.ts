@@ -7,6 +7,8 @@ export interface StudentData {
   semester: number;
   batch: string;
   email: string;
+  phone?: string;
+  phoneVerified?: boolean;
   registration?: {
     id: string;
     status: string;
@@ -19,6 +21,8 @@ export interface StudentData {
       faculty: {
         name: string;
         department: string;
+        email?: string;
+        phone?: string;
       };
     };
   };
@@ -31,6 +35,8 @@ export interface ProjectCardData {
   description: string;
   department: string;
   facultyName: string;
+  facultyEmail?: string;
+  facultyPhone?: string;
   theme: string;
   category: string;
   maxSeats: number;

@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       },
       include: {
         faculty: {
-          select: { name: true, department: true, email: true },
+          select: { name: true, department: true, email: true, phone: true },
         },
         registrations: {
           include: {
@@ -106,6 +106,7 @@ export async function GET(req: NextRequest) {
         department: p.department,
         facultyName: p.faculty.name,
         facultyEmail: p.faculty.email,
+        facultyPhone: p.faculty.phone,
         theme: p.theme,
         category: p.category,
         maxSeats: limits.maxSeats,

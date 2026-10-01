@@ -83,6 +83,8 @@ export async function GET() {
           name: r.student.name,
           department: r.student.department,
           programme: r.student.programme,
+          phone: r.student.phone,
+          email: r.student.email,
           semester: r.student.semester,
           batch: r.student.batch,
           registeredAt: r.createdAt.toISOString(),

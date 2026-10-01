@@ -111,6 +111,34 @@ export function SpocReviewModal({
           </div>
         )}
 
+        {/* Verification Summary for SPOC */}
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Uploaded Artifacts:</span>
+            <span className="font-semibold text-slate-800">{project.artifacts.length} file(s)</span>
+          </div>
+          {project.artifacts.some((a) => a.similarityPercent !== null && a.similarityPercent !== undefined) && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Plagiarism Count:</span>
+              <span className="font-bold text-emerald-700">
+                {project.artifacts.find((a) => a.similarityPercent !== null && a.similarityPercent !== undefined)?.similarityPercent}% (&lt;10% ✓)
+              </span>
+            </div>
+          )}
+          {project.artifacts.some((a) => a.plagiarismReportUrl) && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Plagiarism Report:</span>
+              <span className="font-semibold text-amber-800">Attached ✓</span>
+            </div>
+          )}
+          {project.artifacts.some((a) => a.selfDeclaration) && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Self-Declaration:</span>
+              <span className="font-semibold text-emerald-800">Verified by Faculty ✓</span>
+            </div>
+          )}
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">

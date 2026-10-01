@@ -15,11 +15,18 @@ model Student {
   name             String
   department       String
   programme        String?
+  gender           String?
+  internalMarks    Float?            @default(0)
+  externalMarks    Float?            @default(0)
+  attendancePercent Float?           @default(100)
   semester         Int               @default(3)
   batch            String            @default("2025")
   academicYear     String            @default("2025-2026")
   email            String?           @unique
   googleId         String?           @unique
+  phone            String?
+  phoneVerified    Boolean           @default(false)
+  phoneConsentAt   DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   registration     Registration?
@@ -27,7 +34,10 @@ model Student {
 
   @@index([enrollmentNumber])
   @@index([department])
+  @@index([programme])
+  @@index([gender])
   @@index([email])
+  @@index([phone])
   @@index([academicYear])
 }
 
@@ -178,12 +188,24 @@ model Registration {
 model GlobalConfig {
   id                 String   @id @default("default")
   registrationOpen   Boolean  @default(true)
+  smsOtpEnabled      Boolean  @default(false)
   maxSeats           Int      @default(10)
   sameDeptLimit      Int      @default(4)
   otherDeptLimit     Int      @default(6)
   activeAcademicYear String   @default("2025-2026")
   activeSemester     Int      @default(3)
   updatedAt          DateTime @updatedAt
+}
+
+model StudentPhoneOtp {
+  id        String   @id @default(cuid())
+  studentId String
+  phone     String
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
 }
 
 model DepartmentRegistrationLimit {

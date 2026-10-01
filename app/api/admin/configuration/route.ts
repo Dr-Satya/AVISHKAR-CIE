@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     confirmationPhrase,
     adminPasscode,
     registrationOpen,
+    smsOtpEnabled,
     maxSeats,
     sameDeptLimit,
     otherDeptLimit,
@@ -138,6 +139,9 @@ export async function POST(req: NextRequest) {
     sameDeptLimit: numSameDept,
     otherDeptLimit: numOtherDept,
   };
+  if (smsOtpEnabled !== undefined) {
+    updateData.smsOtpEnabled = Boolean(smsOtpEnabled);
+  }
   if (numSem !== undefined) {
     updateData.activeSemester = numSem;
   }
@@ -148,6 +152,7 @@ export async function POST(req: NextRequest) {
     create: {
       id: "default",
       registrationOpen: Boolean(registrationOpen),
+      smsOtpEnabled: Boolean(smsOtpEnabled),
       maxSeats: numMaxSeats,
       sameDeptLimit: numSameDept,
       otherDeptLimit: numOtherDept,
