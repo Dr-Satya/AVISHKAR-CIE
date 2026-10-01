@@ -10,7 +10,9 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "import:data": "tsx scripts/import-data.ts",
-    "test:concurrency": "tsx scripts/test-concurrency.ts"
+    "test:concurrency": "tsx scripts/test-concurrency.ts",
+    "build:cf": "mkdir -p .chunk-cache && ([ -d .open-next/assets/_next/static ] && cp -Rn .open-next/assets/_next/static/ .chunk-cache/ 2>/dev/null || true) && npx @opennextjs/cloudflare build && ([ -d .chunk-cache ] && cp -Rn .chunk-cache/ .open-next/assets/_next/static/ 2>/dev/null || true)",
+    "deploy": "npm run build:cf && npx wrangler deploy"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.0.0",

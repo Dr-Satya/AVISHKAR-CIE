@@ -16,6 +16,7 @@ cookies.txt
 # Cloudflare & Next.js build output
 .next/
 .open-next/
+.chunk-cache/
 .wrangler/
 dist/
 build/
