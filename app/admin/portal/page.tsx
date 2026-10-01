@@ -283,7 +283,7 @@ export default function AdminPortalPage() {
     setLoadingStudents(true);
     try {
       const res = await fetch(
-        `/api/admin/students?page=${page}&limit=10&search=${encodeURIComponent(
+        `/api/admin/students?page=${page}&limit=25&search=${encodeURIComponent(
           search
         )}&registered=${filter}&academicYear=${encodeURIComponent(
           year

@@ -14,7 +14,7 @@ export function BulkImportModal({
   defaultYear,
   onSuccess,
 }: BulkImportModalProps) {
-  const [importType, setImportType] = useState<"STUDENTS" | "FACULTY" | "SPOC" | "PROJECTS">("STUDENTS");
+  const [importType, setImportType] = useState<"COHORTS" | "STUDENTS" | "PROJECTS" | "FACULTY" | "SPOC">("COHORTS");
   const [importYear, setImportYear] = useState(defaultYear);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importLoading, setImportLoading] = useState(false);
@@ -133,10 +133,11 @@ export function BulkImportModal({
               onChange={(e: any) => setImportType(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0d2137] bg-white"
             >
-              <option value="STUDENTS">Students Master List</option>
-              <option value="FACULTY">Faculty &amp; Mentor List</option>
-              <option value="SPOC">Department SPOC List</option>
-              <option value="PROJECTS">Projects Master List</option>
+              <option value="COHORTS">IDP Cohort Allocations (IDP Cohorts Details_5Sep-2026.xlsx)</option>
+              <option value="STUDENTS">Students Master List (IDP Mapping Format / Mohit Maan)</option>
+              <option value="PROJECTS">Projects Proposals / Master (CHC Service Report)</option>
+              <option value="FACULTY">Faculty &amp; Mentor Directory</option>
+              <option value="SPOC">Department SPOC Assignment List</option>
             </select>
           </div>
 

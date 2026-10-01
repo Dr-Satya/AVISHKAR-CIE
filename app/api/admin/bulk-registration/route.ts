@@ -53,23 +53,29 @@ export async function POST(req: NextRequest) {
       let skippedCount = 0;
       const errors: string[] = [];
 
-      // 1. IMPORT STUDENTS
+      // 1. IMPORT STUDENTS (Supports IDP Mapping Format / Mohit Maan & Standard formats)
       if (importType === "STUDENTS") {
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
-          const enrollmentNumber = cleanStr(r["Enrolment No."] || r["Enrollment No."] || r["EnrollmentNumber"] || r["Enrollment"]);
+          const enrollmentNumber = cleanStr(
+            r["Enrolment No."] ||
+            r["Enrollment No."] ||
+            r["EnrollmentNumber"] ||
+            r["Enrollment"] ||
+            r["Enrolment"]
+          );
           if (!enrollmentNumber) {
             skippedCount++;
             continue;
           }
 
-          const name = cleanStr(r["Name"] || r["Student Name"] || r["StudentName"]) || "Student";
+          const name = cleanStr(r["Name "] || r["Name"] || r["Student Name"] || r["StudentName"]) || "Student";
           const department = cleanStr(r["Department"] || r["School"]) || "School of Engineering & Sciences";
           const programme = cleanStr(r["Programme Name"] || r["Programme"]) || null;
           const gender = cleanStr(r["Gender"] || r["Sex"] || r["gender"]) || null;
           const semester = parseInt(cleanStr(r["Semester"]), 10) || 3;
           const batch = cleanStr(r["Batch"]) || "2025";
-          const admissionNumber = cleanStr(r["Admission No."] || r["AdmissionNumber"]) || null;
+          const admissionNumber = cleanStr(r["Admission No."] || r["AdmissionNumber"] || r["Admission No"]) || null;
           const email = `${enrollmentNumber.toLowerCase()}@gdgu.org`;
 
           try {
@@ -99,14 +105,14 @@ export async function POST(req: NextRequest) {
 
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
-          const email = cleanStr(r["Email ID"] || r["Email"] || r["Official Email"]).toLowerCase();
+          const email = cleanStr(r["Email ID"] || r["Email"] || r["Official Email"] || r["Faculty Official Email id"]).toLowerCase();
           if (!email || !email.includes("@")) {
             skippedCount++;
             continue;
           }
 
           const name = cleanStr(r["Faculty Name"] || r["Name"]) || "Faculty Member";
-          const department = cleanStr(r["School / Department"] || r["Department"] || r["School"]) || "School of Engineering & Sciences";
+          const department = cleanStr(r["School / Department"] || r["Department"] || r["Faculty Department"] || r["School"]) || "School of Engineering & Sciences";
           const phone = cleanStr(r["Contact No."] || r["Phone"]) || null;
 
           try {
@@ -146,7 +152,6 @@ export async function POST(req: NextRequest) {
           const name = cleanStr(r["Faculty Name"] || r["Name"]) || "Department SPOC";
 
           try {
-            // Find or create faculty
             let faculty = await prisma.faculty.findUnique({ where: { email } });
             if (!faculty) {
               faculty = await prisma.faculty.create({
@@ -159,7 +164,6 @@ export async function POST(req: NextRequest) {
               });
             }
 
-            // Upsert SPOC profile
             await prisma.spoc.upsert({
               where: { department },
               update: { email, name, facultyId: faculty.id },
@@ -172,55 +176,266 @@ export async function POST(req: NextRequest) {
           }
         }
       }
-      // 4. IMPORT PROJECTS
+      // 4. IMPORT PROJECTS (Supports CHC Service Report & Custom Proposal formats)
       else if (importType === "PROJECTS") {
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
-          const projectId = cleanStr(r["Project ID"] || r["ProjectId"]);
-          const title = cleanStr(r["Project Title"] || r["Title"]);
-          const facultyEmail = cleanStr(r["Faculty Email"] || r["Email"]).toLowerCase();
-          if (!projectId || !title) {
+          const title = cleanStr(
+            r["Project  Title  ( Workflow  Version   -   1)"] ||
+            r["Project Title"] ||
+            r["Projet Title"] ||
+            r["Title"]
+          );
+          if (!title) {
             skippedCount++;
             continue;
           }
 
-          const department = cleanStr(r["School"] || r["Department"]) || "School of Engineering & Sciences";
-          const category = cleanStr(r["Category"]) || "IDP2601";
-          const theme = cleanStr(r["Theme"]) || "Others";
-          const description = cleanStr(r["Description"]) || null;
+          let projectId = cleanStr(
+            r["Project/Title Code"] ||
+            r["Project ID"] ||
+            r["ProjectId"] ||
+            r["Code"]
+          );
+
+          const facultyEmail = cleanStr(
+            r["Email  ( Workflow  Version   -   1)"] ||
+            r["Faculty Email"] ||
+            r["Email ID"] ||
+            r["Official Email id"] ||
+            r["Email"]
+          ).toLowerCase();
+
+          const facultyName = cleanStr(
+            r["Name  ( Workflow  Version   -   1)"] ||
+            r["Faculty Name"] ||
+            r["Name"]
+          ) || "Faculty Member";
+
+          const department = cleanStr(
+            r["Department  ( Workflow  Version   -   1)"] ||
+            r["School"] ||
+            r["Department"] ||
+            r["School / Department"]
+          ) || "School of Engineering & Sciences";
+
+          const phone = cleanStr(
+            r["Phone  ( Workflow  Version   -   1)"] ||
+            r["Contact No."] ||
+            r["Phone"]
+          ) || null;
+
+          const category = cleanStr(
+            r["Project  Category  (IDP2501/IDP2502)"] ||
+            r["Category"] ||
+            r["Project  Category  ( Workflow  Version   -   1)"]
+          ) || "IDP2502";
+
+          const theme = cleanStr(
+            r["Select  One  Theme  ( Workflow  Version   -   1)"] ||
+            r["Theme"]
+          ) || "Others";
+
+          const sdgMapping = cleanStr(
+            r["SD G  Mapping  ( Workflow  Version   -   1)"] ||
+            r["SDG Mapping"]
+          ) || null;
+
+          const description = cleanStr(
+            r["Description  of ID P  project  ( Workflow  Version   -   1)"] ||
+            r["Description  of IDP  project"] ||
+            r["Description"]
+          ) || null;
 
           try {
-            // Find faculty
-            let faculty = facultyEmail ? await prisma.faculty.findUnique({ where: { email: facultyEmail } }) : null;
-            if (!faculty) {
-              // Fallback to first faculty in department or system admin
+            let faculty = facultyEmail
+              ? await prisma.faculty.findUnique({ where: { email: facultyEmail } })
+              : null;
+
+            if (!faculty && facultyEmail) {
+              const defaultPasscode = process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026";
+              const passcodeHash = await bcrypt.hash(defaultPasscode, 10);
+              faculty = await prisma.faculty.create({
+                data: {
+                  name: facultyName,
+                  email: facultyEmail,
+                  department,
+                  phone,
+                  passcodeHash,
+                },
+              });
+            } else if (!faculty) {
               faculty = await prisma.faculty.findFirst({ where: { department } });
-              if (!faculty) {
-                faculty = await prisma.faculty.findFirst();
-              }
+              if (!faculty) faculty = await prisma.faculty.findFirst();
             }
 
             if (!faculty) {
-              errors.push(`Row ${i + 2}: No faculty found to assign project ${projectId}`);
+              errors.push(`Row ${i + 2}: No faculty found to assign project '${title}'`);
               skippedCount++;
               continue;
             }
 
-            const existing = await prisma.project.findUnique({ where: { projectId } });
+            if (!projectId) {
+              const count = await prisma.project.count();
+              projectId = `P${String(count + 1).padStart(3, "0")}`;
+            }
+
+            const existing = await prisma.project.findFirst({
+              where: {
+                OR: [{ projectId }, { title }],
+              },
+            });
+
             if (existing) {
               await prisma.project.update({
-                where: { projectId },
-                data: { title, department, category, theme, description, facultyId: faculty.id, academicYear },
+                where: { id: existing.id },
+                data: {
+                  projectId,
+                  title,
+                  department,
+                  category,
+                  theme,
+                  sdgMapping,
+                  description,
+                  facultyId: faculty.id,
+                  academicYear,
+                },
               });
               updatedCount++;
             } else {
               await prisma.project.create({
-                data: { projectId, title, department, category, theme, description, facultyId: faculty.id, academicYear },
+                data: {
+                  projectId,
+                  title,
+                  department,
+                  category,
+                  theme,
+                  sdgMapping,
+                  description,
+                  facultyId: faculty.id,
+                  academicYear,
+                },
               });
               insertedCount++;
             }
           } catch (err: any) {
-            errors.push(`Row ${i + 2} (${projectId}): ${err.message}`);
+            errors.push(`Row ${i + 2} (${projectId || title}): ${err.message}`);
+            skippedCount++;
+          }
+        }
+      }
+      // 5. IMPORT COHORTS (Exact IDP Cohorts Details 5Sep-2026 format)
+      else if (importType === "COHORTS") {
+        const defaultPasscode = process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026";
+        const passcodeHash = await bcrypt.hash(defaultPasscode, 10);
+
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          const enrollmentNumber = cleanStr(
+            r["Enrollment"] ||
+            r["Enrolment No."] ||
+            r["Enrollment No."]
+          );
+          const studentName = cleanStr(r["Student Name"] || r["Name "] || r["Name"]);
+          const pId = cleanStr(r["Project ID"] || r["ProjectId"]);
+          const facultyEmail = cleanStr(r["Email ID"] || r["Email"]).toLowerCase();
+          const facultyName = cleanStr(r["Faculty Name"] || r["Faculty"]);
+          const school = cleanStr(r["School"] || r["Department"]) || "School of Engineering & Sciences";
+          const title = cleanStr(r["Projet Title"] || r["Project Title"] || r["Title"]);
+          const category = cleanStr(r["Project  Category  (IDP2501/IDP2502)"] || r["Category"]) || "IDP2502";
+          const theme = cleanStr(r["Theme"]) || "Others";
+          const description = cleanStr(r["Description  of IDP  project"] || r["Description"]) || null;
+          const phone = cleanStr(r["Contact No."] || r["Phone"]) || null;
+
+          if (!enrollmentNumber || !pId) {
+            skippedCount++;
+            continue;
+          }
+
+          try {
+            let faculty = facultyEmail
+              ? await prisma.faculty.findUnique({ where: { email: facultyEmail } })
+              : null;
+
+            if (!faculty && facultyEmail) {
+              faculty = await prisma.faculty.create({
+                data: {
+                  name: facultyName || "Faculty Member",
+                  email: facultyEmail,
+                  department: school,
+                  phone,
+                  passcodeHash,
+                },
+              });
+            } else if (!faculty) {
+              faculty = await prisma.faculty.findFirst({ where: { department: school } });
+              if (!faculty) faculty = await prisma.faculty.findFirst();
+            }
+
+            if (!faculty) {
+              errors.push(`Row ${i + 2}: No faculty available for project ${pId}`);
+              skippedCount++;
+              continue;
+            }
+
+            const project = await prisma.project.upsert({
+              where: { projectId: pId },
+              update: {
+                title: title || `Project ${pId}`,
+                department: school,
+                category,
+                theme,
+                description,
+                facultyId: faculty.id,
+                academicYear,
+              },
+              create: {
+                projectId: pId,
+                title: title || `Project ${pId}`,
+                department: school,
+                category,
+                theme,
+                description,
+                facultyId: faculty.id,
+                academicYear,
+              },
+            });
+
+            const studentEmail = `${enrollmentNumber.toLowerCase()}@gdgu.org`;
+            const student = await prisma.student.upsert({
+              where: { enrollmentNumber },
+              update: {
+                name: studentName || "Student",
+                department: school,
+                academicYear,
+              },
+              create: {
+                enrollmentNumber,
+                name: studentName || "Student",
+                department: school,
+                email: studentEmail,
+                academicYear,
+                semester: 3,
+                batch: "2025",
+              },
+            });
+
+            await prisma.registration.upsert({
+              where: { studentId: student.id },
+              update: {
+                projectId: project.id,
+                status: "Approved",
+              },
+              create: {
+                studentId: student.id,
+                projectId: project.id,
+                status: "Approved",
+              },
+            });
+
+            insertedCount++;
+          } catch (err: any) {
+            errors.push(`Row ${i + 2} (${enrollmentNumber} / ${pId}): ${err.message}`);
             skippedCount++;
           }
         }

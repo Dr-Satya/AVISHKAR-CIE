@@ -37,95 +37,201 @@ export async function GET(req: NextRequest) {
     let title = "GDGU_IDP_Export";
 
     // Templates for Admin bulk imports
+    // 1. TEMPLATE_STUDENTS (Exact IDP Mapping Format - Mohit Maan structure)
     if (scope === "TEMPLATE_STUDENTS") {
-      title = "GDGU_Students_Import_Template";
+      title = "IDP_Mapping_Format_Students_Template";
       rows = [
         {
-          "Enrolment No.": "230101001",
-          "Name": "Aarav Sharma",
-          "Department": "School of Engineering & Sciences",
-          "Programme Name": "B.Tech Computer Science & Engineering",
-          "Semester": 3,
-          "Batch": "2025",
-          "Admission No.": "ADM2023001",
-        },
-        {
-          "Enrolment No.": "230102002",
-          "Name": "Diya Patel",
+          "S.No.": 1,
+          "Enrolment No.": "250010201001",
+          "Admission No.": "25260005",
+          "Name ": "Saidi Bin Saidi",
           "Department": "School of Management",
-          "Programme Name": "BBA Marketing",
-          "Semester": 3,
+          "Programme Name": "BBA (Bachelor of Business Administration)",
           "Batch": "2025",
-          "Admission No.": "ADM2023002",
+          "Course Code": "IDP2502",
+          "Course Name": "Interdisciplinary Project",
+          "Faculty Name": "Ms. Shipra Khanna",
+          "Faculty Department": "United World Institute of Design (UID)",
+          "Faculty Official Email id": "shipra@uid.edu.in",
         },
         {
-          "Enrolment No.": "230103003",
-          "Name": "Rohan Gupta",
-          "Department": "School of Law",
-          "Programme Name": "BA LLB (Hons)",
-          "Semester": 3,
+          "S.No.": 2,
+          "Enrolment No.": "250160258001",
+          "Admission No.": "25260013",
+          "Name ": "Gracia Kisimba Safi",
+          "Department": "School of Engineering & Sciences",
+          "Programme Name": "Bachelor of Technology - Civil Engineering (Smart Infrastructures)",
           "Batch": "2025",
-          "Admission No.": "ADM2023003",
+          "Course Code": "IDP2501",
+          "Course Name": "Interdisciplinary Project",
+          "Faculty Name": "Asst. Prof. Pawan Kumar Ahirwar",
+          "Faculty Department": "United World Institute of Design (UID)",
+          "Faculty Official Email id": "Pawan@uid.edu.in",
+        },
+        {
+          "S.No.": 3,
+          "Enrolment No.": "250160258002",
+          "Admission No.": "25260014",
+          "Name ": "Mbumba Yav Elie",
+          "Department": "School of Engineering & Sciences",
+          "Programme Name": "Bachelor of Technology - Civil Engineering (Smart Infrastructures)",
+          "Batch": "2025",
+          "Course Code": "IDP2502",
+          "Course Name": "Interdisciplinary Project",
+          "Faculty Name": "Dr. Dheeraj Miglani",
+          "Faculty Department": "Center of Aerospace and Energy Studies",
+          "Faculty Official Email id": "dheeraj.miglani@gdgu.org",
         },
       ];
-    } else if (scope === "TEMPLATE_FACULTY") {
+    }
+    // 2. TEMPLATE_PROJECTS / TEMPLATE_CHC (Exact CHC Service Report structure)
+    else if (scope === "TEMPLATE_PROJECTS" || scope === "TEMPLATE_CHC") {
+      title = "CHC_Service_Report_Projects_Template";
+      rows = [
+        {
+          "Name  ( Workflow  Version   -   1)": "Dr. Khushbu  Parik",
+          "Department  ( Workflow  Version   -   1)": "School of Engineering & Sciences",
+          "Email  ( Workflow  Version   -   1)": "khushbu.parik@gdgu.org",
+          "Phone  ( Workflow  Version   -   1)": "91-7357899500",
+          "Project  Title  ( Workflow  Version   -   1)": "Smart Water Monitoring and Conservation System",
+          "Project/Title Code": "P001",
+          "Category": "IDP2502",
+          "Project  Category  ( Workflow  Version   -   1)": "Research",
+          "SD G  Mapping  ( Workflow  Version   -   1)": "SDG 11: Sustainable Cities and Communities",
+          "Select  One  Theme  ( Workflow  Version   -   1)": "Sustainable Energy Environmental Tech Smart Infrastructure and Climate Resilience",
+          "Description  of ID P  project  ( Workflow  Version   -   1)": "This project aims to develop a low-cost smart system for monitoring water levels and consumption in a setting. The system will use simple sensors to monitor tank water levels and water flow, with alerts for low water levels, overflow, and abnormal water usage.",
+        },
+        {
+          "Name  ( Workflow  Version   -   1)": "Mr. Saurabh  Shekhar",
+          "Department  ( Workflow  Version   -   1)": "School of Healthcare and Allied Sciences",
+          "Email  ( Workflow  Version   -   1)": "saurabh.shekhar@gdgu.org",
+          "Phone  ( Workflow  Version   -   1)": "91-9773741909",
+          "Project  Title  ( Workflow  Version   -   1)": "Isolation and screening of native soil bacteria for low density polyethylene (LDPE) Biodegradation",
+          "Project/Title Code": "P002",
+          "Category": "IDP2501",
+          "Project  Category  ( Workflow  Version   -   1)": "Research",
+          "SD G  Mapping  ( Workflow  Version   -   1)": "SDG 9: Industry, Innovation, and Infrastructure, SDG 12: Responsible Consumption and Production",
+          "Select  One  Theme  ( Workflow  Version   -   1)": "Bio Engineering Synthetic Biology and Molecular Systems",
+          "Description  of ID P  project  ( Workflow  Version   -   1)": "Objective: Isolates naturally occurring bacteria from plastic-contaminated soil (landfills/dumping sites) to find strains capable of digesting Low-Density Polyethylene (LDPE).",
+        },
+        {
+          "Name  ( Workflow  Version   -   1)": "Asst. Prof. Daksh  Mehta",
+          "Department  ( Workflow  Version   -   1)": "School of Engineering & Sciences",
+          "Email  ( Workflow  Version   -   1)": "daksh.mehta@gdgu.org",
+          "Phone  ( Workflow  Version   -   1)": "91-9643431907",
+          "Project  Title  ( Workflow  Version   -   1)": "Gamification in education",
+          "Project/Title Code": "P003",
+          "Category": "IDP2502",
+          "Project  Category  ( Workflow  Version   -   1)": "Research",
+          "SD G  Mapping  ( Workflow  Version   -   1)": "SDG 4: Quality Education",
+          "Select  One  Theme  ( Workflow  Version   -   1)": "Others",
+          "Description  of ID P  project  ( Workflow  Version   -   1)": "This research explores the use of gamification techniques in education to improve student engagement, motivation, and learning outcomes.",
+        },
+      ];
+    }
+    // 3. TEMPLATE_COHORTS (Exact IDP Cohorts Details 5Sep-2026 structure)
+    else if (scope === "TEMPLATE_COHORTS") {
+      title = "IDP_Cohorts_Details_Template";
+      rows = [
+        {
+          "Faculty Name": "Ms. Shipra Khanna",
+          "School": "United World Institute of Design (UID)",
+          "Email ID": "shipra@uid.edu.in",
+          "Contact No.": "",
+          "Projet Title": "Impact of Biophilic Design in Interior Spaces",
+          "Project  Category  (IDP2501/IDP2502)": "IDP2502",
+          "Theme": "Others",
+          "Description  of IDP  project": "Qualitative and quantitative analysis measures biophilic design’s impact on well-being, comfort, productivity, and stress through user responses and measurable data.",
+          "Project ID": "P114",
+          "Enrollment": 250180203019,
+          "Student Name": "MANVI SINGH",
+        },
+        {
+          "Faculty Name": "Asst. Prof. Pawan Kumar Ahirwar",
+          "School": "United World Institute of Design (UID)",
+          "Email ID": "Pawan@uid.edu.in",
+          "Contact No.": "",
+          "Projet Title": "“Affordable Circular Packaging Systems for Indian SMEs and E-commerce Businesses.”",
+          "Project  Category  (IDP2501/IDP2502)": "IDP2501",
+          "Theme": "Others",
+          "Description  of IDP  project": "The rapid growth of e-commerce and direct-to-consumer businesses in India has significantly increased the use of packaging materials...",
+          "Project ID": "P106",
+          "Enrollment": 250180210108,
+          "Student Name": "HARSHIT SAKLANI",
+        },
+        {
+          "Faculty Name": "Dr. Dheeraj Miglani",
+          "School": "Center of Aerospace and Energy Studies",
+          "Email ID": "dheeraj.miglani@gdgu.org",
+          "Contact No.": "91-9557280632",
+          "Projet Title": "CubeSat Thermal Control",
+          "Project  Category  (IDP2501/IDP2502)": "IDP2502",
+          "Theme": "Intelligent Systems for Autonomous Sensing and Control",
+          "Description  of IDP  project": "Instrumented CubeSat thermal model with heaters, sensors and thermal-control logic",
+          "Project ID": "P043",
+          "Enrollment": 250160226066,
+          "Student Name": "CHUKKA PRAVITH LAKSHMAN SRI",
+        },
+      ];
+    }
+    // 4. TEMPLATE_FACULTY (Aligned with live GDGU faculty roster)
+    else if (scope === "TEMPLATE_FACULTY") {
       title = "GDGU_Faculty_Import_Template";
       rows = [
         {
-          "Faculty Name": "Dr. Ramesh Verma",
-          "Email ID": "ramesh.verma@gdgu.org",
+          "Faculty Name": "Ms. Shipra Khanna",
+          "Email ID": "shipra@uid.edu.in",
+          "School / Department": "United World Institute of Design (UID)",
+          "Contact No.": "",
+        },
+        {
+          "Faculty Name": "Dr. Khushbu  Parik",
+          "Email ID": "khushbu.parik@gdgu.org",
           "School / Department": "School of Engineering & Sciences",
-          "Contact No.": "9876543210",
+          "Contact No.": "91-7357899500",
         },
         {
-          "Faculty Name": "Dr. Ananya Sen",
-          "Email ID": "ananya.sen@gdgu.org",
-          "School / Department": "School of Management",
-          "Contact No.": "9876543211",
+          "Faculty Name": "Dr. Dheeraj Miglani",
+          "Email ID": "dheeraj.miglani@gdgu.org",
+          "School / Department": "Center of Aerospace and Energy Studies",
+          "Contact No.": "91-9557280632",
         },
         {
-          "Faculty Name": "Prof. Vikram Malhotra",
-          "Email ID": "vikram.malhotra@gdgu.org",
-          "School / Department": "School of Law",
-          "Contact No.": "9876543212",
+          "Faculty Name": "Mr. Saurabh  Shekhar",
+          "Email ID": "saurabh.shekhar@gdgu.org",
+          "School / Department": "School of Healthcare and Allied Sciences",
+          "Contact No.": "91-9773741909",
         },
       ];
-    } else if (scope === "TEMPLATE_SPOC") {
+    }
+    // 5. TEMPLATE_SPOC (Aligned with live department structure)
+    else if (scope === "TEMPLATE_SPOC") {
       title = "GDGU_SPOC_Import_Template";
       rows = [
         {
-          "Faculty Name": "Dr. Ramesh Verma",
-          "Official Email": "ramesh.verma@gdgu.org",
+          "Faculty Name": "Ms. Shipra Khanna",
+          "Official Email": "shipra@uid.edu.in",
+          "Department": "United World Institute of Design (UID)",
+          "Contact No.": "",
+        },
+        {
+          "Faculty Name": "Dr. Khushbu  Parik",
+          "Official Email": "khushbu.parik@gdgu.org",
           "Department": "School of Engineering & Sciences",
-          "Contact No.": "9876543210",
+          "Contact No.": "91-7357899500",
         },
         {
-          "Faculty Name": "Dr. Ananya Sen",
-          "Official Email": "ananya.sen@gdgu.org",
-          "Department": "School of Management",
-          "Contact No.": "9876543211",
-        },
-      ];
-    } else if (scope === "TEMPLATE_PROJECTS") {
-      title = "GDGU_Projects_Import_Template";
-      rows = [
-        {
-          "Project ID": "IDP2601_01",
-          "Project Title": "Smart Agro-Tech Monitoring System",
-          "Faculty Email": "ramesh.verma@gdgu.org",
-          "School": "School of Engineering & Sciences",
-          "Category": "IDP2601",
-          "Theme": "Internet of Things",
-          "Description": "An IoT-based crop health and moisture tracking platform.",
+          "Faculty Name": "Dr. Dheeraj Miglani",
+          "Official Email": "dheeraj.miglani@gdgu.org",
+          "Department": "Center of Aerospace and Energy Studies",
+          "Contact No.": "91-9557280632",
         },
         {
-          "Project ID": "IDP2602_02",
-          "Project Title": "Sustainable Supply Chain Optimization",
-          "Faculty Email": "ananya.sen@gdgu.org",
-          "School": "School of Management",
-          "Category": "IDP2602",
-          "Theme": "Sustainability",
-          "Description": "Optimizing FMCG supply routes with lower carbon footprint.",
+          "Faculty Name": "Mr. Saurabh  Shekhar",
+          "Official Email": "saurabh.shekhar@gdgu.org",
+          "Department": "School of Healthcare and Allied Sciences",
+          "Contact No.": "91-9773741909",
         },
       ];
     }
@@ -452,10 +558,13 @@ export async function GET(req: NextRequest) {
           { wch: 18 }, // Enrollment
           { wch: 30 }, // Student Name
         ];
-        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-      } else {
-        XLSX.utils.book_append_sheet(wb, ws, "Data");
       }
+      
+      const sheetName =
+        scope === "TEMPLATE_PROJECTS" || scope === "TEMPLATE_CHC"
+          ? "SERVICE_REQUESTS"
+          : (isCohortScope || scope?.startsWith("TEMPLATE_") ? "Sheet1" : "Data");
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
       const excelBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 

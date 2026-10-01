@@ -11,39 +11,39 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
 
   const templates = [
     {
-      title: "Students Template",
+      title: "IDP Cohort Details Template (.xlsx)",
       description:
-        "Columns: Enrollment No, Full Name, Department, Programme, Semester (3/4), Batch, Admission No, Academic Year.",
-      downloadUrl: "/api/export?type=TEMPLATE_STUDENTS",
-      filename: "TEMPLATE_GDGU_Students.xlsx",
+        "Official format of 'IDP Cohorts Details_5Sep-2026.xlsx': Faculty Name, School, Email ID, Contact No., Projet Title, Category, Theme, Description, Project ID, Enrollment, Student Name.",
+      downloadUrl: "/api/export?type=TEMPLATE_COHORTS",
+      filename: "TEMPLATE_IDP_Cohorts_Details.xlsx",
     },
     {
-      title: "Faculty Template",
+      title: "CHC Service Report Template (.xlsx)",
       description:
-        "Columns: Faculty Name, Email ID, Department, Phone, Initial Passcode, IsAdmin (Yes/No), IsSpoc (Yes/No), SpocDepartment.",
+        "Official format of 'CHC_Service_Report(38) (1).xlsx': Workflow attributes, Department, Official Email, Phone, Project Title, Project Code, Category, SDG Mapping, Theme, Project Description.",
+      downloadUrl: "/api/export?type=TEMPLATE_PROJECTS",
+      filename: "TEMPLATE_CHC_Service_Report.xlsx",
+    },
+    {
+      title: "Student Master Mapping Template (.xlsx)",
+      description:
+        "Official format of 'IDP Mapping Format (Mohit Maan)': S.No., Enrolment No., Admission No., Name , Department, Programme Name, Batch, Course Code, Course Name, Faculty Mentor Details.",
+      downloadUrl: "/api/export?type=TEMPLATE_STUDENTS",
+      filename: "TEMPLATE_IDP_Mapping_Format_Students.xlsx",
+    },
+    {
+      title: "Faculty Directory Template (.xlsx)",
+      description:
+        "Columns: Faculty Name, Email ID, School / Department, Contact No. Pre-populated with verified GDGU schools.",
       downloadUrl: "/api/export?type=TEMPLATE_FACULTY",
       filename: "TEMPLATE_GDGU_Faculty.xlsx",
     },
     {
-      title: "SPOC Template",
+      title: "SPOC Assignment Template (.xlsx)",
       description:
-        "Columns: Department Name, Faculty Email, Faculty Name. Assigns single point of contact roles directly.",
+        "Columns: Faculty Name, Official Email, Department, Contact No. Assigns single point of contact roles across university schools.",
       downloadUrl: "/api/export?type=TEMPLATE_SPOC",
       filename: "TEMPLATE_GDGU_SPOC.xlsx",
-    },
-    {
-      title: "Projects Template",
-      description:
-        "Columns: Project ID, Title, Faculty Email, Faculty Name, Department, Theme, Category, Max Seats, Same Dept Limit, Other Dept Limit, Academic Year.",
-      downloadUrl: "/api/export?type=TEMPLATE_PROJECTS",
-      filename: "TEMPLATE_GDGU_Projects.xlsx",
-    },
-    {
-      title: "IDP Cohort Details (Live .xlsx)",
-      description:
-        "Official 11-column format: Faculty Name, School, Email, Contact No., Projet Title, Category, Theme, Description, Project ID, Enrollment, Student Name.",
-      downloadUrl: "/api/export?scope=IDP_COHORTS&format=xlsx",
-      filename: "IDP_Cohorts_Details.xlsx",
     },
   ];
 
