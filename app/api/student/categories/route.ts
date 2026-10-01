@@ -23,8 +23,14 @@ export async function GET() {
     });
   }
 
-  // Fetch unique categories and themes
+  const config = await prisma.globalConfig.findUnique({ where: { id: "default" } });
+  const activeYear = config?.activeAcademicYear || "2025-2026";
+
+  // Fetch unique categories and themes for active academic year
   const projects = await prisma.project.findMany({
+    where: {
+      academicYear: activeYear,
+    },
     select: {
       category: true,
       theme: true,

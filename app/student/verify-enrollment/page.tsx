@@ -75,11 +75,14 @@ export default function VerifyEnrollmentPage() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label htmlFor="student-enrollment" className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Enrollment Number
               </label>
               <input
+                id="student-enrollment"
+                name="enrollmentNumber"
                 type="text"
+                autoComplete="username"
                 placeholder="Enter your enrollment number"
                 value={enrollment}
                 onChange={(e) => setEnrollment(e.target.value)}

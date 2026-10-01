@@ -221,6 +221,11 @@ export default function FacultyPortalPage() {
       }
     }
 
+    if (selectedFile && selectedFile.size > 10 * 1024 * 1024) {
+      setUploadError(`File size (${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 10MB maximum limit. Please compress your document.`);
+      return;
+    }
+
     setUploadLoading(true);
     setUploadError(null);
 
@@ -906,8 +911,9 @@ export default function FacultyPortalPage() {
 
               {/* File Attachment */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Attach Document File (PDF, PPTX, DOCX, ZIP)
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Attach Document File (PDF, PPTX, DOCX, ZIP)</span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">Max 10 MB Cap</span>
                 </label>
                 <input
                   type="file"

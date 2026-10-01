@@ -74,12 +74,15 @@ export default function FacultyLoginPage() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label htmlFor="faculty-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Faculty Official Email
               </label>
               <div className="relative">
                 <input
+                  id="faculty-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="Enter your official faculty email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -92,7 +95,7 @@ export default function FacultyLoginPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-slate-700">
+                <label htmlFor="faculty-passcode" className="text-xs font-semibold text-slate-700">
                   Passcode
                 </label>
                 <button
@@ -105,7 +108,10 @@ export default function FacultyLoginPage() {
               </div>
               <div className="relative">
                 <input
+                  id="faculty-passcode"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}

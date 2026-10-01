@@ -41,3 +41,9 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Raw Data & Assets
+idpportal/
+*.xlsx
+*.csv
+Screenshot*.png

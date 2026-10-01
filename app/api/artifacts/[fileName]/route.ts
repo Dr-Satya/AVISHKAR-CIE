@@ -9,9 +9,10 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { fileName: string } }
 ) {
-  const fileName = params.fileName;
+  const rawFileName = params.fileName;
+  const decodedFileName = decodeURIComponent(rawFileName);
 
-  if (!fileName) {
+  if (!rawFileName) {
     return new Response("File name required", { status: 400 });
   }
 
@@ -20,7 +21,10 @@ export async function GET(
     const ctx = getCloudflareContext();
     const env = ctx?.env as any;
     if (env?.ARTIFACTS) {
-      const object = await env.ARTIFACTS.get(fileName);
+      let object = await env.ARTIFACTS.get(decodedFileName);
+      if (!object && decodedFileName !== rawFileName) {
+        object = await env.ARTIFACTS.get(rawFileName);
+      }
       if (object) {
         const headers = new Headers();
         object.writeHttpMetadata(headers);
@@ -33,7 +37,7 @@ export async function GET(
 
   // 2. Fallback to local public/uploads
   try {
-    const localPath = path.join(process.cwd(), "public", "uploads", fileName);
+    const localPath = path.join(process.cwd(), "public", "uploads", decodedFileName);
     if (fs.existsSync(localPath)) {
       const fileBuffer = fs.readFileSync(localPath);
       return new Response(fileBuffer, {

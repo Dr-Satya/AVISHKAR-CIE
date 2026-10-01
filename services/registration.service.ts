@@ -78,19 +78,57 @@ export interface RegisterResult {
   project?: any;
 }
 
+class AsyncMutex {
+  private queue: Array<() => void> = [];
+  private locked = false;
+
+  async acquire(): Promise<() => void> {
+    return new Promise((resolve) => {
+      const run = () => {
+        this.locked = true;
+        resolve(() => {
+          this.locked = false;
+          const next = this.queue.shift();
+          if (next) {
+            next();
+          }
+        });
+      };
+      if (!this.locked) {
+        run();
+      } else {
+        this.queue.push(run);
+      }
+    });
+  }
+}
+
+const projectMutexes = new Map<string, AsyncMutex>();
+function getProjectMutex(projectId: string): AsyncMutex {
+  let m = projectMutexes.get(projectId);
+  if (!m) {
+    m = new AsyncMutex();
+    projectMutexes.set(projectId, m);
+  }
+  return m;
+}
+
 /**
  * Transaction-safe registration with zero overbooking guarantee.
- * Uses PostgreSQL row-level locking on the Project record.
+ * Serializes concurrent applications per-project using in-memory async mutex
+ * and verifies strict cohort & seat limits.
  */
 export async function registerStudentForProject(
   studentId: string,
   projectId: string,
   actor: { name: string; role: "STUDENT" | "ADMIN" | "SYSTEM" } = { name: "Student", role: "STUDENT" }
 ): Promise<RegisterResult> {
-  // 1. Global kill switch check
-  const globalConfig = await prisma.globalConfig.findUnique({
-    where: { id: "default" },
-  });
+  const release = await getProjectMutex(projectId).acquire();
+  try {
+    // 1. Global kill switch check
+    const globalConfig = await prisma.globalConfig.findUnique({
+      where: { id: "default" },
+    });
   if (globalConfig && !globalConfig.registrationOpen) {
     throw new Error("Registration is currently closed by administration.");
   }
@@ -109,6 +147,12 @@ export async function registerStudentForProject(
     throw new Error("You already have an active project registration.");
   }
 
+  // Check academic year cohort matching
+  const activeYear = globalConfig?.activeAcademicYear || "2025-2026";
+  if (student.academicYear && student.academicYear !== activeYear) {
+    throw new Error(`Your student profile belongs to cohort (${student.academicYear}). Only active cohort (${activeYear}) students can register.`);
+  }
+
   // 3. Retrieve project record
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -116,6 +160,10 @@ export async function registerStudentForProject(
 
   if (!project) {
     throw new Error("Project not found.");
+  }
+
+  if (project.academicYear && project.academicYear !== activeYear) {
+    throw new Error(`This project belongs to a previous academic cohort (${project.academicYear}) and is not open for registration.`);
   }
 
   // 4. Resolve applicable limits (Department > Project > Global)
@@ -249,7 +297,10 @@ export async function registerStudentForProject(
     timestamp: new Date().toISOString(),
   });
 
-  return res;
+    return res;
+  } finally {
+    release();
+  }
 }
 
 export interface BulkRegistrationProgress {

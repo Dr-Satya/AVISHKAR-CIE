@@ -90,11 +90,14 @@ export default function StudentLoginPage() {
               className="space-y-4"
             >
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="student-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Official GDGU Email Address
                 </label>
                 <input
+                  id="student-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="Enter your official GDGU email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}

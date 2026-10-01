@@ -17,6 +17,7 @@ model Student {
   programme        String?
   semester         Int               @default(3)
   batch            String            @default("2025")
+  academicYear     String            @default("2025-2026")
   email            String?           @unique
   googleId         String?           @unique
   createdAt        DateTime          @default(now())
@@ -27,6 +28,7 @@ model Student {
   @@index([enrollmentNumber])
   @@index([department])
   @@index([email])
+  @@index([academicYear])
 }
 
 model StudentIdentity {
@@ -99,6 +101,8 @@ model Project {
   theme            String
   category         String
   sdgMapping       String?
+  academicYear     String            @default("2025-2026")
+  semester         Int               @default(3)
   maxSeats         Int?
   sameDeptLimit    Int?
   otherDeptLimit   Int?
@@ -117,6 +121,8 @@ model Project {
   @@index([department])
   @@index([facultyId])
   @@index([submissionStatus])
+  @@index([academicYear])
+  @@index([semester])
 }
 
 model ProjectArtifact {
@@ -128,6 +134,8 @@ model ProjectArtifact {
   fileUrl           String
   fileSize          Int?
   mimeType          String?
+  academicYear      String    @default("2025-2026")
+  semester          Int       @default(3)
   similarityPercent Float?
   aiPercent         Float?
   similarityChecked Boolean   @default(false)
@@ -145,6 +153,8 @@ model ProjectArtifact {
   @@index([projectId])
   @@index([status])
   @@index([type])
+  @@index([academicYear])
+  @@index([semester])
 }
 
 model Registration {
@@ -163,12 +173,14 @@ model Registration {
 }
 
 model GlobalConfig {
-  id               String   @id @default("default")
-  registrationOpen Boolean  @default(true)
-  maxSeats         Int      @default(10)
-  sameDeptLimit    Int      @default(4)
-  otherDeptLimit   Int      @default(6)
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default("default")
+  registrationOpen   Boolean  @default(true)
+  maxSeats           Int      @default(10)
+  sameDeptLimit      Int      @default(4)
+  otherDeptLimit     Int      @default(6)
+  activeAcademicYear String   @default("2025-2026")
+  activeSemester     Int      @default(3)
+  updatedAt          DateTime @updatedAt
 }
 
 model DepartmentRegistrationLimit {

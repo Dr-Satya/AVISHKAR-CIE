@@ -48,6 +48,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Fetch current system academic year and active semester
+    const globalConfig = await prisma.globalConfig.findUnique({ where: { id: "default" } });
+    const academicYear = project.academicYear || globalConfig?.activeAcademicYear || "2025-2026";
+    const activeSemester = globalConfig?.activeSemester || 3;
+    const semester = formData.get("semester") ? parseInt(formData.get("semester") as string, 10) : activeSemester;
+
+    // Semester Document Type Validation:
+    // IDP 2nd Year: Semester 1 (Sem 3) requires PPT, Semester 2 (Sem 4) requires REPORT
+    if (semester === 3 && type === "REPORT") {
+      return NextResponse.json(
+        { error: "Semester 1 (Sem 3) requires presentation (PPT) submission. Project reports are submitted in Semester 2 (Sem 4)." },
+        { status: 400 }
+      );
+    }
+
     // Strict validation for REPORT
     let similarityPercent: number | null = null;
     let aiPercent: number | null = null;
@@ -84,34 +99,48 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Enforce 10MB Storage Cap (Cloudflare R2 10GB preservation)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Megabytes
+    if (file && file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `Upload rejected: File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 10MB maximum limit.` },
+        { status: 400 }
+      );
+    }
+
     // Process file
     let fileName = `${title.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`;
-    let fileUrl = `/api/artifacts/${fileName}`;
     let fileSize = 1024 * 150; // default 150KB
     let mimeType = "application/pdf";
 
     if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-      fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      fileName = `${Date.now()}_${sanitizedName}`;
       fileSize = file.size;
       mimeType = file.type || "application/octet-stream";
-      fileUrl = `/api/artifacts/${fileName}`;
+    }
 
+    // Partitioned R2 Object Key: {academicYear}/sem{semester}/{projectId}/{fileName}
+    const r2Key = `${academicYear}/sem${semester}/${project.projectId}/${fileName}`;
+    const fileUrl = `/api/artifacts/${encodeURIComponent(r2Key)}`;
+
+    if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
       const arrayBuffer = await file.arrayBuffer();
 
       try {
         const ctx = getCloudflareContext();
         const env = ctx?.env as any;
         if (env?.ARTIFACTS) {
-          await env.ARTIFACTS.put(fileName, arrayBuffer, {
+          await env.ARTIFACTS.put(r2Key, arrayBuffer, {
             httpMetadata: { contentType: mimeType },
           });
         } else {
-          const uploadsDir = path.join(process.cwd(), "public", "uploads");
+          const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`);
           if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
           fs.writeFileSync(path.join(uploadsDir, fileName), Buffer.from(arrayBuffer));
         }
       } catch {
-        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`);
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
         fs.writeFileSync(path.join(uploadsDir, fileName), Buffer.from(arrayBuffer));
       }
@@ -123,10 +152,12 @@ export async function POST(req: NextRequest) {
         projectId: project.id,
         type: type as "REPORT" | "PPT" | "OTHER",
         title: title.trim(),
-        fileName,
+        fileName: r2Key,
         fileUrl,
         fileSize,
         mimeType,
+        academicYear,
+        semester,
         similarityPercent,
         aiPercent,
         similarityChecked,

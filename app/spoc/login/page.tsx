@@ -79,11 +79,14 @@ export default function SpocLoginPage() {
 
           <form onSubmit={handleLogin} className="mt-6 space-y-4 text-xs">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">
+              <label htmlFor="spoc-email" className="block font-semibold text-slate-700 mb-1.5">
                 Faculty Official Email
               </label>
               <input
+                id="spoc-email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 placeholder="Enter your official faculty email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -93,11 +96,14 @@ export default function SpocLoginPage() {
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">
+              <label htmlFor="spoc-passcode" className="block font-semibold text-slate-700 mb-1.5">
                 Faculty Passcode
               </label>
               <input
+                id="spoc-passcode"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value)}

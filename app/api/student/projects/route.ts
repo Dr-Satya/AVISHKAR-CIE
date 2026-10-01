@@ -31,8 +31,11 @@ export async function GET(req: NextRequest) {
 
   const studentDeptNorm = normalizeDept(student.department);
 
-  // Micro-cache projects query for 3 seconds per category+theme to absorb heavy traffic bursts
-  const cacheKey = `${category}:${theme}`;
+  const config = await prisma.globalConfig.findUnique({ where: { id: "default" } });
+  const activeYear = config?.activeAcademicYear || "2025-2026";
+
+  // Micro-cache projects query for 3 seconds per year+category+theme to absorb heavy traffic bursts
+  const cacheKey = `${activeYear}:${category}:${theme}`;
   let projects = projectQueryCache.get(cacheKey)?.data;
   const cachedAt = projectQueryCache.get(cacheKey)?.time || 0;
 
@@ -41,6 +44,7 @@ export async function GET(req: NextRequest) {
       where: {
         category: category,
         theme: theme,
+        academicYear: activeYear,
       },
       include: {
         faculty: {

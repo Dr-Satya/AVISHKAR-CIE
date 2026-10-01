@@ -73,12 +73,15 @@ export default function AdminLoginPage() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label htmlFor="admin-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Official Email Address
               </label>
               <div className="relative">
                 <input
+                  id="admin-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="Enter administrator or faculty email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -90,12 +93,15 @@ export default function AdminLoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label htmlFor="admin-passcode" className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Passcode
               </label>
               <div className="relative">
                 <input
+                  id="admin-passcode"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}

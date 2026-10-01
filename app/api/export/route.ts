@@ -13,16 +13,110 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const scope = searchParams.get("scope"); // "FACULTY_STUDENTS" | "SPOC_STUDENTS" | "SPOC_FACULTY" | "SPOC_PROJECTS" | "ADMIN_STUDENTS"
-    const format = (searchParams.get("format") || "csv").toLowerCase(); // "csv" | "xlsx" | "pdf"
+    const scope = searchParams.get("scope") || searchParams.get("type"); // "FACULTY_STUDENTS" | "SPOC_STUDENTS" | "SPOC_FACULTY" | "SPOC_PROJECTS" | "ADMIN_STUDENTS" | TEMPLATE_*
+    const rawFormat = searchParams.get("format");
+    const format = (rawFormat || (scope?.startsWith("TEMPLATE_") ? "xlsx" : "csv")).toLowerCase(); // "csv" | "xlsx" | "pdf"
     const projectId = searchParams.get("projectId");
     const departmentParam = searchParams.get("department");
 
     let rows: Record<string, any>[] = [];
     let title = "GDGU_IDP_Export";
 
+    // Templates for Admin bulk imports
+    if (scope === "TEMPLATE_STUDENTS") {
+      title = "GDGU_Students_Import_Template";
+      rows = [
+        {
+          "Enrolment No.": "230101001",
+          "Name": "Aarav Sharma",
+          "Department": "School of Engineering & Sciences",
+          "Programme Name": "B.Tech Computer Science & Engineering",
+          "Semester": 3,
+          "Batch": "2025",
+          "Admission No.": "ADM2023001",
+        },
+        {
+          "Enrolment No.": "230102002",
+          "Name": "Diya Patel",
+          "Department": "School of Management",
+          "Programme Name": "BBA Marketing",
+          "Semester": 3,
+          "Batch": "2025",
+          "Admission No.": "ADM2023002",
+        },
+        {
+          "Enrolment No.": "230103003",
+          "Name": "Rohan Gupta",
+          "Department": "School of Law",
+          "Programme Name": "BA LLB (Hons)",
+          "Semester": 3,
+          "Batch": "2025",
+          "Admission No.": "ADM2023003",
+        },
+      ];
+    } else if (scope === "TEMPLATE_FACULTY") {
+      title = "GDGU_Faculty_Import_Template";
+      rows = [
+        {
+          "Faculty Name": "Dr. Ramesh Verma",
+          "Email ID": "ramesh.verma@gdgu.org",
+          "School / Department": "School of Engineering & Sciences",
+          "Contact No.": "9876543210",
+        },
+        {
+          "Faculty Name": "Dr. Ananya Sen",
+          "Email ID": "ananya.sen@gdgu.org",
+          "School / Department": "School of Management",
+          "Contact No.": "9876543211",
+        },
+        {
+          "Faculty Name": "Prof. Vikram Malhotra",
+          "Email ID": "vikram.malhotra@gdgu.org",
+          "School / Department": "School of Law",
+          "Contact No.": "9876543212",
+        },
+      ];
+    } else if (scope === "TEMPLATE_SPOC") {
+      title = "GDGU_SPOC_Import_Template";
+      rows = [
+        {
+          "Faculty Name": "Dr. Ramesh Verma",
+          "Official Email": "ramesh.verma@gdgu.org",
+          "Department": "School of Engineering & Sciences",
+          "Contact No.": "9876543210",
+        },
+        {
+          "Faculty Name": "Dr. Ananya Sen",
+          "Official Email": "ananya.sen@gdgu.org",
+          "Department": "School of Management",
+          "Contact No.": "9876543211",
+        },
+      ];
+    } else if (scope === "TEMPLATE_PROJECTS") {
+      title = "GDGU_Projects_Import_Template";
+      rows = [
+        {
+          "Project ID": "IDP2601_01",
+          "Project Title": "Smart Agro-Tech Monitoring System",
+          "Faculty Email": "ramesh.verma@gdgu.org",
+          "School": "School of Engineering & Sciences",
+          "Category": "IDP2601",
+          "Theme": "Internet of Things",
+          "Description": "An IoT-based crop health and moisture tracking platform.",
+        },
+        {
+          "Project ID": "IDP2602_02",
+          "Project Title": "Sustainable Supply Chain Optimization",
+          "Faculty Email": "ananya.sen@gdgu.org",
+          "School": "School of Management",
+          "Category": "IDP2602",
+          "Theme": "Sustainability",
+          "Description": "Optimizing FMCG supply routes with lower carbon footprint.",
+        },
+      ];
+    }
     // 1. FACULTY_STUDENTS scope
-    if (scope === "FACULTY_STUDENTS") {
+    else if (scope === "FACULTY_STUDENTS") {
       if (session.role !== "FACULTY" && session.role !== "ADMIN") {
         return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
       }
