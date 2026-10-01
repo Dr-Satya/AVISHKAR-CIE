@@ -7,6 +7,8 @@ import { ProjectData } from "@/types/spoc";
 interface SpocReviewModalProps {
   project: ProjectData;
   action: "APPROVE" | "REJECT";
+  artifactId?: string;
+  artifactTitle?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -14,12 +16,16 @@ interface SpocReviewModalProps {
 export function SpocReviewModal({
   project,
   action,
+  artifactId,
+  artifactTitle,
   onClose,
   onSuccess,
 }: SpocReviewModalProps) {
   const [reviewNote, setReviewNote] = useState(
     action === "APPROVE"
-      ? "Approved by Department SPOC. Project documents meet all guidelines."
+      ? artifactTitle
+        ? `Approved by Department SPOC: "${artifactTitle}" meets all university guidelines.`
+        : "Approved by Department SPOC. Project documents meet all guidelines."
       : ""
   );
   const [loading, setLoading] = useState(false);
@@ -42,6 +48,7 @@ export function SpocReviewModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: project.id,
+          artifactId,
           action,
           note: reviewNote,
         }),
@@ -69,12 +76,24 @@ export function SpocReviewModal({
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-base font-bold text-[#0d2137]">
-              {action === "APPROVE"
-                ? "Approve Project Submission"
-                : "Reject Project Submission"}
+              {artifactId
+                ? action === "APPROVE"
+                  ? "Approve Document Submission"
+                  : "Reject Document Submission"
+                : action === "APPROVE"
+                ? "Approve Project Application"
+                : "Reject Project Application"}
             </h3>
             <p className="text-xs text-slate-500">
-              {project.projectId} · Mentor: {project.faculty.name}
+              {artifactTitle ? (
+                <span>
+                  Document: <strong className="text-slate-700">{artifactTitle}</strong> · {project.projectId}
+                </span>
+              ) : (
+                <span>
+                  {project.projectId} · Mentor: {project.faculty.name}
+                </span>
+              )}
             </p>
           </div>
           <button

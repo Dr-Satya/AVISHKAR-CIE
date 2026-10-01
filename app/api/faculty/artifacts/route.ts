@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
     const aiPercentStr = formData.get("aiPercent") as string;
     const similarityChecked = formData.get("similarityChecked") === "true";
     const aiChecked = formData.get("aiChecked") === "true";
+    const selfDeclaration = formData.get("selfDeclaration") === "true";
     const file = formData.get("file") as File | null;
+    const plagiarismFile = formData.get("plagiarismFile") as File | null;
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID is required." }, { status: 400 });
@@ -54,11 +56,10 @@ export async function POST(req: NextRequest) {
     const activeSemester = globalConfig?.activeSemester || 3;
     const semester = formData.get("semester") ? parseInt(formData.get("semester") as string, 10) : activeSemester;
 
-    // Semester Document Type Validation:
-    // IDP 2nd Year: Semester 1 (Sem 3) requires PPT, Semester 2 (Sem 4) requires REPORT
-    if (semester === 3 && type === "REPORT") {
+    // Self Declaration Consent Check
+    if (!selfDeclaration) {
       return NextResponse.json(
-        { error: "Semester 1 (Sem 3) requires presentation (PPT) submission. Project reports are submitted in Semester 2 (Sem 4)." },
+        { error: "Consent required: Please check the Self Declaration confirming that all the above info is correct." },
         { status: 400 }
       );
     }
@@ -97,6 +98,16 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+
+      if (!plagiarismFile || plagiarismFile.size === 0) {
+        return NextResponse.json(
+          { error: "Plagiarism report file is required for Project Report submission." },
+          { status: 400 }
+        );
+      }
+    } else if (similarityPercentStr) {
+      const parsed = parseFloat(similarityPercentStr);
+      if (!isNaN(parsed)) similarityPercent = parsed;
     }
 
     // Enforce 10MB Storage Cap (Cloudflare R2 10GB preservation)
@@ -108,7 +119,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Process file
+    // Process main file
     let fileName = `${title.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`;
     let fileSize = 1024 * 150; // default 150KB
     let mimeType = "application/pdf";
@@ -146,6 +157,46 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Process Plagiarism Report File if provided
+    let plagiarismReportFileName: string | null = null;
+    let plagiarismReportUrl: string | null = null;
+
+    if (plagiarismFile && typeof plagiarismFile === "object" && "arrayBuffer" in plagiarismFile && plagiarismFile.size > 0) {
+      if (plagiarismFile.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: `Plagiarism report exceeds the 10MB limit (${(plagiarismFile.size / (1024 * 1024)).toFixed(2)} MB).` },
+          { status: 400 }
+        );
+      }
+
+      const sanitizedPlagName = plagiarismFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const plagFileName = `${Date.now()}_plag_${sanitizedPlagName}`;
+      const plagR2Key = `${academicYear}/sem${semester}/${project.projectId}/${plagFileName}`;
+      plagiarismReportFileName = plagR2Key;
+      plagiarismReportUrl = `/api/artifacts/${encodeURIComponent(plagR2Key)}`;
+
+      const plagArrayBuffer = await plagiarismFile.arrayBuffer();
+      const plagMimeType = plagiarismFile.type || "application/pdf";
+
+      try {
+        const ctx = getCloudflareContext();
+        const env = ctx?.env as any;
+        if (env?.ARTIFACTS) {
+          await env.ARTIFACTS.put(plagR2Key, plagArrayBuffer, {
+            httpMetadata: { contentType: plagMimeType },
+          });
+        } else {
+          const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`);
+          if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+          fs.writeFileSync(path.join(uploadsDir, plagFileName), Buffer.from(plagArrayBuffer));
+        }
+      } catch {
+        const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`);
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+        fs.writeFileSync(path.join(uploadsDir, plagFileName), Buffer.from(plagArrayBuffer));
+      }
+    }
+
     // Create ProjectArtifact record
     const artifact = await prisma.projectArtifact.create({
       data: {
@@ -162,6 +213,9 @@ export async function POST(req: NextRequest) {
         aiPercent,
         similarityChecked,
         aiChecked,
+        plagiarismReportFileName,
+        plagiarismReportUrl,
+        selfDeclaration,
         status: "PENDING",
       },
     });
@@ -235,19 +289,32 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Artifact not found or unauthorized." }, { status: 404 });
     }
 
-    // Delete file from R2 or local disk
+    // Delete files from R2 or local disk
     try {
       const ctx = getCloudflareContext();
       const env = ctx?.env as any;
-      if (env?.ARTIFACTS && artifact.fileName) {
-        await env.ARTIFACTS.delete(artifact.fileName);
+      if (env?.ARTIFACTS) {
+        if (artifact.fileName) await env.ARTIFACTS.delete(artifact.fileName);
+        if (artifact.plagiarismReportFileName) await env.ARTIFACTS.delete(artifact.plagiarismReportFileName);
       } else {
+        if (artifact.fileName) {
+          const localPath = path.join(process.cwd(), "public", "uploads", artifact.fileName);
+          if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+        }
+        if (artifact.plagiarismReportFileName) {
+          const localPlagPath = path.join(process.cwd(), "public", "uploads", artifact.plagiarismReportFileName);
+          if (fs.existsSync(localPlagPath)) fs.unlinkSync(localPlagPath);
+        }
+      }
+    } catch {
+      if (artifact.fileName) {
         const localPath = path.join(process.cwd(), "public", "uploads", artifact.fileName);
         if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
       }
-    } catch {
-      const localPath = path.join(process.cwd(), "public", "uploads", artifact.fileName);
-      if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+      if (artifact.plagiarismReportFileName) {
+        const localPlagPath = path.join(process.cwd(), "public", "uploads", artifact.plagiarismReportFileName);
+        if (fs.existsSync(localPlagPath)) fs.unlinkSync(localPlagPath);
+      }
     }
 
     await prisma.projectArtifact.delete({

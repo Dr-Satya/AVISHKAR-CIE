@@ -66,6 +66,13 @@ export function FacultyProjectCard({
                   Not Submitted
                 </span>
               )}
+
+              {/* Plagiarism summary badge */}
+              {proj.artifacts?.some((a) => a.similarityPercent !== null && a.similarityPercent !== undefined) && (
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                  Plagiarism: {proj.artifacts.find((a) => a.similarityPercent !== null && a.similarityPercent !== undefined)?.similarityPercent}% (&lt;10% ✓)
+                </span>
+              )}
             </div>
 
             <h3 className="text-base sm:text-lg font-bold text-[#0d2137]">
@@ -165,7 +172,7 @@ export function FacultyProjectCard({
                         <>
                           <span>·</span>
                           <span className="text-slate-700 font-semibold">
-                            Similarity: {art.similarityPercent}% (&lt;10% ✓)
+                            Plagiarism Count: {art.similarityPercent}% (&lt;10% ✓)
                           </span>
                         </>
                       )}
@@ -174,6 +181,14 @@ export function FacultyProjectCard({
                           <span>·</span>
                           <span className="text-slate-700 font-semibold">
                             AI Written: {art.aiPercent}% (&lt;20% ✓)
+                          </span>
+                        </>
+                      )}
+                      {art.selfDeclaration && (
+                        <>
+                          <span>·</span>
+                          <span className="text-emerald-700 font-semibold">
+                            Self-Declaration: Verified ✓
                           </span>
                         </>
                       )}
@@ -203,6 +218,18 @@ export function FacultyProjectCard({
                     <Download className="w-3 h-3" />
                     <span>View File</span>
                   </a>
+
+                  {art.plagiarismReportUrl && (
+                    <a
+                      href={art.plagiarismReportUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-semibold flex items-center gap-1"
+                    >
+                      <Download className="w-3 h-3 text-amber-700" />
+                      <span>Plagiarism Report</span>
+                    </a>
+                  )}
 
                   {art.status !== "APPROVED" && (
                     <button

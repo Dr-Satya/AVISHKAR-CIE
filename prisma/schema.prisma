@@ -138,9 +138,12 @@ model ProjectArtifact {
   semester          Int       @default(3)
   similarityPercent Float?
   aiPercent         Float?
-  similarityChecked Boolean   @default(false)
-  aiChecked         Boolean   @default(false)
-  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  similarityChecked        Boolean   @default(false)
+  aiChecked                Boolean   @default(false)
+  plagiarismReportFileName String?
+  plagiarismReportUrl      String?
+  selfDeclaration          Boolean   @default(false)
+  status                   String    @default("PENDING") // PENDING, APPROVED, REJECTED
   spocNote          String?
   submittedAt       DateTime  @default(now())
   reviewedAt        DateTime?

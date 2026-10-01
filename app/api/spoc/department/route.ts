@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
       where: { department },
       include: {
         faculty: {
-          select: { id: true, name: true, email: true, department: true },
+          select: { id: true, name: true, email: true, department: true, phone: true },
         },
         artifacts: {
           orderBy: { createdAt: "desc" },
@@ -180,6 +180,8 @@ export async function GET(req: NextRequest) {
         description: p.description,
         theme: p.theme,
         category: p.category,
+        semester: p.semester,
+        academicYear: p.academicYear,
         submissionStatus: p.submissionStatus,
         spocReviewNote: p.spocReviewNote,
         reviewedAt: p.reviewedAt?.toISOString() || null,
@@ -193,10 +195,15 @@ export async function GET(req: NextRequest) {
           fileUrl: a.fileUrl,
           fileSize: a.fileSize,
           mimeType: a.mimeType,
+          semester: a.semester,
+          academicYear: a.academicYear,
           similarityPercent: a.similarityPercent,
           aiPercent: a.aiPercent,
           similarityChecked: a.similarityChecked,
           aiChecked: a.aiChecked,
+          plagiarismReportFileName: a.plagiarismReportFileName,
+          plagiarismReportUrl: a.plagiarismReportUrl,
+          selfDeclaration: a.selfDeclaration,
           status: a.status,
           spocNote: a.spocNote,
           submittedAt: a.submittedAt.toISOString(),

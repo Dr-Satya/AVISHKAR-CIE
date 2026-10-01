@@ -6,10 +6,15 @@ export interface Artifact {
   fileUrl: string;
   fileSize?: number;
   mimeType?: string;
+  academicYear?: string;
+  semester?: number;
   similarityPercent?: number;
   aiPercent?: number;
   similarityChecked: boolean;
   aiChecked: boolean;
+  plagiarismReportFileName?: string | null;
+  plagiarismReportUrl?: string | null;
+  selfDeclaration?: boolean;
   status: string;
   spocNote?: string;
   submittedAt: string;
@@ -24,6 +29,8 @@ export interface ProjectData {
   description?: string;
   theme: string;
   category: string;
+  academicYear?: string;
+  semester?: number;
   submissionStatus: string;
   spocReviewNote?: string;
   reviewedAt?: string;
@@ -32,6 +39,7 @@ export interface ProjectData {
     name: string;
     email: string;
     department: string;
+    phone?: string;
   };
   studentsCount: number;
   artifacts: Artifact[];

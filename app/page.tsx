@@ -13,13 +13,45 @@ export default function HomePage() {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-12 flex flex-col justify-center">
         {/* Welcome Card */}
         <div className="bg-white rounded-2xl p-8 sm:p-10 border border-slate-200/80 shadow-sm mb-8 text-center sm:text-left relative overflow-hidden">
-          <div className="w-12 h-1 bg-[#cda34f] rounded-full mb-4 mx-auto sm:mx-0" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#0d2137] tracking-tight">
-            G.D. Goenka University
-          </h1>
-          <p className="text-slate-600 mt-2 text-sm sm:text-base leading-relaxed max-w-2xl">
-            Welcome to the Inter-Disciplinary Project (IDP) Registration Portal. Please select your role below to proceed with authentication and access your dashboard.
-          </p>
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
+            <div className="flex-1">
+              <div className="w-12 h-1 bg-[#cda34f] rounded-full mb-4 mx-auto sm:mx-0" />
+              <div className="flex items-center gap-2 mb-1 justify-center sm:justify-start">
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 uppercase tracking-wider">
+                  Avishkar · Centre for Innovation & Entrepreneurship (CIE)
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#0d2137] tracking-tight">
+                G.D. Goenka University
+              </h1>
+              <p className="text-slate-600 mt-2 text-sm sm:text-base leading-relaxed max-w-2xl">
+                Welcome to the Inter-Disciplinary Project (IDP) Registration Portal. Please select your role below to proceed with authentication and access your dashboard.
+              </p>
+            </div>
+
+            {/* Dual Featured Logos Badge */}
+            <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shadow-inner">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-[#0d2137]">
+                <img
+                  src="/gdgu-logo.jpeg"
+                  alt="GDGU Logo"
+                  width="56"
+                  height="56"
+                  className="w-full h-full object-cover scale-110"
+                />
+              </div>
+              <div className="h-10 w-[1px] bg-slate-300" />
+              <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-white p-1.5">
+                <img
+                  src="/avishkar-logo.png"
+                  alt="Avishkar CIE Logo"
+                  width="56"
+                  height="56"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Role Cards Grid */}

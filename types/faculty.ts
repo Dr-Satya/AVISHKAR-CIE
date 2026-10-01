@@ -33,6 +33,9 @@ export interface ArtifactData {
   aiPercent?: number;
   similarityChecked: boolean;
   aiChecked: boolean;
+  plagiarismReportFileName?: string | null;
+  plagiarismReportUrl?: string | null;
+  selfDeclaration?: boolean;
   status: string;
   spocNote?: string;
   submittedAt: string;

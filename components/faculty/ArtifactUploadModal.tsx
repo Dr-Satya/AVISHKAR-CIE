@@ -18,8 +18,10 @@ export function ArtifactUploadModal({
   const [artifactType, setArtifactType] = useState<"REPORT" | "PPT" | "OTHER">("REPORT");
   const [artifactTitle, setArtifactTitle] = useState(`${project.projectId} Project Report`);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedPlagiarismFile, setSelectedPlagiarismFile] = useState<File | null>(null);
   const [similarityChecked, setSimilarityChecked] = useState(false);
   const [aiChecked, setAiChecked] = useState(false);
+  const [selfDeclarationChecked, setSelfDeclarationChecked] = useState(false);
   const [similarityValue, setSimilarityValue] = useState("5.0");
   const [aiValue, setAiValue] = useState("10.0");
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,11 @@ export function ArtifactUploadModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!selfDeclarationChecked) {
+      setError("Please confirm the self-declaration: 'All the above info is correct'.");
+      return;
+    }
 
     if (artifactType === "REPORT") {
       if (!similarityChecked) {
@@ -48,6 +55,10 @@ export function ArtifactUploadModal({
         setError(`AI content must be less than 20%. (Entered: ${aiValue}%)`);
         return;
       }
+      if (!selectedPlagiarismFile) {
+        setError("Please upload the official Plagiarism Report document/PDF.");
+        return;
+      }
     }
 
     if (selectedFile && selectedFile.size > 10 * 1024 * 1024) {
@@ -55,6 +66,15 @@ export function ArtifactUploadModal({
         `File size (${(selectedFile.size / (1024 * 1024)).toFixed(
           2
         )} MB) exceeds the 10MB maximum limit. Please compress your document.`
+      );
+      return;
+    }
+
+    if (selectedPlagiarismFile && selectedPlagiarismFile.size > 10 * 1024 * 1024) {
+      setError(
+        `Plagiarism report file size (${(selectedPlagiarismFile.size / (1024 * 1024)).toFixed(
+          2
+        )} MB) exceeds the 10MB maximum limit.`
       );
       return;
     }
@@ -69,10 +89,14 @@ export function ArtifactUploadModal({
       formData.append("title", artifactTitle);
       formData.append("similarityChecked", similarityChecked ? "true" : "false");
       formData.append("aiChecked", aiChecked ? "true" : "false");
+      formData.append("selfDeclaration", selfDeclarationChecked ? "true" : "false");
       formData.append("similarityPercent", similarityValue);
       formData.append("aiPercent", aiValue);
       if (selectedFile) {
         formData.append("file", selectedFile);
+      }
+      if (selectedPlagiarismFile) {
+        formData.append("plagiarismFile", selectedPlagiarismFile);
       }
 
       const res = await fetch("/api/faculty/artifacts", {
@@ -185,16 +209,16 @@ export function ArtifactUploadModal({
 
           {/* Plagiarism & AI Check for REPORT */}
           {artifactType === "REPORT" && (
-            <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/90 space-y-3">
+            <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/90 space-y-3.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
                 <ShieldCheck className="w-4 h-4 text-amber-600" />
                 <span>Compulsory Plagiarism & AI Integrity Verification</span>
               </div>
               <p className="text-[11px] text-amber-800 leading-snug">
-                Per GDGU academic guidelines, project reports must undergo plagiarism and AI detection prior to SPOC submission. Both conditions are mandatory:
+                Per GDGU academic guidelines, project reports must undergo plagiarism and AI detection prior to SPOC submission. All conditions are mandatory:
               </p>
 
-              {/* Similarity Checkbox */}
+              {/* Similarity / Plagiarism Checkbox & Score */}
               <div className="space-y-1.5 pt-1">
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
@@ -205,7 +229,7 @@ export function ArtifactUploadModal({
                   />
                   <div className="text-xs text-slate-800">
                     <span className="font-bold text-slate-900">
-                      1. Content similarity is verified &lt; 10%
+                      1. Content similarity / plagiarism is verified &lt; 10%
                     </span>
                     <p className="text-[11px] text-slate-500">
                       Checked via Turnitin / Urkund official similarity software.
@@ -215,7 +239,7 @@ export function ArtifactUploadModal({
 
                 <div className="ml-6.5 flex items-center gap-2">
                   <span className="text-[11px] text-slate-600 font-medium">
-                    Similarity Score (%):
+                    Plagiarism Count / Similarity (%):
                   </span>
                   <input
                     type="number"
@@ -265,8 +289,49 @@ export function ArtifactUploadModal({
                   <span className="text-[11px] text-slate-400">(Max allowed: 19.9%)</span>
                 </div>
               </div>
+
+              {/* Plagiarism Report File Upload */}
+              <div className="space-y-1.5 pt-2 border-t border-amber-200/60">
+                <label className="block text-xs font-bold text-slate-900 mb-1 flex items-center justify-between">
+                  <span>3. Upload Plagiarism Report File (Turnitin / Urkund PDF)</span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                    Mandatory
+                  </span>
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => setSelectedPlagiarismFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200"
+                  required={artifactType === "REPORT"}
+                />
+                <p className="text-[11px] text-slate-500">
+                  Attach the official plagiarism similarity report generated by Turnitin / DrillBit.
+                </p>
+              </div>
             </div>
           )}
+
+          {/* Self Declaration Consent */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selfDeclarationChecked}
+                onChange={(e) => setSelfDeclarationChecked(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded text-[#0d2137] focus:ring-[#0d2137]"
+                required
+              />
+              <div className="text-xs text-slate-800">
+                <span className="font-bold text-slate-900">
+                  Self Declaration:
+                </span>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  &ldquo;I hereby declare that all the above info is correct and the documents and plagiarism verification scores submitted are authentic.&rdquo;
+                </p>
+              </div>
+            </label>
+          </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-2">
             <button
@@ -280,7 +345,8 @@ export function ArtifactUploadModal({
               type="submit"
               disabled={
                 loading ||
-                (artifactType === "REPORT" && (!similarityChecked || !aiChecked))
+                !selfDeclarationChecked ||
+                (artifactType === "REPORT" && (!similarityChecked || !aiChecked || !selectedPlagiarismFile))
               }
               className="px-5 py-2 text-xs font-bold rounded-xl bg-[#0d2137] hover:bg-[#1a3a60] text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >

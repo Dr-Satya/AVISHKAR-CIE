@@ -150,9 +150,19 @@ export default function SpocPortalPage() {
     router.push("/spoc/login");
   };
 
-  const handleOpenReview = (proj: ProjectData, action: "APPROVE" | "REJECT") => {
+  const [reviewArtifactId, setReviewArtifactId] = useState<string | undefined>(undefined);
+  const [reviewArtifactTitle, setReviewArtifactTitle] = useState<string | undefined>(undefined);
+
+  const handleOpenReview = (
+    proj: ProjectData,
+    action: "APPROVE" | "REJECT",
+    artifactId?: string,
+    artifactTitle?: string
+  ) => {
     setReviewProject(proj);
     setReviewAction(action);
+    setReviewArtifactId(artifactId);
+    setReviewArtifactTitle(artifactTitle);
     setShowReviewModal(true);
   };
 
@@ -424,7 +434,13 @@ export default function SpocPortalPage() {
         <SpocReviewModal
           project={reviewProject}
           action={reviewAction}
-          onClose={() => setShowReviewModal(false)}
+          artifactId={reviewArtifactId}
+          artifactTitle={reviewArtifactTitle}
+          onClose={() => {
+            setShowReviewModal(false);
+            setReviewArtifactId(undefined);
+            setReviewArtifactTitle(undefined);
+          }}
           onSuccess={() => fetchSpocData(department)}
         />
       )}
