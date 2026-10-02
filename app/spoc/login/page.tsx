@@ -46,13 +46,22 @@ export default function SpocLoginPage() {
       <Header role="SPOC" />
       <main className="flex-1 max-w-xl mx-auto w-full px-4 py-12 flex flex-col justify-center">
         <div className="bg-white rounded-2xl p-8 sm:p-10 border border-slate-200/80 shadow-sm relative">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0d2137] transition-colors mb-4 group"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-            <span>Back to Login Selection</span>
-          </Link>
+          <div className="flex items-center justify-between mb-4">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0d2137] transition-colors group"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
+              <span>Back to Login Selection</span>
+            </Link>
+            <div className="h-9 px-3 py-1 rounded-xl bg-white border border-[#cda34f] shadow-sm shadow-[#cda34f]/20 flex items-center justify-center">
+              <img
+                src="/avishkar-logo.png"
+                alt="Avishkar CIE"
+                className="h-full w-auto max-w-[100px] object-contain"
+              />
+            </div>
+          </div>
 
           <div className="w-10 h-1 bg-[#cda34f] rounded-full mb-3" />
           <div className="flex items-center gap-2 mb-1">

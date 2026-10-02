@@ -13,33 +13,36 @@ export function Header({ role }: HeaderProps) {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
           {/* Official Logos: GDGU + Avishkar CIE */}
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full overflow-hidden border border-[#2a4d77] shadow-inner flex items-center justify-center bg-[#0d2137] transition-transform group-hover:scale-105">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#2a4d77] shadow-inner flex items-center justify-center bg-[#0d2137] transition-transform group-hover:scale-105 shrink-0">
               <img
                 src="/gdgu-logo.jpeg"
                 alt="GDGU Logo"
-                width="36"
-                height="36"
+                width="40"
+                height="40"
                 className="w-full h-full object-cover scale-110"
               />
             </div>
-            <div className="h-5 w-[1px] bg-[#2a4d77]/80" />
-            <div className="w-9 h-9 rounded-full overflow-hidden border border-[#2a4d77] shadow-inner flex items-center justify-center bg-white p-1 transition-transform group-hover:scale-105">
+            <div className="h-6 w-[1px] bg-[#2a4d77]" />
+
+            {/* Highlighted Avishkar CIE Official Logo */}
+            <div className="h-10 sm:h-11 px-3 py-1 rounded-xl bg-white border-2 border-[#cda34f] shadow-md shadow-[#cda34f]/30 flex items-center justify-center transition-all group-hover:scale-105 group-hover:border-[#e5be6b] group-hover:shadow-[#cda34f]/50">
               <img
                 src="/avishkar-logo.png"
                 alt="Avishkar CIE Logo"
-                width="36"
-                height="36"
-                className="w-full h-full object-contain"
+                className="h-full w-auto max-w-[130px] sm:max-w-[160px] object-contain drop-shadow-xs"
               />
             </div>
           </div>
+
           <div className="flex flex-col">
             <span className="text-white font-semibold text-base sm:text-lg tracking-tight leading-tight">
               Project Registration Portal
             </span>
-            <span className="text-[#cda34f] text-[10px] sm:text-xs font-semibold tracking-wider uppercase">
-              Avishkar · CIE
+            <span className="text-[#cda34f] text-[10px] sm:text-xs font-bold tracking-wider uppercase flex items-center gap-1">
+              <span>Avishkar</span>
+              <span className="text-slate-400">·</span>
+              <span className="text-amber-200">CIE</span>
             </span>
           </div>
         </Link>

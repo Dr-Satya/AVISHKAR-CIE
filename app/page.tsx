@@ -29,9 +29,9 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Dual Featured Logos Badge */}
-            <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shadow-inner">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-[#0d2137]">
+            {/* Dual Featured Logos Badge with Highlighted Avishkar CIE */}
+            <div className="flex items-center gap-3.5 bg-gradient-to-r from-slate-50 via-amber-50/50 to-slate-50 p-3.5 rounded-2xl border-2 border-[#cda34f]/60 shadow-lg shadow-[#cda34f]/15">
+              <div className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-[#0d2137] shrink-0">
                 <img
                   src="/gdgu-logo.jpeg"
                   alt="GDGU Logo"
@@ -40,14 +40,13 @@ export default function HomePage() {
                   className="w-full h-full object-cover scale-110"
                 />
               </div>
-              <div className="h-10 w-[1px] bg-slate-300" />
-              <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-white p-1.5">
+              <div className="h-12 w-[1px] bg-[#cda34f]/40" />
+              {/* Prominently Highlighted Avishkar CIE Brand Logo */}
+              <div className="h-14 sm:h-16 px-4 py-2 rounded-xl border-2 border-[#cda34f] shadow-md shadow-[#cda34f]/30 flex items-center justify-center bg-white transition-transform hover:scale-105">
                 <img
                   src="/avishkar-logo.png"
                   alt="Avishkar CIE Logo"
-                  width="56"
-                  height="56"
-                  className="w-full h-full object-contain"
+                  className="h-full w-auto max-w-[160px] sm:max-w-[200px] object-contain drop-shadow-xs"
                 />
               </div>
             </div>
