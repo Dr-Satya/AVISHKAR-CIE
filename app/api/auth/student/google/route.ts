@@ -1,88 +1,102 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { signSessionToken, setSessionCookie } from "@/lib/auth";
+import { signSessionToken, setSessionCookie, clearSessionCookie } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, googleId, name, credential } = body;
+    const rawInput = (body.identifier || body.email || body.enrollmentNumber || "").trim();
 
-    // Validate email
-    if (!email || typeof email !== "string") {
-      return NextResponse.json({ error: "Email is required." }, { status: 400 });
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Check allowed domain: primary is @gdgu.org
-    if (!normalizedEmail.endsWith("@gdgu.org")) {
+    if (!rawInput) {
       return NextResponse.json(
-        {
-          error: "Please sign in using your official GDGU email account (@gdgu.org).",
-          unauthorizedDomain: true,
-        },
-        { status: 403 }
+        { error: "Enrollment number or official GDGU email is required." },
+        { status: 400 }
       );
     }
 
-    // Check if this Google identity or email is already linked to a student
-    let student = await prisma.student.findFirst({
+    let cleanEnrollment = "";
+    let normalizedEmail = "";
+
+    if (rawInput.includes("@")) {
+      normalizedEmail = rawInput.toLowerCase();
+      if (!normalizedEmail.endsWith("@gdgu.org")) {
+        const response = NextResponse.json(
+          {
+            error: "Please sign in using your official GDGU account (@gdgu.org).",
+            unauthorizedDomain: true,
+          },
+          { status: 403 }
+        );
+        clearSessionCookie(response);
+        return response;
+      }
+      const username = normalizedEmail.split("@")[0];
+      cleanEnrollment = username;
+    } else {
+      cleanEnrollment = rawInput.replace(/\s+/g, "");
+      normalizedEmail = `${cleanEnrollment.toLowerCase()}@gdgu.org`;
+    }
+
+    // Verify student exists in official master records
+    const student = await prisma.student.findFirst({
       where: {
         OR: [
+          { enrollmentNumber: cleanEnrollment },
           { email: normalizedEmail },
-          googleId ? { googleId: googleId } : {},
           { identities: { some: { email: normalizedEmail } } },
         ],
       },
       include: { registration: true },
     });
 
-    if (student) {
-      // Student is recognized and linked! Create full session
-      const token = await signSessionToken({
-        role: "STUDENT",
-        id: student.id,
-        email: normalizedEmail,
-        name: student.name,
-        enrollmentNumber: student.enrollmentNumber,
-      });
-
-      const response = NextResponse.json({
-        success: true,
-        requiresEnrollment: false,
-        student: {
-          id: student.id,
-          name: student.name,
-          enrollmentNumber: student.enrollmentNumber,
-          department: student.department,
-          programme: student.programme,
-          batch: student.batch,
-          isRegistered: !!student.registration,
+    if (!student) {
+      // Reject unauthorized enrollment / email immediately.
+      // Clear any existing session cookie so no previous session leaks.
+      const response = NextResponse.json(
+        {
+          error: `Enrollment number / Email '${rawInput}' is not found in the official university IDP student records. Access denied. You must be an officially enrolled student to access this portal.`,
+          notFound: true,
         },
-      });
-
-      setSessionCookie(response, token);
+        { status: 404 }
+      );
+      clearSessionCookie(response);
       return response;
     }
 
-    // Google email is valid GDGU domain, but not yet linked to an enrollment number
-    // Issue a temporary verification token to permit the enrollment verification step
-    const tempToken = await signSessionToken({
+    // Update email on student record if not yet linked
+    if (!student.email) {
+      await prisma.student.update({
+        where: { id: student.id },
+        data: { email: normalizedEmail },
+      });
+    }
+
+    // Issue permanent student session strictly bound to THIS student record
+    const token = await signSessionToken({
       role: "STUDENT",
-      id: "pending",
-      email: normalizedEmail,
-      name: name || "GDGU Student",
+      id: student.id,
+      email: student.email || normalizedEmail,
+      name: student.name,
+      enrollmentNumber: student.enrollmentNumber,
     });
 
     const response = NextResponse.json({
       success: true,
-      requiresEnrollment: true,
-      email: normalizedEmail,
+      requiresEnrollment: false,
+      student: {
+        id: student.id,
+        name: student.name,
+        enrollmentNumber: student.enrollmentNumber,
+        department: student.department,
+        programme: student.programme,
+        batch: student.batch,
+        isRegistered: !!student.registration,
+      },
     });
 
-    setSessionCookie(response, tempToken);
+    setSessionCookie(response, token);
     return response;
   } catch (error: any) {
     return NextResponse.json(
@@ -91,3 +105,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

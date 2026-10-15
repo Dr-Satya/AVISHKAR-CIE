@@ -99,6 +99,7 @@ export async function GET(req: NextRequest) {
           include: {
             project: {
               select: {
+                id: true,
                 projectId: true,
                 title: true,
                 category: true,
@@ -167,6 +168,9 @@ export async function GET(req: NextRequest) {
     phone: s.phone || null,
     phoneVerified: Boolean(s.phoneVerified),
     registered: !!s.registration,
+    registrationId: s.registration?.id || null,
+    projectId: s.registration?.project?.id || s.registration?.projectId || null,
+    registrationStatus: s.registration?.status || null,
     projectCode: s.registration?.project?.projectId || "—",
     projectTitle: s.registration?.project?.title || "",
     projectCategory: s.registration?.project?.category || "",
@@ -211,6 +215,8 @@ export async function POST(req: NextRequest) {
       name,
       department,
       programme,
+      phone,
+      phoneVerified,
       gender,
       internalMarks,
       externalMarks,
@@ -244,6 +250,7 @@ export async function POST(req: NextRequest) {
     }
 
     const email = `${cleanEnroll.toLowerCase()}@gdgu.org`;
+    const cleanPhone = phone ? phone.toString().trim().replace(/\D/g, "").slice(-10) : null;
 
     const student = await prisma.student.create({
       data: {
@@ -251,6 +258,8 @@ export async function POST(req: NextRequest) {
         name: name.trim(),
         department: department.trim(),
         programme: programme?.trim() || null,
+        phone: cleanPhone || null,
+        phoneVerified: phoneVerified !== undefined ? Boolean(phoneVerified) : Boolean(cleanPhone && cleanPhone.length === 10),
         gender: gender?.trim() || "Male",
         internalMarks: internalMarks !== undefined ? parseFloat(internalMarks) : 32,
         externalMarks: externalMarks !== undefined ? parseFloat(externalMarks) : 48,
@@ -292,6 +301,8 @@ export async function PUT(req: NextRequest) {
       name,
       department,
       programme,
+      phone,
+      phoneVerified,
       gender,
       internalMarks,
       externalMarks,
@@ -310,6 +321,19 @@ export async function PUT(req: NextRequest) {
     if (name) updateData.name = name.trim();
     if (department) updateData.department = department.trim();
     if (programme !== undefined) updateData.programme = programme?.trim() || null;
+    if (phone !== undefined) {
+      const cleanPhone = phone ? phone.toString().trim().replace(/\D/g, "").slice(-10) : null;
+      updateData.phone = cleanPhone || null;
+      if (phoneVerified !== undefined) {
+        updateData.phoneVerified = Boolean(phoneVerified);
+      } else if (cleanPhone && cleanPhone.length === 10) {
+        updateData.phoneVerified = true;
+      } else if (!cleanPhone) {
+        updateData.phoneVerified = false;
+      }
+    } else if (phoneVerified !== undefined) {
+      updateData.phoneVerified = Boolean(phoneVerified);
+    }
     if (gender !== undefined) updateData.gender = gender?.trim() || null;
     if (internalMarks !== undefined) updateData.internalMarks = parseFloat(internalMarks) || 0;
     if (externalMarks !== undefined) updateData.externalMarks = parseFloat(externalMarks) || 0;

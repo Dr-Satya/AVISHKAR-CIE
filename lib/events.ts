@@ -18,7 +18,8 @@ export type PortalEventType =
   | "project.updated"
   | "spoc.updated"
   | "artifact.submitted"
-  | "submission.reviewed";
+  | "submission.reviewed"
+  | "submission.created";
 
 export interface PortalEventMessage {
   type: PortalEventType;

@@ -12,6 +12,7 @@ import {
   ArrowUp,
   ArrowDown,
   UserX,
+  Layers,
   AlertTriangle,
   GraduationCap,
   School,
@@ -75,6 +76,8 @@ interface StudentsTableCardProps {
   onAddClick: () => void;
   onEditClick: (student: any) => void;
   onDeleteClick: (student: any) => void;
+  onMapClick?: (student: any) => void;
+  onUnmapClick?: (student: any) => void;
 }
 
 export function StudentsTableCard({
@@ -106,6 +109,8 @@ export function StudentsTableCard({
   onAddClick,
   onEditClick,
   onDeleteClick,
+  onMapClick,
+  onUnmapClick,
 }: StudentsTableCardProps) {
   const [selectedStudentDetails, setSelectedStudentDetails] = React.useState<any | null>(null);
 
@@ -905,16 +910,49 @@ export function StudentsTableCard({
                           )}
                         </div>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                          <AlertTriangle className="w-3 h-3 text-amber-600" />
-                          <span>Not Registered</span>
-                        </span>
+                        <div className="inline-flex flex-col items-center gap-1">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                            <AlertTriangle className="w-3 h-3 text-amber-600" />
+                            <span>Not Registered</span>
+                          </span>
+                          {onMapClick && (
+                            <button
+                              type="button"
+                              onClick={() => onMapClick(st)}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#0d2137] text-white hover:bg-[#163456] transition-colors flex items-center gap-1 shadow-2xs"
+                              title="Map Student to Project Guide"
+                            >
+                              <Layers className="w-2.5 h-2.5 text-[#cda34f]" />
+                              <span>Map Guide</span>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
 
                     {/* Actions */}
                     <td className="py-3 px-3 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
+                        {onMapClick && (
+                          <button
+                            type="button"
+                            onClick={() => onMapClick(st)}
+                            className="p-1 rounded text-slate-700 hover:text-[#0d2137] hover:bg-slate-100 transition-colors"
+                            title={st.registered ? "Reassign Project Guide" : "Map to Project Guide"}
+                          >
+                            <Layers className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {st.registered && onUnmapClick && (
+                          <button
+                            type="button"
+                            onClick={() => onUnmapClick(st)}
+                            className="p-1 rounded text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors"
+                            title="Unmap / Remove from Project"
+                          >
+                            <UserX className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setSelectedStudentDetails(st)}

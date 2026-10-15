@@ -24,6 +24,20 @@ export function exportToXlsx(data: Record<string, any>[], filename: string, shee
   XLSX.writeFile(wb, `${filename}.xlsx`);
 }
 
+export function exportToJson(data: Record<string, any>[], filename: string) {
+  if (!data || data.length === 0) return;
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function exportToPdf(data: Record<string, any>[], title: string) {
   if (!data || data.length === 0) return;
   const headers = Object.keys(data[0]);
@@ -104,6 +118,30 @@ export async function downloadIdpCohortsXlsx(filter = "registered", school?: str
   a.href = url;
   const dateStr = new Date().toISOString().split("T")[0];
   a.download = `IDP_Cohorts_Details_${dateStr}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadFullDatabaseExport(academicYear?: string): Promise<void> {
+  const params = new URLSearchParams({
+    action: "EXPORT_ALL",
+    format: "xlsx",
+  });
+  if (academicYear && academicYear !== "all") params.set("academicYear", academicYear);
+
+  const res = await fetch(`/api/admin/data-management?${params.toString()}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to download full database export.");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const dateStr = new Date().toISOString().split("T")[0];
+  a.download = `GDGU_IDP_Full_Database_Export_${dateStr}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

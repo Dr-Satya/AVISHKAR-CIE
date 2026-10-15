@@ -59,6 +59,8 @@ export interface StudentFormData {
   name: string;
   department: string;
   programme: string;
+  phone?: string;
+  phoneVerified?: boolean;
   gender?: string;
   internalMarks?: number;
   externalMarks?: number;
@@ -116,4 +118,18 @@ export interface RegistrationRecord {
   projectId: string;
   registeredAt: string;
   status: string;
+}
+
+export interface SystemAdminRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
+export interface AdminFormData {
+  name: string;
+  email: string;
+  passcode: string;
 }

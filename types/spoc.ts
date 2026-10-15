@@ -34,6 +34,22 @@ export interface ProjectData {
   submissionStatus: string;
   spocReviewNote?: string;
   reviewedAt?: string;
+  // Research Manuscript & Publication (Optional)
+  hasCommunicatedManuscript?: boolean;
+  draftManuscriptUrl?: string | null;
+  draftManuscriptFileName?: string | null;
+  journalName?: string | null;
+  avishkarAffiliationCommunicated?: boolean;
+  isManuscriptPublished?: boolean;
+  publicationDoi?: string | null;
+  publishedManuscriptUrl?: string | null;
+  publishedManuscriptFileName?: string | null;
+  avishkarAffiliationPublished?: boolean;
+  manuscriptPlagiarismUrl?: string | null;
+  manuscriptPlagiarismFileName?: string | null;
+  manuscriptSimilarityPercent?: number | null;
+  manuscriptAiPercent?: number | null;
+  manuscriptSubmittedAt?: string | null;
   faculty: {
     id: string;
     name: string;
@@ -54,6 +70,19 @@ export interface ProjectData {
   }>;
 }
 
+export interface FacultyStudentMarks {
+  studentId: string;
+  enrollmentNumber: string;
+  name: string;
+  programme?: string;
+  internalMarks: number;
+  externalMarks: number;
+  attendancePercent: number;
+  marksShared: boolean;
+  projectTitle: string;
+  projectId: string;
+}
+
 export interface FacultyMember {
   id: string;
   name: string;
@@ -62,6 +91,10 @@ export interface FacultyMember {
   isSpoc: boolean;
   projectsCount: number;
   studentsCount: number;
+  marksStatus: "SHARED" | "PARTIAL" | "NOT_SHARED" | "NO_STUDENTS";
+  marksSharedCount: number;
+  marksPendingCount: number;
+  studentsWithMarks?: FacultyStudentMarks[];
   projects: Array<{
     id: string;
     projectId: string;
@@ -98,4 +131,7 @@ export interface SpocKpis {
   approvedCount: number;
   rejectedCount: number;
   notSubmittedCount: number;
+  facultyMarksSharedCount?: number;
+  facultyMarksPendingCount?: number;
+  facultyMarksPartialCount?: number;
 }

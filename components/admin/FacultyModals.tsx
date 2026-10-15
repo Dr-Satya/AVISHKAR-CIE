@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, CheckCircle2, Trash2, Loader2, X } from "lucide-react";
+import { Plus, CheckCircle2, Trash2, Loader2, X, AlertTriangle } from "lucide-react";
 import { FacultyFormData, FacultyRecord } from "@/types/admin";
 
 interface FacultyModalsProps {
@@ -24,6 +24,13 @@ interface FacultyModalsProps {
   onUpdateFaculty: (e: React.FormEvent) => void;
   onDeleteFaculty: () => void;
   onResetPasscode: (e: React.FormEvent) => void;
+  showAddAdminModal?: boolean;
+  setShowAddAdminModal?: (show: boolean) => void;
+  adminForm?: { name: string; email: string; passcode: string };
+  setAdminForm?: React.Dispatch<React.SetStateAction<{ name: string; email: string; passcode: string }>>;
+  adminCrudLoading?: boolean;
+  adminCrudError?: string | null;
+  onAddAdmin?: (e: React.FormEvent) => void;
 }
 
 export function FacultyModals({
@@ -48,6 +55,13 @@ export function FacultyModals({
   onUpdateFaculty,
   onDeleteFaculty,
   onResetPasscode,
+  showAddAdminModal,
+  setShowAddAdminModal,
+  adminForm,
+  setAdminForm,
+  adminCrudLoading,
+  adminCrudError,
+  onAddAdmin,
 }: FacultyModalsProps) {
   return (
     <>
@@ -112,8 +126,9 @@ export function FacultyModals({
                     Phone Number
                   </label>
                   <input
-                    type="text"
-                    placeholder="e.g. +91 9876543210"
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    maxLength={15}
                     value={facultyForm.phone}
                     onChange={(e) => setFacultyForm({ ...facultyForm, phone: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
@@ -265,7 +280,9 @@ export function FacultyModals({
                     Phone Number
                   </label>
                   <input
-                    type="text"
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    maxLength={15}
                     value={facultyForm.phone}
                     onChange={(e) => setFacultyForm({ ...facultyForm, phone: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
@@ -397,6 +414,18 @@ export function FacultyModals({
               ({selectedResetFaculty.email})
             </p>
 
+            {/* Warning Callout */}
+            <div className="mt-3 p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-start gap-2.5 shadow-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-bold text-amber-950">Security Notice &amp; Warning:</p>
+                <p className="text-[11px] leading-relaxed text-amber-900">
+                  Changing this password will immediately overwrite active credentials for{" "}
+                  <strong>{selectedResetFaculty.name}</strong>. Any active portal sessions will be disconnected, and the user must be informed of this change.
+                </p>
+              </div>
+            </div>
+
             {resetPasscodeMessage && (
               <div
                 className={`mt-4 p-3 rounded-xl text-xs font-medium border ${
@@ -459,6 +488,124 @@ export function FacultyModals({
                     </>
                   ) : (
                     <span>Save New Passcode</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add System Administrator Modal */}
+      {showAddAdminModal && adminForm && setAdminForm && onAddAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full border border-slate-200 shadow-2xl relative">
+            <div className="w-10 h-1 bg-[#cda34f] rounded-full mb-3" />
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-[#0d2137]">Add System Administrator</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Grant direct, unrestricted administrative privileges across all modules.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddAdminModal && setShowAddAdminModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Warning Banner */}
+            <div className="mt-3.5 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-start gap-2.5 shadow-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Administrative Security Notice:</span>
+                <p className="text-[11px] text-amber-900 mt-0.5 leading-relaxed">
+                  System administrators have full authority to modify student cohorts, faculty access, database purges, and system settings.
+                </p>
+              </div>
+            </div>
+
+            {adminCrudError && (
+              <div className="mt-3.5 p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">
+                {adminCrudError}
+              </div>
+            )}
+
+            <form onSubmit={onAddAdmin} className="mt-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Administrator Full Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Prof. R. K. Sharma"
+                  value={adminForm.name}
+                  onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Official Email Address *
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. admin.rksharma@gdgu.org"
+                  value={adminForm.email}
+                  onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Initial Passcode (min 6 characters) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter secure initial passcode"
+                  value={adminForm.passcode}
+                  onChange={(e) => setAdminForm({ ...adminForm, passcode: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAdminForm({ ...adminForm, passcode: "gdgu@admin2026" })}
+                  className="mt-1.5 text-[11px] text-slate-500 hover:text-[#0d2137] underline block"
+                >
+                  Use default: gdgu@admin2026
+                </button>
+              </div>
+
+              <div className="mt-5 flex gap-2 justify-end pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={adminCrudLoading}
+                  onClick={() => setShowAddAdminModal && setShowAddAdminModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adminCrudLoading || !adminForm.name || !adminForm.email}
+                  className="px-4 py-2 rounded-xl bg-[#0d2137] text-white text-xs font-semibold hover:bg-[#163456] transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                >
+                  {adminCrudLoading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <span>Create Administrator</span>
                   )}
                 </button>
               </div>

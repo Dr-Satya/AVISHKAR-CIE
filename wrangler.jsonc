@@ -27,6 +27,7 @@
     "JWT_SECRET": "gdgu-super-secret-jwt-key-2026-production-ready",
     "DEFAULT_FACULTY_PASSCODE": "gdgu@2026",
     "ADMIN_PASSCODE": "admin@gdgu2026",
-    "NEXT_PUBLIC_APP_URL": "https://gdgu-idp-portal.cie-1e4.workers.dev"
+    "NEXT_PUBLIC_APP_URL": "https://gdgu-idp-portal.cie-1e4.workers.dev",
+    "TWO_FACTOR_API_KEY": "86910c48-c898-11f1-af74-0200cd936042"
   }
 }

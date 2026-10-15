@@ -1,3 +1,15 @@
+/**
+ * G.D. Goenka University - Inter-Disciplinary Project (IDP) Portal
+ * 
+ * Code Attribution:
+ * - Dr. Satya Prakash (Avishkar Centre for Innovation and Entrepreneurship,
+ *   School of Engineering and Sciences, G.D. Goenka University, Haryana)
+ * - Potla Sri Sharan
+ * - Sarthak Singh
+ * 
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 import { PrismaClient as NodePrismaClient } from "@prisma/client";
 import { PrismaClient as WasmPrismaClient } from "@prisma/client/wasm";
 import { PrismaD1 } from "@prisma/adapter-d1";

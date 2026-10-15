@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveProjectLimits } from "@/services/registration.service";
@@ -56,6 +56,22 @@ export async function GET() {
         submissionStatus: p.submissionStatus,
         spocReviewNote: p.spocReviewNote,
         reviewedAt: p.reviewedAt?.toISOString() || null,
+        // Research Manuscript & Publication (Optional)
+        hasCommunicatedManuscript: p.hasCommunicatedManuscript,
+        draftManuscriptUrl: p.draftManuscriptUrl,
+        draftManuscriptFileName: p.draftManuscriptFileName,
+        journalName: p.journalName,
+        avishkarAffiliationCommunicated: p.avishkarAffiliationCommunicated,
+        isManuscriptPublished: p.isManuscriptPublished,
+        publicationDoi: p.publicationDoi,
+        publishedManuscriptUrl: p.publishedManuscriptUrl,
+        publishedManuscriptFileName: p.publishedManuscriptFileName,
+        avishkarAffiliationPublished: p.avishkarAffiliationPublished,
+        manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
+        manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
+        manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
+        manuscriptAiPercent: p.manuscriptAiPercent,
+        manuscriptSubmittedAt: p.manuscriptSubmittedAt?.toISOString() || null,
         maxSeats: limits.maxSeats,
         currentRegistrations: p.registrations.length,
         availableSeats: Math.max(0, limits.maxSeats - p.registrations.length),
@@ -82,17 +98,22 @@ export async function GET() {
           reviewedAt: a.reviewedAt?.toISOString() || null,
         })),
         students: p.registrations.map((r) => ({
-          id: r.id,
+          id: r.student.id,
+          registrationId: r.id,
           enrollment: r.student.enrollmentNumber,
           name: r.student.name,
           department: r.student.department,
           programme: r.student.programme,
           phone: r.student.phone,
+          phoneVerified: Boolean(r.student.phoneVerified),
           email: r.student.email,
           semester: r.student.semester,
           batch: r.student.batch,
           registeredAt: r.createdAt.toISOString(),
           status: r.status,
+          internalMarks: r.student.internalMarks ?? 0,
+          externalMarks: r.student.externalMarks ?? 0,
+          attendancePercent: r.student.attendancePercent ?? 100,
         })),
       };
     })
@@ -111,4 +132,42 @@ export async function GET() {
     },
     projects: enrichedProjects,
   });
+}
+
+export async function PUT(req: NextRequest) {
+  const session = await getSession();
+  if (!session || (session.role !== "FACULTY" && session.role !== "SPOC" && session.role !== "ADMIN")) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json();
+    const { phone } = body;
+
+    const clean = (phone || "").replace(/\D/g, "");
+    if (clean.length < 10) {
+      return NextResponse.json(
+        { error: "Please enter a valid 10-digit mobile number." },
+        { status: 400 }
+      );
+    }
+
+    const normalizedPhone = clean.slice(-10);
+
+    const updated = await prisma.faculty.update({
+      where: { id: session.id },
+      data: { phone: normalizedPhone },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Mobile number verified and saved successfully.",
+      phone: updated.phone,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Failed to update phone number." },
+      { status: 500 }
+    );
+  }
 }

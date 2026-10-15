@@ -1,9 +1,21 @@
+/**
+ * G.D. Goenka University - Inter-Disciplinary Project (IDP) Portal
+ * 
+ * Code Attribution:
+ * - Dr. Satya Prakash (Avishkar Centre for Innovation and Entrepreneurship,
+ *   School of Engineering and Sciences, G.D. Goenka University, Haryana)
+ * - Potla Sri Sharan
+ * - Sarthak Singh
+ * 
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Project Registration Portal | GDGU",
-  description: "Official Inter-Disciplinary Project (IDP) Registration Portal for G.D. Goenka University",
+  title: "IDP (Inter-Disciplinary Project) Portal | GDGU",
+  description: "Official IDP (Inter-Disciplinary Project) Portal for G.D. Goenka University",
   icons: {
     icon: "/gdgu-logo.jpeg",
   },
@@ -39,7 +51,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-[#edf1f7] text-[#1e293b] antialiased min-h-screen flex flex-col">
+      <body className="bg-[#f8fafc] text-[#09131f] selection:bg-[#c59b27]/20 selection:text-[#0a192f] antialiased min-h-screen flex flex-col">
         {children}
       </body>
     </html>

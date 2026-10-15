@@ -172,18 +172,47 @@ export async function POST(req: NextRequest) {
 
     // 2. RESET PASSCODE FOR EXISTING SPOC
     if (action === "RESET_PASSCODE") {
-      const existingSpoc = await prisma.spoc.findUnique({ where: { department } });
+      let existingSpoc = await prisma.spoc.findUnique({
+        where: { department },
+        include: { faculty: true },
+      });
+
+      if (!existingSpoc && facultyId) {
+        existingSpoc = await prisma.spoc.findUnique({
+          where: { facultyId },
+          include: { faculty: true },
+        });
+      }
+
+      if (!existingSpoc && customEmail) {
+        existingSpoc = await prisma.spoc.findUnique({
+          where: { email: customEmail.toLowerCase().trim() },
+          include: { faculty: true },
+        });
+      }
+
       if (!existingSpoc) {
         return NextResponse.json({ error: "No SPOC profile found for this department." }, { status: 404 });
       }
 
-      const newPasscode = customPasscode || `spoc@${slug}2026`;
+      if (customPasscode && customPasscode.trim().length < 6) {
+        return NextResponse.json({ error: "New passcode must be at least 6 characters long." }, { status: 400 });
+      }
+
+      const newPasscode = customPasscode ? customPasscode.trim() : `spoc@${slug}2026`;
       const passcodeHash = await bcrypt.hash(newPasscode, 10);
 
       await prisma.spoc.update({
-        where: { department },
+        where: { id: existingSpoc.id },
         data: { passcodeHash },
       });
+
+      if (existingSpoc.facultyId) {
+        await prisma.faculty.update({
+          where: { id: existingSpoc.facultyId },
+          data: { passcodeHash },
+        });
+      }
 
       await prisma.auditLog.create({
         data: {
@@ -197,7 +226,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: "Passcode updated successfully.",
+        message: "SPOC passcode updated successfully.",
         credentials: {
           email: existingSpoc.email,
           passcode: newPasscode,

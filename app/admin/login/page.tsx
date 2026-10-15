@@ -43,17 +43,17 @@ export default function AdminLoginPage() {
   return (
     <>
       <Header role="Admin" />
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-12 flex flex-col justify-center">
-        <div className="bg-white rounded-2xl p-8 sm:p-10 border border-slate-200/80 shadow-sm relative">
-          <div className="flex items-center justify-between mb-4">
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-12 sm:py-16 flex flex-col justify-center">
+        <div className="bg-white rounded-3xl p-8 sm:p-11 border border-slate-200/90 shadow-elevated relative overflow-hidden">
+          <div className="flex items-center justify-between mb-5">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0d2137] transition-colors group"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0a192f] transition-colors group"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-              <span>Back to Login Selection</span>
+              <span>Login Selection</span>
             </Link>
-            <div className="h-9 px-3 py-1 rounded-xl bg-white border border-[#cda34f] shadow-sm shadow-[#cda34f]/20 flex items-center justify-center">
+            <div className="h-9 px-3 py-1 rounded-xl bg-white border border-[#c59b27]/40 shadow-sm flex items-center justify-center">
               <img
                 src="/avishkar-logo.png"
                 alt="Avishkar CIE"
@@ -62,20 +62,20 @@ export default function AdminLoginPage() {
             </div>
           </div>
 
-          <div className="w-10 h-1 bg-[#cda34f] rounded-full mb-3" />
-          <h1 className="text-xl sm:text-2xl font-bold text-[#0d2137]">
-            Admin Login
+          <div className="w-8 h-1 bg-[#c59b27] rounded-full mb-3" />
+          <h1 className="text-2xl font-bold text-[#09131f] tracking-tight">
+            Administrator Console
           </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-1">
-            Access administrative management for the GDGU Project Registration Portal.
+          <p className="text-slate-500 text-xs sm:text-sm mt-1.5 leading-relaxed">
+            Authorized university control access for the Inter-Disciplinary Project portal.
           </p>
 
           {error && (
-            <div className="mt-5 p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-red-800 text-xs sm:text-sm">
+            <div className="mt-5 p-4 rounded-2xl bg-red-50/90 border border-red-200 flex items-start gap-3 text-red-800 text-xs sm:text-sm">
               <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600 mt-0.5" />
               <div>
                 <p className="font-semibold">Authentication Error</p>
-                <p className="mt-0.5">{error}</p>
+                <p className="mt-0.5 text-xs leading-relaxed">{error}</p>
               </div>
             </div>
           )}
@@ -91,10 +91,10 @@ export default function AdminLoginPage() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="Enter administrator or faculty email"
+                  placeholder="admin@gdgu.org"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0d2137] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-300/90 bg-slate-50/50 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a192f] focus:border-transparent transition-all"
                   required
                 />
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -103,7 +103,7 @@ export default function AdminLoginPage() {
 
             <div>
               <label htmlFor="admin-passcode" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Passcode
+                Administrator Passcode
               </label>
               <div className="relative">
                 <input
@@ -114,7 +114,7 @@ export default function AdminLoginPage() {
                   placeholder="••••••••"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0d2137] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-300/90 bg-slate-50/50 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a192f] focus:border-transparent transition-all font-mono"
                   required
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -124,20 +124,20 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading || !email || !passcode}
-              className="w-full py-3 px-4 rounded-xl bg-[#0d2137] hover:bg-[#163456] text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors shadow-sm disabled:opacity-50 mt-2"
+              className="w-full py-3.5 px-4 rounded-2xl bg-[#0a192f] hover:bg-[#132c4a] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all tactile-btn shadow-card hover:shadow-elevated disabled:opacity-50 mt-3"
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>{loading ? "Verifying Permissions..." : "Verify Access & Enter Admin Dashboard"}</span>
+              <ShieldCheck className="w-4 h-4 text-[#c59b27]" />
+              <span>{loading ? "Verifying Credentials..." : "Enter Admin Dashboard"}</span>
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-center text-xs text-slate-500">
+          <div className="mt-7 pt-4 border-t border-slate-100 flex items-center justify-center text-xs text-slate-500">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#0d2137] transition-colors group"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#0a192f] transition-colors group"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-              <span>Back to Login Selection</span>
+              <span>Return to Portal Overview</span>
             </Link>
           </div>
         </div>

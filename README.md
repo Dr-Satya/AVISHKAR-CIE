@@ -92,4 +92,19 @@ npx tsx scripts/test-concurrency.ts
 - Server-Sent Events (SSE) via `/api/events` automatically syncs Admin KPI counters, project seat ratios, and faculty student rosters without manual browser refresh.
 
 ### 5. Responsive Visual Design
-- Faithful recreation of the GDGU visual identity: deep navy headers (`#0d2137`), university gold accent bars (`#cda34f`), crisp white cards, and responsive table-to-card transitions for mobile viewports.
+- Faithful recreation of the GDGU visual identity: deep navy headers (`#0a192f`), university gold accent bars (`#c59b27`), crisp white cards, and responsive table-to-card transitions for mobile viewports.
+
+---
+
+## 👥 Authors & Code Attribution
+
+- **Director & Project Lead:** **Dr. Satya Prakash**  
+  *Avishkar Centre for Innovation and Entrepreneurship (CIE)*  
+  *School of Engineering and Sciences, G.D. Goenka University, Haryana*
+- **Architecture & Full-Stack Development:** **Potla Sri Sharan**
+- **Engineering & Development Contributor:** **Sarthak Singh**
+
+---
+
+## 📄 License
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.

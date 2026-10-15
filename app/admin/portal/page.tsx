@@ -11,6 +11,11 @@ import {
   LayoutDashboard,
   FolderKanban,
   ShieldCheck,
+  Database,
+  AlertTriangle,
+  KeyRound,
+  Loader2,
+  X,
 } from "lucide-react";
 
 // Modular Components
@@ -27,6 +32,7 @@ import { SpocManagementCard } from "@/components/admin/SpocManagementCard";
 import { FacultyAccessCard } from "@/components/admin/FacultyAccessCard";
 import { FacultyModals } from "@/components/admin/FacultyModals";
 import { YearRolloverModal } from "@/components/admin/YearRolloverModal";
+import { DataManagementModal, DatabaseDashboardCard } from "@/components/admin/DataManagementModal";
 import { TemplatesModal } from "@/components/admin/TemplatesModal";
 import { BulkImportModal } from "@/components/admin/BulkImportModal";
 import { SmsBroadcastCard } from "@/components/admin/SmsBroadcastCard";
@@ -73,9 +79,9 @@ export default function AdminPortalPage() {
   const [otherDeptInput, setOtherDeptInput] = useState("2");
   const [deptSaving, setDeptSaving] = useState(false);
 
-  // Active Dashboard Tab (Segregated into 4 Core Operations)
+  // Active Dashboard Tab (Segregated into 5 Core Operations)
   const [activeDashboardTab, setActiveDashboardTab] = useState<
-    "DASHBOARD" | "REGISTRATION" | "PROJECTS" | "FACULTY"
+    "DASHBOARD" | "REGISTRATION" | "PROJECTS" | "FACULTY" | "DATABASE"
   >("DASHBOARD");
 
   // Bulk Registration State
@@ -131,11 +137,16 @@ export default function AdminPortalPage() {
   const [spocsByDept, setSpocsByDept] = useState<Record<string, any[]>>({});
   const [selectedFacultyForDept, setSelectedFacultyForDept] = useState<Record<string, string>>({});
   const [spocUpdating, setSpocUpdating] = useState<string | null>(null);
+  const [selectedResetSpoc, setSelectedResetSpoc] = useState<{ dept: string; spoc: any } | null>(null);
+  const [spocNewPasscodeInput, setSpocNewPasscodeInput] = useState("spoc@gdgu2026");
+  const [spocResetPasscodeLoading, setSpocResetPasscodeLoading] = useState(false);
+  const [spocResetPasscodeMessage, setSpocResetPasscodeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Academic Year & Semester
   const [activeAcademicYear, setActiveAcademicYear] = useState("2025-2026");
   const [activeSemester, setActiveSemester] = useState(3);
   const [showYearModal, setShowYearModal] = useState(false);
+  const [showDataModal, setShowDataModal] = useState(false);
 
   // Template Download & Ingest Modal
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
@@ -152,6 +163,8 @@ export default function AdminPortalPage() {
     name: "",
     department: "School of Engineering & Sciences",
     programme: "",
+    phone: "",
+    phoneVerified: false,
     gender: "Male",
     internalMarks: 32,
     externalMarks: 48,
@@ -575,6 +588,20 @@ export default function AdminPortalPage() {
       }
       setAdminName(data.user.name || "System Admin");
 
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get("tab")?.toUpperCase();
+        if (tabParam === "DATABASE" || tabParam === "DB") {
+          setActiveDashboardTab("DATABASE");
+        } else if (tabParam === "REGISTRATION" || tabParam === "STUDENTS") {
+          setActiveDashboardTab("REGISTRATION");
+        } else if (tabParam === "PROJECTS") {
+          setActiveDashboardTab("PROJECTS");
+        } else if (tabParam === "FACULTY") {
+          setActiveDashboardTab("FACULTY");
+        }
+      } catch {}
+
       await Promise.all([
         fetchDashboardData(),
         fetchConfig(),
@@ -754,6 +781,43 @@ export default function AdminPortalPage() {
     }
   };
 
+  const handleResetSpocPasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedResetSpoc || !spocNewPasscodeInput) return;
+    setSpocResetPasscodeLoading(true);
+    setSpocResetPasscodeMessage(null);
+    try {
+      const res = await fetch("/api/admin/spoc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "RESET_PASSCODE",
+          department: selectedResetSpoc.dept,
+          facultyId: selectedResetSpoc.spoc.facultyId,
+          spocPasscode: spocNewPasscodeInput.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSpocResetPasscodeMessage({ type: "error", text: data.error || "Failed to reset SPOC passcode." });
+      } else {
+        setSpocResetPasscodeMessage({
+          type: "success",
+          text: `SPOC passcode for ${selectedResetSpoc.dept} updated successfully!`,
+        });
+        setTimeout(() => {
+          setSelectedResetSpoc(null);
+          setSpocNewPasscodeInput("spoc@gdgu2026");
+          setSpocResetPasscodeMessage(null);
+        }, 1300);
+      }
+    } catch {
+      setSpocResetPasscodeMessage({ type: "error", text: "Network error while updating SPOC passcode." });
+    } finally {
+      setSpocResetPasscodeLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -797,40 +861,45 @@ export default function AdminPortalPage() {
   return (
     <>
       <Header role="Admin" />
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-6">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
         {/* Top Header Card */}
-        <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-card flex items-center justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0d2137]">
-              Admin Dashboard
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#0a192f]/5 text-[#0a192f]">
+                Central Console
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#09131f]">
+              Administrator Workspace
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{adminName}</p>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">{adminName}</p>
           </div>
           <button
             type="button"
             onClick={handleLogout}
-            className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+            className="tactile-btn text-xs font-semibold px-4 py-2.5 rounded-2xl border border-slate-300/90 text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all shadow-subtle"
           >
             Log out
           </button>
         </div>
 
-        {/* Four-Part Segregated Navigation Switcher */}
-        <div className="bg-white rounded-2xl p-2 border border-slate-200/80 shadow-sm flex items-center gap-2 overflow-x-auto">
+        {/* Four-Part Segregated Navigation Switcher — Apple HIG Segmented Control */}
+        <div className="bg-slate-200/60 p-1.5 rounded-3xl border border-slate-300/60 shadow-inner flex items-center gap-1.5 overflow-x-auto">
           {/* Part 1: Dashboard */}
           <button
             type="button"
             onClick={() => setActiveDashboardTab("DASHBOARD")}
-            className={`flex-1 min-w-[170px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[170px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "DASHBOARD"
-                ? "bg-[#0d2137] text-white shadow-md"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                ? "bg-[#0a192f] text-white shadow-elevated"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
             }`}
           >
-            <LayoutDashboard className="w-4 h-4 text-[#cda34f]" />
+            <LayoutDashboard className="w-4 h-4 text-[#c59b27]" />
             <span>Dashboard</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-200 font-bold ml-1">
-              {kpi.totalRegistrations} Registered
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums bg-white/15 text-slate-100 font-bold ml-1">
+              {kpi.totalRegistrations}
             </span>
           </button>
 
@@ -838,17 +907,17 @@ export default function AdminPortalPage() {
           <button
             type="button"
             onClick={() => setActiveDashboardTab("REGISTRATION")}
-            className={`flex-1 min-w-[210px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[210px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "REGISTRATION"
-                ? "bg-[#0d2137] text-white shadow-md"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                ? "bg-[#0a192f] text-white shadow-elevated"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
             }`}
           >
-            <Users className="w-4 h-4 text-[#cda34f]" />
-            <span>Registrations & Students</span>
+            <Users className="w-4 h-4 text-[#c59b27]" />
+            <span>Rosters & Students</span>
             {unregisteredStats && unregisteredStats.totalUnregistered > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold ml-1">
-                {unregisteredStats.totalUnregistered} Unregistered
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums bg-amber-500 text-white font-bold ml-1">
+                {unregisteredStats.totalUnregistered}
               </span>
             )}
           </button>
@@ -857,16 +926,16 @@ export default function AdminPortalPage() {
           <button
             type="button"
             onClick={() => setActiveDashboardTab("PROJECTS")}
-            className={`flex-1 min-w-[190px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[190px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "PROJECTS"
-                ? "bg-[#0d2137] text-white shadow-md"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                ? "bg-[#0a192f] text-white shadow-elevated"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
             }`}
           >
-            <FolderKanban className="w-4 h-4 text-[#cda34f]" />
+            <FolderKanban className="w-4 h-4 text-[#c59b27]" />
             <span>Projects & Submissions</span>
             {completionStats && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-600 text-white font-bold ml-1">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums bg-emerald-600 text-white font-bold ml-1">
                 {completionStats.completionPercentage}% Done
               </span>
             )}
@@ -876,16 +945,33 @@ export default function AdminPortalPage() {
           <button
             type="button"
             onClick={() => setActiveDashboardTab("FACULTY")}
-            className={`flex-1 min-w-[190px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[170px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "FACULTY"
-                ? "bg-[#0d2137] text-white shadow-md"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                ? "bg-[#0a192f] text-white shadow-elevated"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
             }`}
           >
-            <ShieldCheck className="w-4 h-4 text-[#cda34f]" />
+            <ShieldCheck className="w-4 h-4 text-[#c59b27]" />
             <span>Faculty & SPOCs</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700 font-bold ml-1">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums bg-white/20 text-slate-700 font-bold ml-1">
               {faculties.length}
+            </span>
+          </button>
+
+          {/* Part 5: Central Database Console */}
+          <button
+            type="button"
+            onClick={() => setActiveDashboardTab("DATABASE")}
+            className={`flex-1 min-w-[170px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
+              activeDashboardTab === "DATABASE"
+                ? "bg-[#0a192f] text-white shadow-elevated"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
+            }`}
+          >
+            <Database className="w-4 h-4 text-[#c59b27]" />
+            <span>Database</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums bg-[#c59b27]/20 text-[#c59b27] font-bold ml-1 border border-[#c59b27]/30">
+              Master
             </span>
           </button>
         </div>
@@ -907,6 +993,7 @@ export default function AdminPortalPage() {
               onOpenImport={() => setShowImportModal(true)}
               onOpenRollover={() => setShowYearModal(true)}
               onDownloadCohorts={handleDownloadCohorts}
+              onOpenDataManagement={() => setShowDataModal(true)}
             />
 
             {/* Global Configuration */}
@@ -1003,6 +1090,8 @@ export default function AdminPortalPage() {
                   name: st.name,
                   department: st.department,
                   programme: st.program || "",
+                  phone: st.phone || "",
+                  phoneVerified: Boolean(st.phoneVerified),
                   gender: st.gender || "Male",
                   internalMarks: st.internals ?? 32,
                   externalMarks: st.externals ?? 48,
@@ -1022,6 +1111,8 @@ export default function AdminPortalPage() {
                   name: st.name,
                   department: st.department,
                   programme: st.program || "",
+                  phone: st.phone || "",
+                  phoneVerified: Boolean(st.phoneVerified),
                   gender: st.gender || "Male",
                   internalMarks: st.internals ?? 32,
                   externalMarks: st.externals ?? 48,
@@ -1090,6 +1181,12 @@ export default function AdminPortalPage() {
               spocUpdating={spocUpdating}
               onAssignSpoc={handleAssignSpoc}
               onRevokeSpoc={handleRevokeSpoc}
+              onResetSpocPasscode={(dept, spoc) => {
+                const slug = dept.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
+                setSelectedResetSpoc({ dept, spoc });
+                setSpocNewPasscodeInput(`spoc@${slug}2026`);
+                setSpocResetPasscodeMessage(null);
+              }}
             />
 
             {/* Faculty Access Management */}
@@ -1150,6 +1247,142 @@ export default function AdminPortalPage() {
           </div>
         )}
 
+        {/* ======================================================== */}
+        {/* PART 5: DATABASE (Central Database Console, Mappings, CRUD) */}
+        {/* ======================================================== */}
+        {activeDashboardTab === "DATABASE" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <DatabaseDashboardCard
+              activeAcademicYear={activeAcademicYear}
+              activeSemester={activeSemester}
+              onOpenDataModal={() => setShowDataModal(true)}
+              onAddFaculty={() => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: "",
+                  name: "",
+                  email: "",
+                  department: "School of Engineering & Sciences",
+                  phone: "",
+                  passcode: "gdgu@2026",
+                  isAdmin: false,
+                  isSpoc: false,
+                  spocDepartment: "",
+                });
+                setShowAddFacultyModal(true);
+              }}
+              onEditFaculty={(f) => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: f.id,
+                  name: f.name,
+                  email: f.email,
+                  department: f.department,
+                  phone: f.phone || "",
+                  passcode: "",
+                  isAdmin: f.isAdmin,
+                  isSpoc: f.isSpoc,
+                  spocDepartment: f.spocDepartment || "",
+                });
+                setShowEditFacultyModal(true);
+              }}
+              onDeleteFaculty={(f) => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: f.id,
+                  name: f.name,
+                  email: f.email,
+                  department: f.department,
+                  phone: f.phone || "",
+                  passcode: "",
+                  isAdmin: f.isAdmin,
+                  isSpoc: f.isSpoc,
+                  spocDepartment: f.spocDepartment || "",
+                });
+                setShowDeleteFacultyModal(true);
+              }}
+              onResetFacultyPasscode={(f) => {
+                setSelectedResetFaculty(f);
+                setNewPasscodeInput("gdgu@2026");
+                setResetPasscodeMessage(null);
+              }}
+              onToggleFacultyAdmin={handleToggleFacultyAdmin}
+              onAddStudent={() => {
+                setStudentCrudError(null);
+                setStudentForm({
+                  id: "",
+                  enrollmentNumber: "",
+                  name: "",
+                  department: "School of Engineering & Sciences",
+                  programme: "B.Tech CSE",
+                  gender: "Male",
+                  internalMarks: 32,
+                  externalMarks: 48,
+                  attendancePercent: 85,
+                  semester: activeSemester,
+                  batch: "2025",
+                  admissionNumber: "",
+                  academicYear: activeAcademicYear,
+                });
+                setShowAddStudentModal(true);
+              }}
+              onEditStudent={(st) => {
+                setStudentCrudError(null);
+                setStudentForm({
+                  id: st.id,
+                  enrollmentNumber: st.enrollment,
+                  name: st.name,
+                  department: st.department,
+                  programme: st.program || "",
+                  phone: st.phone || "",
+                  phoneVerified: Boolean(st.phoneVerified),
+                  gender: st.gender || "Male",
+                  internalMarks: st.internals ?? 32,
+                  externalMarks: st.externals ?? 48,
+                  attendancePercent: st.attendance ?? 85,
+                  semester: st.sem || 3,
+                  batch: st.batch || "2025",
+                  admissionNumber: st.admissionNumber || "",
+                  academicYear: st.academicYear || activeAcademicYear,
+                });
+                setShowEditStudentModal(true);
+              }}
+              onDeleteStudent={(st) => {
+                setStudentCrudError(null);
+                setStudentForm({
+                  id: st.id,
+                  enrollmentNumber: st.enrollment,
+                  name: st.name,
+                  department: st.department,
+                  programme: st.program || "",
+                  phone: st.phone || "",
+                  phoneVerified: Boolean(st.phoneVerified),
+                  gender: st.gender || "Male",
+                  internalMarks: st.internals ?? 32,
+                  externalMarks: st.externals ?? 48,
+                  attendancePercent: st.attendance ?? 85,
+                  semester: st.sem || 3,
+                  batch: st.batch || "2025",
+                  admissionNumber: st.admissionNumber || "",
+                  academicYear: st.academicYear || activeAcademicYear,
+                });
+                setShowDeleteStudentModal(true);
+              }}
+              onDownloadCohorts={handleDownloadCohorts}
+              onDataChanged={async () => {
+                await Promise.all([
+                  fetchStudents(1),
+                  fetchProjects(1),
+                  fetchRegistrations(1),
+                  fetchFacultyAccess(),
+                  fetchDashboardData(),
+                  fetchConfig(),
+                ]);
+              }}
+            />
+          </div>
+        )}
+
         {/* Modals */}
         <StudentModals
           showAddModal={showAddStudentModal}
@@ -1191,6 +1424,121 @@ export default function AdminPortalPage() {
           onResetPasscode={handleResetFacultyPasscode}
         />
 
+        {/* SPOC Password Reset Modal */}
+        {selectedResetSpoc && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full border border-slate-200 shadow-2xl relative">
+              <div className="w-10 h-1 bg-[#cda34f] rounded-full mb-3" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-[#0d2137]">Change SPOC Passcode</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {selectedResetSpoc.dept} · {selectedResetSpoc.spoc.facultyName && selectedResetSpoc.spoc.facultyName !== "N/A" ? selectedResetSpoc.spoc.facultyName : selectedResetSpoc.spoc.name}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedResetSpoc(null);
+                    setSpocResetPasscodeMessage(null);
+                  }}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Warning Alert */}
+              <div className="mt-3 p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-start gap-2.5 shadow-sm">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-amber-950">Security Notice &amp; Warning:</p>
+                  <p className="text-[11px] leading-relaxed text-amber-900">
+                    Changing this password will immediately overwrite active SPOC credentials for <strong>{selectedResetSpoc.dept}</strong> ({selectedResetSpoc.spoc.email}). Any active reviewer sessions will be disconnected.
+                  </p>
+                </div>
+              </div>
+
+              {spocResetPasscodeMessage && (
+                <div
+                  className={`mt-4 p-3 rounded-xl text-xs font-medium border ${
+                    spocResetPasscodeMessage.type === "success"
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                      : "bg-red-50 text-red-800 border-red-200"
+                  }`}
+                >
+                  {spocResetPasscodeMessage.text}
+                </div>
+              )}
+
+              <form onSubmit={handleResetSpocPasscode} className="mt-4 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    New SPOC Passcode *
+                  </label>
+                  <input
+                    type="text"
+                    value={spocNewPasscodeInput}
+                    onChange={(e) => setSpocNewPasscodeInput(e.target.value)}
+                    placeholder="Enter new passcode (min 6 chars)"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSpocNewPasscodeInput("spoc@gdgu2026")}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                  >
+                    spoc@gdgu2026
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const slug = selectedResetSpoc.dept.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
+                      setSpocNewPasscodeInput(`spoc@${slug}2026`);
+                    }}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                  >
+                    Dept Default
+                  </button>
+                </div>
+
+                <div className="mt-5 flex gap-2 justify-end pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    disabled={spocResetPasscodeLoading}
+                    onClick={() => {
+                      setSelectedResetSpoc(null);
+                      setSpocResetPasscodeMessage(null);
+                    }}
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={spocResetPasscodeLoading || !spocNewPasscodeInput || spocNewPasscodeInput.length < 6}
+                    className="px-4 py-2 rounded-xl bg-[#0d2137] text-white text-xs font-semibold hover:bg-[#163456] transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                  >
+                    {spocResetPasscodeLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <span>Save SPOC Passcode</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         <YearRolloverModal
           isOpen={showYearModal}
           onClose={() => setShowYearModal(false)}
@@ -1199,6 +1547,22 @@ export default function AdminPortalPage() {
             setConfigMessage(msg);
             await Promise.all([fetchConfig(), fetchDashboardData(), fetchStudents(1), fetchProjects(1)]);
             setTimeout(() => setConfigMessage(null), 5000);
+          }}
+        />
+
+        <DataManagementModal
+          isOpen={showDataModal}
+          onClose={() => setShowDataModal(false)}
+          activeAcademicYear={activeAcademicYear}
+          onDataChanged={async () => {
+            await Promise.all([
+              fetchStudents(1),
+              fetchProjects(1),
+              fetchRegistrations(1),
+              fetchFacultyAccess(),
+              fetchDashboardData(),
+              fetchConfig(),
+            ]);
           }}
         />
 

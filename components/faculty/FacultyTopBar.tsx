@@ -1,17 +1,16 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
-import { KeyRound, ShieldCheck, ExternalLink } from "lucide-react";
+import { KeyRound, ShieldCheck, ExternalLink, Phone, AlertCircle } from "lucide-react";
 import { FacultyData } from "@/types/faculty";
 
 interface FacultyTopBarProps {
   faculty: FacultyData;
   onOpenPasscode: () => void;
+  onOpenPhoneModal: () => void;
   onLogout: () => void;
 }
 
-export function FacultyTopBar({ faculty, onOpenPasscode, onLogout }: FacultyTopBarProps) {
+export function FacultyTopBar({ faculty, onOpenPasscode, onOpenPhoneModal, onLogout }: FacultyTopBarProps) {
   return (
     <>
       {/* Top Header Card */}
@@ -32,9 +31,34 @@ export function FacultyTopBar({ faculty, onOpenPasscode, onLogout }: FacultyTopB
               </span>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {faculty.department} · {faculty.email}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-slate-500 mt-1.5">
+            <span>{faculty.department}</span>
+            <span>·</span>
+            <span>{faculty.email}</span>
+            <span>·</span>
+            {faculty.phone ? (
+              <button
+                type="button"
+                onClick={onOpenPhoneModal}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 font-mono text-xs font-semibold transition-colors"
+                title="Click to update contact mobile number"
+              >
+                <Phone className="w-3 h-3 text-emerald-600" />
+                <span>+91 {faculty.phone}</span>
+                <span className="text-[10px] text-emerald-600 font-normal underline ml-0.5">Edit</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenPhoneModal}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 text-xs font-bold transition-colors animate-pulse"
+                title="Click to verify contact mobile number"
+              >
+                <AlertCircle className="w-3 h-3 text-amber-600" />
+                <span>Verify Mobile Number</span>
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {faculty.isSpoc && (
@@ -120,6 +144,33 @@ export function FacultyTopBar({ faculty, onOpenPasscode, onLogout }: FacultyTopB
             <span>Launch SPOC Dashboard</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
+        </div>
+      )}
+
+      {/* Missing Contact Number Alert Banner */}
+      {!faculty.phone && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
+              <Phone className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-amber-950">
+                Contact Number Verification Required
+              </p>
+              <p className="text-xs text-amber-800">
+                Your official contact number is missing. Students allocated to your IDP projects need your mobile number to communicate with you.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenPhoneModal}
+            className="text-xs font-bold px-4 py-2 rounded-xl bg-[#0d2137] hover:bg-[#163456] text-white transition-colors flex items-center gap-1.5 self-start sm:self-center shadow-sm flex-shrink-0"
+          >
+            <Phone className="w-3.5 h-3.5 text-[#cda34f]" />
+            <span>Verify Mobile Number</span>
+          </button>
         </div>
       )}
     </>

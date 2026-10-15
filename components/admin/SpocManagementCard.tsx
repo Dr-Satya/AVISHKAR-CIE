@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, KeyRound } from "lucide-react";
 import { FacultyRecord } from "@/types/admin";
 
 interface SpocManagementCardProps {
@@ -12,6 +12,7 @@ interface SpocManagementCardProps {
   spocUpdating: string | null;
   onAssignSpoc: (dept: string, facultyId: string) => void;
   onRevokeSpoc: (dept: string, facultyId: string) => void;
+  onResetSpocPasscode: (dept: string, spoc: any) => void;
 }
 
 export function SpocManagementCard({
@@ -23,6 +24,7 @@ export function SpocManagementCard({
   spocUpdating,
   onAssignSpoc,
   onRevokeSpoc,
+  onResetSpocPasscode,
 }: SpocManagementCardProps) {
   return (
     <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm relative">
@@ -83,14 +85,26 @@ export function SpocManagementCard({
                             <span className="font-semibold text-slate-900 line-clamp-1">
                               {s.facultyName && s.facultyName !== "N/A" ? s.facultyName : s.name}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => onRevokeSpoc(dept, s.facultyId || s.id)}
-                              disabled={spocUpdating === dept}
-                              className="text-[10px] font-bold text-red-600 hover:text-red-700 hover:underline flex-shrink-0"
-                            >
-                              Revoke
-                            </button>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => onResetSpocPasscode(dept, s)}
+                                disabled={spocUpdating === dept}
+                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0d2137]/10 text-[#0d2137] hover:bg-[#0d2137] hover:text-white transition-colors flex items-center gap-1 shadow-xs"
+                                title="Change or reset SPOC password"
+                              >
+                                <KeyRound className="w-3 h-3 text-[#cda34f]" />
+                                <span>Password</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onRevokeSpoc(dept, s.facultyId || s.id)}
+                                disabled={spocUpdating === dept}
+                                className="text-[10px] font-bold text-red-600 hover:text-red-700 hover:underline"
+                              >
+                                Revoke
+                              </button>
+                            </div>
                           </div>
                           <div className="text-[11px] text-slate-500 flex items-center justify-between">
                             <span>Faculty Email:</span>

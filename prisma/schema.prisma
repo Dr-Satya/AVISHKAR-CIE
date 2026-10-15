@@ -120,6 +120,26 @@ model Project {
   spocReviewNote   String?
   reviewedAt       DateTime?
   reviewedById     String?
+
+  // Research Manuscript & Publication Tracking (Optional)
+  hasCommunicatedManuscript       Boolean   @default(false)
+  draftManuscriptUrl              String?
+  draftManuscriptFileName         String?
+  journalName                     String?
+  avishkarAffiliationCommunicated Boolean   @default(false)
+
+  isManuscriptPublished           Boolean   @default(false)
+  publicationDoi                  String?
+  publishedManuscriptUrl          String?
+  publishedManuscriptFileName     String?
+  avishkarAffiliationPublished    Boolean   @default(false)
+
+  manuscriptPlagiarismUrl         String?
+  manuscriptPlagiarismFileName    String?
+  manuscriptSimilarityPercent     Float?
+  manuscriptAiPercent             Float?
+  manuscriptSubmittedAt           DateTime?
+
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   faculty          Faculty           @relation(fields: [facultyId], references: [id], onDelete: Cascade)

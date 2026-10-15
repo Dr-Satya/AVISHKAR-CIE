@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const { action = "SEND", enrollmentNumber, otp } = await req.json();
+    const { action = "SEND", enrollmentNumber, otp, phone } = await req.json();
 
     if (!enrollmentNumber || enrollmentNumber.trim().length === 0) {
       return NextResponse.json({ error: "Enrollment number is required." }, { status: 400 });
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     // Verify student exists in system
     const student = await prisma.student.findUnique({
       where: { enrollmentNumber: cleanEnroll },
-      select: { id: true, enrollmentNumber: true, name: true, department: true },
+      select: { id: true, enrollmentNumber: true, name: true, department: true, phone: true },
     });
 
     if (!student) {
@@ -29,10 +29,27 @@ export async function POST(req: NextRequest) {
 
     // 1. ACTION: SEND OTP
     if (action === "SEND") {
-      const result = await sendStudentOtp(cleanEnroll);
+      const targetPhone = phone
+        ? phone.replace(/[^\d]/g, "").slice(-10)
+        : student.phone
+        ? student.phone.replace(/[^\d]/g, "").slice(-10)
+        : "";
+
+      if (!targetPhone || targetPhone.length < 10) {
+        return NextResponse.json(
+          {
+            error: "Please enter your 10-digit mobile number to receive the verification OTP.",
+            phoneRequired: true,
+          },
+          { status: 400 }
+        );
+      }
+
+      const result = await sendStudentOtp(cleanEnroll, targetPhone, student.id);
       return NextResponse.json({
         success: true,
-        message: "OTP sent to student registered phone number.",
+        message: result.message,
+        phoneRequired: false,
         debugOtp: result.debugOtp,
       });
     }
@@ -43,12 +60,35 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Please enter the 6-digit OTP code." }, { status: 400 });
       }
 
-      const isValid = verifyStudentOtp(cleanEnroll, otp);
+      const targetPhone = phone
+        ? phone.replace(/[^\d]/g, "").slice(-10)
+        : student.phone
+        ? student.phone.replace(/[^\d]/g, "").slice(-10)
+        : undefined;
+
+      const isValid = await verifyStudentOtp(cleanEnroll, otp, targetPhone);
       if (!isValid) {
         return NextResponse.json(
           { error: "Invalid or expired OTP code. Please request a new one." },
           { status: 400 }
         );
+      }
+
+      // Update student phone verification status
+      if (targetPhone && targetPhone.length === 10) {
+        await prisma.student.update({
+          where: { id: student.id },
+          data: {
+            phone: targetPhone,
+            phoneVerified: true,
+            phoneConsentAt: new Date(),
+          },
+        });
+      } else {
+        await prisma.student.update({
+          where: { id: student.id },
+          data: { phoneVerified: true },
+        });
       }
 
       return NextResponse.json({

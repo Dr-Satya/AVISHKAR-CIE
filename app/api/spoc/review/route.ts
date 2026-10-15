@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { broadcastEvent } from "@/lib/events";
+import { handleApiError } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -160,9 +161,118 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("SPOC review error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to process review." },
-      { status: 500 }
-    );
+    return handleApiError(error, "Failed to process review.");
   }
 }
+
+// SPOC EDIT PROJECT PROPOSAL DETAILS
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    let authorizedDepartment: string | null = null;
+    if (session.role === "SPOC") {
+      const spoc = await prisma.spoc.findUnique({ where: { id: session.id } });
+      authorizedDepartment = spoc?.department || null;
+      if (!authorizedDepartment) {
+        const faculty = await prisma.faculty.findUnique({ where: { id: session.id } });
+        if (faculty?.isSpoc) authorizedDepartment = faculty.spocDepartment || faculty.department;
+      }
+    } else if (session.role === "FACULTY") {
+      const faculty = await prisma.faculty.findUnique({ where: { id: session.id } });
+      if (faculty?.isSpoc && faculty.spocDepartment) authorizedDepartment = faculty.spocDepartment;
+    } else if (session.role === "ADMIN") {
+      authorizedDepartment = "*";
+    }
+
+    if (!authorizedDepartment) {
+      return NextResponse.json({ error: "Forbidden. SPOC or Admin access required." }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const {
+      projectId,
+      title,
+      description,
+      category,
+      theme,
+      sdgMapping,
+      maxSeats,
+      sameDeptLimit,
+      otherDeptLimit,
+      submissionStatus,
+      spocReviewNote,
+    } = body;
+
+    if (!projectId) {
+      return NextResponse.json({ error: "Project ID is required." }, { status: 400 });
+    }
+
+    const existingProject = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!existingProject) {
+      return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    }
+
+    if (authorizedDepartment !== "*" && existingProject.department !== authorizedDepartment) {
+      return NextResponse.json({ error: "Forbidden. You can only edit projects in your assigned department." }, { status: 403 });
+    }
+
+    const updateData: any = {};
+    if (title) updateData.title = title.trim();
+    if (description !== undefined) updateData.description = description ? description.trim() : null;
+    if (category) updateData.category = category.trim();
+    if (theme) updateData.theme = theme.trim();
+    if (sdgMapping !== undefined) updateData.sdgMapping = sdgMapping ? sdgMapping.trim() : null;
+    if (maxSeats !== undefined) updateData.maxSeats = parseInt(maxSeats, 10);
+    if (sameDeptLimit !== undefined) updateData.sameDeptLimit = parseInt(sameDeptLimit, 10);
+    if (otherDeptLimit !== undefined) updateData.otherDeptLimit = parseInt(otherDeptLimit, 10);
+    if (submissionStatus) {
+      updateData.submissionStatus = submissionStatus;
+      updateData.reviewedAt = new Date();
+      updateData.reviewedById = session.id;
+    }
+    if (spocReviewNote !== undefined) updateData.spocReviewNote = spocReviewNote ? spocReviewNote.trim() : null;
+
+    const updated = await prisma.project.update({
+      where: { id: projectId },
+      data: updateData,
+      include: {
+        faculty: { select: { name: true, email: true, department: true } },
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor: session.name,
+        actorRole: session.role === "ADMIN" ? "ADMIN" : "SPOC",
+        action: "SPOC_EDIT_PROJECT_PROPOSAL",
+        target: `${updated.projectId}: ${updated.title}`,
+        metadata: JSON.stringify({
+          projectId: updated.id,
+          department: updated.department,
+          changes: updateData,
+        }),
+      },
+    });
+
+    broadcastEvent("submission.reviewed", {
+      projectId: updated.id,
+      department: updated.department,
+      status: updated.submissionStatus,
+      note: updated.spocReviewNote,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Project ${updated.projectId} updated successfully.`,
+      project: updated,
+    });
+  } catch (error: any) {
+    console.error("SPOC project edit error:", error);
+    return handleApiError(error, "Failed to update project.");
+  }
+}
+

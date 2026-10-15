@@ -106,15 +106,20 @@ export function AvailableProjectsList({
                       </a>
                     )}
 
-                    {proj.facultyPhone && (
+                    {proj.facultyPhone ? (
                       <a
                         href={`tel:${proj.facultyPhone}`}
                         className="text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1"
                         title="Call Faculty Mentor"
                       >
                         <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{proj.facultyPhone}</span>
+                        <span>+91 {proj.facultyPhone}</span>
                       </a>
+                    ) : (
+                      <span className="text-slate-400 flex items-center gap-1 text-[11px]" title="Contact number pending update">
+                        <Phone className="w-3.5 h-3.5 text-slate-300" />
+                        <span>Phone unlisted</span>
+                      </span>
                     )}
                   </div>
 

@@ -139,6 +139,9 @@ export default function SpocPortalPage() {
     eventSource.addEventListener("submission.reviewed", () => {
       fetchSpocData(department);
     });
+    eventSource.addEventListener("submission.created", () => {
+      fetchSpocData(department);
+    });
 
     return () => {
       eventSource.close();
@@ -209,13 +212,23 @@ export default function SpocPortalPage() {
         Phone: f.phone || "N/A",
         "Assigned Projects Count": f.projectsCount,
         "Total Mentored Students": f.studentsCount,
+        "Marks Status":
+          f.marksStatus === "SHARED"
+            ? "Fully Shared"
+            : f.marksStatus === "PARTIAL"
+            ? "Partially Shared"
+            : f.marksStatus === "NOT_SHARED"
+            ? "Pending Submission"
+            : "No Students",
+        "Students With Marks": f.marksSharedCount,
+        "Students Pending Marks": f.marksPendingCount,
         "Project Codes": f.projects.map((p) => p.projectId).join(", "),
       }));
       const title = `SPOC_${safeDept}_Faculty`;
       if (format === "csv") exportToCsv(rows, title);
       else if (format === "xlsx") exportToXlsx(rows, title, "Faculty");
       else if (format === "pdf")
-        exportToPdf(rows, `Department Faculty Roster · ${department}`);
+        exportToPdf(rows, `Department Faculty Roster & Marks Status · ${department}`);
     } else if (type === "PROJECTS") {
       if (projects.length === 0) {
         alert("No project data available to export.");
@@ -400,6 +413,7 @@ export default function SpocPortalPage() {
           <SpocProjectVerificationTab
             projects={projects}
             onOpenReview={handleOpenReview}
+            onRefresh={() => fetchSpocData(department)}
           />
         )}
 

@@ -16,11 +16,15 @@ export interface StudentInProject {
   department: string;
   programme?: string;
   phone?: string | null;
+  phoneVerified?: boolean;
   email?: string | null;
   semester: number;
   batch: string;
   registeredAt: string;
   status: string;
+  internalMarks?: number | null;
+  externalMarks?: number | null;
+  attendancePercent?: number | null;
 }
 
 export interface ArtifactData {
@@ -61,6 +65,22 @@ export interface AssignedProject {
   submissionStatus: string;
   spocReviewNote?: string;
   reviewedAt?: string;
+  // Research Manuscript & Publication (Optional)
+  hasCommunicatedManuscript?: boolean;
+  draftManuscriptUrl?: string | null;
+  draftManuscriptFileName?: string | null;
+  journalName?: string | null;
+  avishkarAffiliationCommunicated?: boolean;
+  isManuscriptPublished?: boolean;
+  publicationDoi?: string | null;
+  publishedManuscriptUrl?: string | null;
+  publishedManuscriptFileName?: string | null;
+  avishkarAffiliationPublished?: boolean;
+  manuscriptPlagiarismUrl?: string | null;
+  manuscriptPlagiarismFileName?: string | null;
+  manuscriptSimilarityPercent?: number | null;
+  manuscriptAiPercent?: number | null;
+  manuscriptSubmittedAt?: string | null;
   artifacts?: ArtifactData[];
   students: StudentInProject[];
 }

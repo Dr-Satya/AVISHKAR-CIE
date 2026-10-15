@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, clearSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendStudentOtp, verifyStudentOtp } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,9 @@ export async function GET() {
     ]);
 
     if (!student) {
-      return NextResponse.json({ authenticated: false }, { status: 401 });
+      const response = NextResponse.json({ authenticated: false }, { status: 401 });
+      clearSessionCookie(response);
+      return response;
     }
 
     return NextResponse.json({
@@ -65,6 +68,7 @@ export async function GET() {
         name: faculty?.name,
         email: faculty?.email,
         department: faculty?.department,
+        phone: faculty?.phone || null,
         isAdmin: faculty?.isAdmin,
         isSpoc: faculty?.isSpoc || false,
         spocDepartment: faculty?.spocDepartment || null,
@@ -149,36 +153,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ACTION 1: SEND_OTP (When SMS OTP is ON)
+  // ACTION 1: SEND_OTP
   if (action === "SEND_OTP") {
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Delete older OTPs for this student
-    await prisma.studentPhoneOtp.deleteMany({
-      where: { studentId: student.id },
-    });
-
-    await prisma.studentPhoneOtp.create({
-      data: {
-        studentId: student.id,
-        phone: cleanPhone,
-        otp: generatedOtp,
-        expiresAt,
-      },
-    });
-
-    console.log(`[SMS 2FA OTP] Sent to student ${student.enrollmentNumber} (${cleanPhone}): ${generatedOtp}`);
-
+    const result = await sendStudentOtp(student.enrollmentNumber, cleanPhone, student.id);
     return NextResponse.json({
       success: true,
-      message: `OTP sent successfully to +91 ${cleanPhone}.`,
-      // For local testing & environments without active carrier gateway
-      devOtp: generatedOtp,
+      message: result.message,
+      devOtp: result.debugOtp,
     });
   }
 
-  // ACTION 2: VERIFY_OTP (When SMS OTP is ON)
+  // ACTION 2: VERIFY_OTP
   if (action === "VERIFY_OTP") {
     if (!consent) {
       return NextResponse.json(
@@ -195,17 +180,9 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanOtp = otp.trim();
-    const otpRecord = await prisma.studentPhoneOtp.findFirst({
-      where: {
-        studentId: student.id,
-        phone: cleanPhone,
-        otp: cleanOtp,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const isValid = await verifyStudentOtp(student.enrollmentNumber, cleanOtp, cleanPhone);
 
-    if (!otpRecord) {
+    if (!isValid) {
       return NextResponse.json(
         { error: "Invalid or expired OTP. Please request a new code." },
         { status: 400 }
@@ -219,11 +196,6 @@ export async function POST(req: NextRequest) {
         phoneVerified: true,
         phoneConsentAt: new Date(),
       },
-    });
-
-    // Cleanup OTPs
-    await prisma.studentPhoneOtp.deleteMany({
-      where: { studentId: student.id },
     });
 
     return NextResponse.json({

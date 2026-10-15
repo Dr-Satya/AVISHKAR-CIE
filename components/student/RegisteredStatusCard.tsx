@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Mail, Phone, User, CheckCircle2 } from "lucide-react";
+import { Mail, Phone, User, CheckCircle2, Lock, ShieldCheck } from "lucide-react";
 import { StudentData } from "@/types/student";
 
 interface RegisteredStatusCardProps {
@@ -15,10 +15,18 @@ export function RegisteredStatusCard({ registration }: RegisteredStatusCardProps
     <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm relative space-y-6">
       <div className="flex items-center justify-between">
         <div className="w-10 h-1 bg-[#cda34f] rounded-full" />
-        <span className="text-xs font-bold px-3 py-1 rounded-full bg-green-100 text-green-800 border border-green-200 flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-          Registration Confirmed
+        <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
+          <Lock className="w-3.5 h-3.5 text-emerald-700" />
+          <span>Registration Confirmed · Locked</span>
         </span>
+      </div>
+
+      {/* Institutional Lock Notice */}
+      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5 text-xs text-slate-700">
+        <ShieldCheck className="w-4 h-4 text-[#0d2137] flex-shrink-0 mt-0.5" />
+        <div>
+          <span className="font-semibold text-slate-900">Allocation Locked:</span> Your project assignment is permanently recorded in the university IDP database. Reallocations or transfers can only be performed by the University Administrator.
+        </div>
       </div>
 
       <div>
@@ -62,15 +70,23 @@ export function RegisteredStatusCard({ registration }: RegisteredStatusCardProps
               </a>
             )}
 
-            {faculty.phone && (
+            {faculty.phone ? (
               <a
                 href={`tel:${faculty.phone}`}
-                className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
                 title="Call Faculty Mentor"
               >
                 <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{faculty.phone}</span>
+                <span>+91 {faculty.phone}</span>
               </a>
+            ) : (
+              <span
+                className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-medium flex items-center gap-1.5"
+                title="Contact number pending faculty verification"
+              >
+                <Phone className="w-3.5 h-3.5 text-amber-500" />
+                <span>Mobile not shared yet</span>
+              </span>
             )}
           </div>
         </div>

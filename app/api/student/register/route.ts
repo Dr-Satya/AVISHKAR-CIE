@@ -19,9 +19,18 @@ export async function POST(req: NextRequest) {
 
     const student = await prisma.student.findUnique({
       where: { id: session.id },
-      select: { phoneVerified: true },
+      select: { phoneVerified: true, registration: true },
     });
-    if (!student?.phoneVerified) {
+    if (!student) {
+      return NextResponse.json({ error: "Student record not found." }, { status: 404 });
+    }
+    if (student.registration) {
+      return NextResponse.json(
+        { error: "Your project registration is officially locked in. Changes or reassignments can only be performed by the University Administrator." },
+        { status: 403 }
+      );
+    }
+    if (!student.phoneVerified) {
       return NextResponse.json(
         { error: "Please verify and confirm your mobile number before registering for a project." },
         { status: 400 }

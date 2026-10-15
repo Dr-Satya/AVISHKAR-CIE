@@ -2,6 +2,22 @@
   "name": "gdgu-idp-portal",
   "version": "1.0.0",
   "private": true,
+  "description": "Inter-Disciplinary Project (IDP) Portal for G.D. Goenka University",
+  "author": "Dr. Satya Prakash, Potla Sri Sharan, Sarthak Singh",
+  "contributors": [
+    {
+      "name": "Dr. Satya Prakash",
+      "affiliation": "Avishkar Centre for Innovation and Entrepreneurship, School of Engineering and Sciences, G.D. Goenka University, Haryana"
+    },
+    {
+      "name": "Potla Sri Sharan",
+      "affiliation": "Avishkar Centre for Innovation and Entrepreneurship, G.D. Goenka University"
+    },
+    {
+      "name": "Sarthak Singh",
+      "affiliation": "Avishkar Centre for Innovation and Entrepreneurship, G.D. Goenka University"
+    }
+  ],
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

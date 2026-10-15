@@ -13,6 +13,29 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
+
+  if (searchParams.get("all") === "true") {
+    const allProjects = await prisma.project.findMany({
+      orderBy: { projectId: "asc" },
+      include: {
+        faculty: { select: { name: true, department: true } },
+        registrations: { select: { id: true } },
+      },
+    });
+
+    const simpleList = allProjects.map((p) => ({
+      id: p.id,
+      projectId: p.projectId,
+      title: p.title,
+      facultyName: p.faculty.name,
+      department: p.department,
+      seatsFilled: p.registrations.length,
+      maxSeats: p.maxSeats || 10,
+    }));
+
+    return NextResponse.json({ projects: simpleList });
+  }
+
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limit = Math.min(100, Math.max(10, parseInt(searchParams.get("limit") || "25", 10)));
   const search = searchParams.get("search")?.trim() || "";

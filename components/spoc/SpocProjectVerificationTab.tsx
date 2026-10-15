@@ -18,8 +18,11 @@ import {
   ExternalLink,
   Phone,
   Mail,
+  Edit3,
+  BookOpen,
 } from "lucide-react";
 import { ProjectData } from "@/types/spoc";
+import { SpocProjectEditModal } from "@/components/spoc/SpocProjectEditModal";
 
 interface SpocProjectVerificationTabProps {
   projects: ProjectData[];
@@ -29,16 +32,20 @@ interface SpocProjectVerificationTabProps {
     artifactId?: string,
     artifactTitle?: string
   ) => void;
+  onRefresh?: () => void;
 }
 
 export function SpocProjectVerificationTab({
   projects,
   onOpenReview,
+  onRefresh,
 }: SpocProjectVerificationTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [semesterFilter, setSemesterFilter] = useState<string>("ALL");
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
+  const [editProject, setEditProject] = useState<ProjectData | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const toggleExpand = (projectId: string) => {
     setExpandedProjects((prev) => ({
@@ -520,15 +527,27 @@ export function SpocProjectVerificationTab({
 
                     {/* Top Right Actions */}
                     <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
-                      {proj.artifacts.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setEditProject(proj);
+                          setShowEditModal(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+                        title="Edit project details, theme, limits, or review note"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Idea</span>
+                      </button>
+
+                      {proj.submissionStatus !== "APPROVED" ? (
                         <>
                           <button
                             onClick={() => onOpenReview(proj, "APPROVE")}
                             className="px-3.5 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
-                            title="Approve entire project application"
+                            title="Approve project application"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Approve Application</span>
+                            <span>Approve</span>
                           </button>
                           <button
                             onClick={() => onOpenReview(proj, "REJECT")}
@@ -536,9 +555,18 @@ export function SpocProjectVerificationTab({
                             title="Reject and request modifications from faculty mentor"
                           >
                             <XCircle className="w-3.5 h-3.5 text-red-600" />
-                            <span>Reject with Note</span>
+                            <span>Reject</span>
                           </button>
                         </>
+                      ) : (
+                        <button
+                          onClick={() => onOpenReview(proj, "REJECT")}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-700 border border-slate-200 text-xs font-medium flex items-center gap-1 transition-all"
+                          title="Reopen or request modifications"
+                        >
+                          <XCircle className="w-3.5 h-3.5 text-red-500" />
+                          <span>Reject</span>
+                        </button>
                       )}
 
                       <button
@@ -553,7 +581,7 @@ export function SpocProjectVerificationTab({
                         <span>
                           {isExpanded
                             ? "Hide Inspection"
-                            : `Inspect Documents (${proj.artifacts.length})`}
+                            : `Inspect (${proj.artifacts.length})`}
                         </span>
                         {isExpanded ? (
                           <ChevronUp className="w-3.5 h-3.5" />
@@ -678,6 +706,128 @@ export function SpocProjectVerificationTab({
                       </div>
                     </div>
 
+                    {/* RESEARCH MANUSCRIPT & PUBLICATION INSPECTION CARD */}
+                    {(proj.hasCommunicatedManuscript || proj.isManuscriptPublished) && (
+                      <div className="bg-white rounded-xl border border-slate-200/90 p-5 space-y-3.5 shadow-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="w-4 h-4 text-[#c59b27]" />
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                              Research Manuscript &amp; Publication Status (Avishkar CIE Affiliated)
+                            </h4>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            Academic Paper Linked
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                          {/* Communicated details */}
+                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700">Manuscript Communication:</span>
+                              {proj.hasCommunicatedManuscript ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-200">
+                                  Communicated / Under Review
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-medium text-slate-400">Not Communicated</span>
+                              )}
+                            </div>
+
+                            {proj.hasCommunicatedManuscript && (
+                              <>
+                                <p className="text-slate-700">
+                                  <span className="font-semibold text-slate-500">Journal:</span> {proj.journalName || "N/A"}
+                                </p>
+                                <div className="flex items-center gap-1.5 text-emerald-700 font-semibold text-[11px]">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Avishkar Affiliation: Confirmed ✓</span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 pt-1">
+                                  {proj.draftManuscriptUrl && (
+                                    <a
+                                      href={proj.draftManuscriptUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold flex items-center gap-1"
+                                    >
+                                      <Download className="w-3 h-3" />
+                                      <span>Draft Manuscript</span>
+                                    </a>
+                                  )}
+                                  {proj.manuscriptPlagiarismUrl && (
+                                    <a
+                                      href={proj.manuscriptPlagiarismUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-2.5 py-1 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-semibold flex items-center gap-1"
+                                      title="First 3-5 pages Turnitin summary"
+                                    >
+                                      <ShieldCheck className="w-3 h-3 text-amber-700" />
+                                      <span>Plagiarism Summary (3-5 pp)</span>
+                                    </a>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Published details */}
+                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700">Publication Status:</span>
+                              {proj.isManuscriptPublished ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  Published / In-Print
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-medium text-slate-400">Awaiting Publication</span>
+                              )}
+                            </div>
+
+                            {proj.isManuscriptPublished && (
+                              <>
+                                <p className="text-slate-700">
+                                  <span className="font-semibold text-slate-500">DOI:</span>{" "}
+                                  {proj.publicationDoi ? (
+                                    <a
+                                      href={proj.publicationDoi.startsWith("http") ? proj.publicationDoi : `https://doi.org/${proj.publicationDoi}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="font-mono text-blue-700 hover:underline inline-flex items-center gap-1 font-semibold"
+                                    >
+                                      <span>{proj.publicationDoi}</span>
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  ) : (
+                                    <span className="font-mono text-slate-500">Recorded</span>
+                                  )}
+                                </p>
+                                <div className="flex items-center gap-1.5 text-emerald-700 font-semibold text-[11px]">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Avishkar Affiliation: Confirmed ✓</span>
+                                </div>
+                                <div className="pt-1">
+                                  {proj.publishedManuscriptUrl && (
+                                    <a
+                                      href={proj.publishedManuscriptUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-800 text-[11px] font-semibold inline-flex items-center gap-1"
+                                    >
+                                      <Download className="w-3 h-3" />
+                                      <span>Published Paper (PDF)</span>
+                                    </a>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* SECTION 2: APPLICATION VERDICT & DECISION PANEL */}
                     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
@@ -772,6 +922,21 @@ export function SpocProjectVerificationTab({
             );
           })}
         </div>
+      )}
+
+      {/* SPOC PROJECT EDIT MODAL */}
+      {showEditModal && editProject && (
+        <SpocProjectEditModal
+          isOpen={showEditModal}
+          project={editProject}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditProject(null);
+          }}
+          onSuccess={() => {
+            if (onRefresh) onRefresh();
+          }}
+        />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Loader2, FileText, FileSpreadsheet, Download } from "lucide-react";
+import { Search, Loader2, FileText, FileSpreadsheet, Download, Layers, UserX } from "lucide-react";
 import { PaginationBar } from "@/components/common/PaginationBar";
 import { exportToCsv, exportToXlsx, exportToPdf, downloadIdpCohortsXlsx } from "@/lib/export";
 
@@ -13,6 +13,8 @@ interface RegistrationsTableCardProps {
   loadingRegistrations: boolean;
   onFetchRegistrations: (page: number, search?: string) => void;
   onDownloadCohorts?: () => void;
+  onReassignClick?: (registration: any) => void;
+  onUnmapClick?: (registration: any) => void;
 }
 
 export function RegistrationsTableCard({
@@ -25,6 +27,8 @@ export function RegistrationsTableCard({
   loadingRegistrations,
   onFetchRegistrations,
   onDownloadCohorts,
+  onReassignClick,
+  onUnmapClick,
 }: RegistrationsTableCardProps) {
   const [downloadingCohorts, setDownloadingCohorts] = useState(false);
 

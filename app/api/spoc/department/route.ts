@@ -75,8 +75,10 @@ export async function GET(req: NextRequest) {
             projectId: true,
             title: true,
             submissionStatus: true,
-            _count: {
-              select: { registrations: true },
+            registrations: {
+              include: {
+                student: true,
+              },
             },
           },
         },
@@ -139,7 +141,77 @@ export async function GET(req: NextRequest) {
 
     const students = Array.from(studentsMap.values());
 
-    // 4. Compute KPIs
+    // 4. Compute Faculty Marks Submission Metrics
+    let facultyMarksSharedCount = 0;
+    let facultyMarksPartialCount = 0;
+    let facultyMarksPendingCount = 0;
+
+    const formattedFaculty = facultyList.map((f) => {
+      const facultyStudentsMap = new Map<string, any>();
+      f.projects.forEach((proj) => {
+        proj.registrations.forEach((reg) => {
+          if (!facultyStudentsMap.has(reg.student.id)) {
+            const internalMarks = reg.student.internalMarks ?? 0;
+            const externalMarks = reg.student.externalMarks ?? 0;
+            const attendancePercent = reg.student.attendancePercent ?? 100;
+            const marksShared = internalMarks > 0 || externalMarks > 0;
+            facultyStudentsMap.set(reg.student.id, {
+              studentId: reg.student.id,
+              enrollmentNumber: reg.student.enrollmentNumber,
+              name: reg.student.name,
+              programme: reg.student.programme || undefined,
+              internalMarks,
+              externalMarks,
+              attendancePercent,
+              marksShared,
+              projectTitle: proj.title,
+              projectId: proj.projectId,
+            });
+          }
+        });
+      });
+
+      const studentsWithMarks = Array.from(facultyStudentsMap.values());
+      const studentsCount = studentsWithMarks.length;
+      const sharedCount = studentsWithMarks.filter((s) => s.marksShared).length;
+      const pendingCount = studentsCount - sharedCount;
+
+      let marksStatus: "SHARED" | "PARTIAL" | "NOT_SHARED" | "NO_STUDENTS" = "NO_STUDENTS";
+      if (studentsCount === 0) {
+        marksStatus = "NO_STUDENTS";
+      } else if (sharedCount === studentsCount) {
+        marksStatus = "SHARED";
+        facultyMarksSharedCount++;
+      } else if (sharedCount > 0) {
+        marksStatus = "PARTIAL";
+        facultyMarksPartialCount++;
+      } else {
+        marksStatus = "NOT_SHARED";
+        facultyMarksPendingCount++;
+      }
+
+      return {
+        id: f.id,
+        name: f.name,
+        email: f.email,
+        phone: f.phone,
+        isSpoc: f.isSpoc,
+        projectsCount: f.projects.length,
+        studentsCount,
+        marksStatus,
+        marksSharedCount: sharedCount,
+        marksPendingCount: pendingCount,
+        studentsWithMarks,
+        projects: f.projects.map((p) => ({
+          id: p.id,
+          projectId: p.projectId,
+          title: p.title,
+          submissionStatus: p.submissionStatus,
+        })),
+      };
+    });
+
+    // 5. Compute KPIs
     const totalProjects = projects.length;
     const totalFaculty = facultyList.length;
     const totalStudents = students.length;
@@ -166,17 +238,11 @@ export async function GET(req: NextRequest) {
         approvedCount,
         rejectedCount,
         notSubmittedCount,
+        facultyMarksSharedCount,
+        facultyMarksPartialCount,
+        facultyMarksPendingCount,
       },
-      faculty: facultyList.map((f) => ({
-        id: f.id,
-        name: f.name,
-        email: f.email,
-        phone: f.phone,
-        isSpoc: f.isSpoc,
-        projectsCount: f.projects.length,
-        studentsCount: f.projects.reduce((acc, curr) => acc + curr._count.registrations, 0),
-        projects: f.projects,
-      })),
+      faculty: formattedFaculty,
       projects: projects.map((p) => ({
         id: p.id,
         projectId: p.projectId,
@@ -189,6 +255,22 @@ export async function GET(req: NextRequest) {
         submissionStatus: p.submissionStatus,
         spocReviewNote: p.spocReviewNote,
         reviewedAt: p.reviewedAt?.toISOString() || null,
+        // Research Manuscript & Publication (Optional)
+        hasCommunicatedManuscript: p.hasCommunicatedManuscript,
+        draftManuscriptUrl: p.draftManuscriptUrl,
+        draftManuscriptFileName: p.draftManuscriptFileName,
+        journalName: p.journalName,
+        avishkarAffiliationCommunicated: p.avishkarAffiliationCommunicated,
+        isManuscriptPublished: p.isManuscriptPublished,
+        publicationDoi: p.publicationDoi,
+        publishedManuscriptUrl: p.publishedManuscriptUrl,
+        publishedManuscriptFileName: p.publishedManuscriptFileName,
+        avishkarAffiliationPublished: p.avishkarAffiliationPublished,
+        manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
+        manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
+        manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
+        manuscriptAiPercent: p.manuscriptAiPercent,
+        manuscriptSubmittedAt: p.manuscriptSubmittedAt?.toISOString() || null,
         faculty: p.faculty,
         studentsCount: p.registrations.length,
         artifacts: p.artifacts.map((a) => ({
