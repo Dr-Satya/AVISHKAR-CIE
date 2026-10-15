@@ -37,7 +37,6 @@ import { YearRolloverModal } from "@/components/admin/YearRolloverModal";
 import { DataManagementModal, DatabaseDashboardCard } from "@/components/admin/DataManagementModal";
 import { TemplatesModal } from "@/components/admin/TemplatesModal";
 import { BulkImportModal } from "@/components/admin/BulkImportModal";
-import { SmsBroadcastCard } from "@/components/admin/SmsBroadcastCard";
 import { downloadIdpCohortsXlsx } from "@/lib/export";
 
 // Types
@@ -1277,9 +1276,6 @@ export default function AdminPortalPage() {
               bulkResult={bulkResult}
               onRunBulkRegistration={handleRunBulkRegistration}
             />
-
-            {/* Targeted SMS Broadcast Center (Admin Only) */}
-            <SmsBroadcastCard schools={spocDepartments} />
           </div>
         )}
 

@@ -60,10 +60,10 @@ export function GlobalConfigCard({
             </div>
           </div>
 
-          {/* SMS OTP 2FA Toggle */}
+          {/* First-Time Login Mobile OTP Toggle (Students & Faculty) */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-2">
-              SMS 2FA OTP Mode
+              First-Time Login Mobile OTP
             </label>
             <div className="flex items-center gap-3">
               <button
@@ -86,7 +86,7 @@ export function GlobalConfigCard({
               </span>
             </div>
             <p className="text-[10px] text-slate-400 mt-1">
-              {config.smsOtpEnabled ? "SMS OTP verification" : "Double-entry + consent"}
+              {config.smsOtpEnabled ? "SMS OTP for students & faculty" : "Direct entry & consent (OTP off)"}
             </p>
           </div>
 
