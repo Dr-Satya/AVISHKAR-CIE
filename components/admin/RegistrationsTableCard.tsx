@@ -155,18 +155,21 @@ export function RegistrationsTableCard({
               <th className="py-2.5 px-3 font-semibold">FACULTY</th>
               <th className="py-2.5 px-3 font-semibold">STATUS</th>
               <th className="py-2.5 px-3 font-semibold">THEME</th>
+              {(onReassignClick || onUnmapClick) && (
+                <th className="py-2.5 px-3 font-semibold text-center">ACTIONS</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loadingRegistrations ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-slate-400">
+                <td colSpan={onReassignClick || onUnmapClick ? 9 : 8} className="py-8 text-center text-slate-400">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#0d2137]" />
                 </td>
               </tr>
             ) : registrations.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-6 text-center text-slate-400">
+                <td colSpan={onReassignClick || onUnmapClick ? 9 : 8} className="py-6 text-center text-slate-400">
                   No registrations found.
                 </td>
               </tr>
@@ -187,6 +190,55 @@ export function RegistrationsTableCard({
                     </span>
                   </td>
                   <td className="py-3 px-3 text-slate-600">{r.theme}</td>
+                  {(onReassignClick || onUnmapClick) && (
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {onReassignClick && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onReassignClick({
+                                id: r.studentId,
+                                studentId: r.studentId,
+                                enrollment: r.enrollment,
+                                name: r.studentName,
+                                department: r.department,
+                                projectCode: r.projectCode,
+                                projectId: r.projectId,
+                                registered: true,
+                                registrationId: r.id,
+                                facultyName: r.facultyName,
+                              })
+                            }
+                            className="p-1.5 rounded-lg text-slate-700 hover:text-[#0d2137] hover:bg-slate-200 transition-colors"
+                            title="Reassign Project Guide"
+                          >
+                            <Layers className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onUnmapClick && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUnmapClick({
+                                id: r.studentId,
+                                studentId: r.studentId,
+                                enrollment: r.enrollment,
+                                name: r.studentName,
+                                projectCode: r.projectCode,
+                                registrationId: r.id,
+                                facultyName: r.facultyName,
+                              })
+                            }
+                            className="p-1.5 rounded-lg text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors"
+                            title="Unmap / Free Allocation"
+                          >
+                            <UserX className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

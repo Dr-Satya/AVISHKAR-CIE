@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
           <div className="inline-flex items-center gap-2 mb-3">
             <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#0a192f]/5 text-[#0a192f] border border-[#0a192f]/10 uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#c59b27]" />
-              <span>G.D. Goenka University · Avishkar CIE</span>
+              <span>G D Goenka University · Avishkar CIE</span>
             </span>
             <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
               Session 2025–2026
@@ -37,7 +37,7 @@ export default function PrivacyPolicyPage() {
             Privacy Policy & Data Governance
           </h1>
           <p className="text-slate-600 mt-2.5 text-sm sm:text-base leading-relaxed">
-            This policy outlines how the IDP (Inter-Disciplinary Project) Portal collects, processes, and protects student, faculty, and institutional data under G.D. Goenka University and the Avishkar Centre for Innovation & Entrepreneurship (CIE).
+            This policy outlines how the IDP (Inter-Disciplinary Project) Portal collects, processes, and protects student, faculty, and institutional data under G D Goenka University and the Avishkar Centre for Innovation & Entrepreneurship (CIE).
           </p>
         </div>
 
@@ -50,7 +50,7 @@ export default function PrivacyPolicyPage() {
               <h2>1. Institutional Scope & Ownership</h2>
             </div>
             <p>
-              The IDP (Inter-Disciplinary Project) Portal is an academic platform operated for <strong>G.D. Goenka University</strong> in official affiliation with the <strong>Avishkar Centre for Innovation & Entrepreneurship (CIE)</strong>. The system facilitates cross-departmental student team registrations, mentor allocations, project artifact reviews, and semester evaluations.
+              The IDP (Inter-Disciplinary Project) Portal is an academic platform operated for <strong>G D Goenka University</strong> in official affiliation with the <strong>Avishkar Centre for Innovation & Entrepreneurship (CIE)</strong>. The system facilitates cross-departmental student team registrations, mentor allocations, project artifact reviews, and semester evaluations.
             </p>
           </section>
 
@@ -160,11 +160,11 @@ export default function PrivacyPolicyPage() {
               <h2>7. Data Retention & Grievance Redressal</h2>
             </div>
             <p className="mb-3">
-              Project records and evaluation logs are retained for the duration required by G.D. Goenka University academic regulations. For questions, data correction requests, or concerns, contact:
+              Project records and evaluation logs are retained for the duration required by G D Goenka University academic regulations. For questions, data correction requests, or concerns, contact:
             </p>
             <div className="p-4 sm:p-5 rounded-2xl bg-[#0a192f]/5 border border-[#0a192f]/10 text-xs sm:text-sm text-slate-700">
               <p className="font-bold text-[#09131f]">Avishkar Centre for Innovation & Entrepreneurship (CIE)</p>
-              <p className="text-slate-600 mt-0.5">G.D. Goenka University, Sohna Road, Gurugram, Haryana – 122103</p>
+              <p className="text-slate-600 mt-0.5">G D Goenka University, Sohna Road, Gurugram, Haryana – 122103</p>
               <p className="mt-2 text-slate-600">
                 Email: <a href="mailto:cie@gdgu.org" className="text-[#0a192f] font-semibold underline">cie@gdgu.org</a>
               </p>

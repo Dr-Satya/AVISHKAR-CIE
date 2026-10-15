@@ -1,9 +1,9 @@
 /**
- * G.D. Goenka University - Inter-Disciplinary Project (IDP) Portal
+ * G D Goenka University - Inter-Disciplinary Project (IDP) Portal
  * 
  * Code Attribution:
  * - Dr. Satya Prakash (Avishkar Centre for Innovation and Entrepreneurship,
- *   School of Engineering and Sciences, G.D. Goenka University, Haryana)
+ *   School of Engineering and Sciences, G D Goenka University, Haryana)
  * - Potla Sri Sharan
  * - Sarthak Singh
  * 
@@ -15,7 +15,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "IDP (Inter-Disciplinary Project) Portal | GDGU",
-  description: "Official IDP (Inter-Disciplinary Project) Portal for G.D. Goenka University",
+  description: "Official IDP (Inter-Disciplinary Project) Portal for G D Goenka University",
   icons: {
     icon: "/gdgu-logo.jpeg",
   },

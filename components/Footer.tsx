@@ -5,7 +5,7 @@ export function Footer() {
   return (
     <footer className="w-full py-8 mt-16 border-t border-slate-200/80 bg-white/70 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs text-slate-500">
-        <span className="font-semibold text-slate-700">G.D. Goenka University</span>
+        <span className="font-semibold text-slate-700">G D Goenka University</span>
         <span>·</span>
         <span>Avishkar Centre for Innovation & Entrepreneurship</span>
         <span>·</span>

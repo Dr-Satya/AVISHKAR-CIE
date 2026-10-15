@@ -16,6 +16,8 @@ import {
   KeyRound,
   Loader2,
   X,
+  Layers,
+  Plus,
 } from "lucide-react";
 
 // Modular Components
@@ -25,7 +27,7 @@ import { GlobalConfigCard } from "@/components/admin/GlobalConfigCard";
 import { DepartmentLimitsCard } from "@/components/admin/DepartmentLimitsCard";
 import { BulkRegistrationCard } from "@/components/admin/BulkRegistrationCard";
 import { StudentsTableCard } from "@/components/admin/StudentsTableCard";
-import { StudentModals } from "@/components/admin/StudentModals";
+import { StudentModals, MapStudentModal, UnmapStudentModal } from "@/components/admin/StudentModals";
 import { ProjectsTableCard } from "@/components/admin/ProjectsTableCard";
 import { RegistrationsTableCard } from "@/components/admin/RegistrationsTableCard";
 import { SpocManagementCard } from "@/components/admin/SpocManagementCard";
@@ -126,11 +128,31 @@ export default function AdminPortalPage() {
 
   // Faculty Access Management State
   const [faculties, setFaculties] = useState<any[]>([]);
+  const [systemAdmins, setSystemAdmins] = useState<any[]>([]);
   const [loadingFacultyAccess, setLoadingFacultyAccess] = useState(false);
   const [selectedResetFaculty, setSelectedResetFaculty] = useState<any | null>(null);
   const [newPasscodeInput, setNewPasscodeInput] = useState("gdgu@2026");
   const [resetPasscodeLoading, setResetPasscodeLoading] = useState(false);
   const [resetPasscodeMessage, setResetPasscodeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // System Administrator CRUD State
+  const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [adminForm, setAdminForm] = useState({ name: "", email: "", passcode: "gdgu@admin2026" });
+  const [adminCrudLoading, setAdminCrudLoading] = useState(false);
+  const [adminCrudError, setAdminCrudError] = useState<string | null>(null);
+
+  // Student Mapping & Allocation State
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [selectedStudentForMapping, setSelectedStudentForMapping] = useState<any | null>(null);
+  const [mappingLoading, setMappingLoading] = useState(false);
+  const [mappingError, setMappingError] = useState<string | null>(null);
+  const [allProjectsList, setAllProjectsList] = useState<any[]>([]);
+
+  // Student Unmapping State
+  const [showUnmapModal, setShowUnmapModal] = useState(false);
+  const [selectedStudentForUnmapping, setSelectedStudentForUnmapping] = useState<any | null>(null);
+  const [unmappingLoading, setUnmappingLoading] = useState(false);
+  const [unmappingError, setUnmappingError] = useState<string | null>(null);
 
   // SPOC Management State
   const [spocDepartments, setSpocDepartments] = useState<string[]>([]);
@@ -568,9 +590,128 @@ export default function AdminPortalPage() {
       const res = await fetch("/api/admin/faculty-access");
       const data = await res.json();
       setFaculties(data.faculties || []);
+      setSystemAdmins(data.systemAdmins || []);
     } catch {
     } finally {
       setLoadingFacultyAccess(false);
+    }
+  };
+
+  const fetchAllProjectsForMapping = async () => {
+    try {
+      const res = await fetch("/api/admin/projects?all=true");
+      if (res.ok) {
+        const data = await res.json();
+        setAllProjectsList(data.projects || []);
+      }
+    } catch {}
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminCrudLoading(true);
+    setAdminCrudError(null);
+    try {
+      const res = await fetch("/api/admin/faculty-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "CREATE_ADMIN", ...adminForm }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAdminCrudError(data.error || "Failed to create administrator.");
+        setAdminCrudLoading(false);
+        return;
+      }
+      setShowAddAdminModal(false);
+      setAdminForm({ name: "", email: "", passcode: "gdgu@admin2026" });
+      await fetchFacultyAccess();
+    } catch (err: any) {
+      setAdminCrudError(err.message || "Network error.");
+    } finally {
+      setAdminCrudLoading(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (adminId: string, adminName: string) => {
+    if (!confirm(`Are you sure you want to remove administrator ${adminName}? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/faculty-access?type=admin&id=${encodeURIComponent(adminId)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to remove administrator.");
+        return;
+      }
+      await fetchFacultyAccess();
+    } catch (err: any) {
+      alert(err.message || "Network error.");
+    }
+  };
+
+  const handleConfirmMapStudent = async (studentId: string, projectId: string): Promise<boolean> => {
+    setMappingLoading(true);
+    setMappingError(null);
+    try {
+      const res = await fetch("/api/admin/registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, projectId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMappingError(data.error || "Failed to map student.");
+        setMappingLoading(false);
+        return false;
+      }
+      await Promise.all([
+        fetchStudents(studentPage, studentSearch, studentFilter),
+        fetchRegistrations(registrationPage, registrationSearch),
+        fetchDashboardData(),
+        fetchProjects(projectPage, projectSearch, projectCategoryFilter),
+        fetchAllProjectsForMapping(),
+      ]);
+      return true;
+    } catch (err: any) {
+      setMappingError(err.message || "Network error.");
+      return false;
+    } finally {
+      setMappingLoading(false);
+    }
+  };
+
+  const handleConfirmUnmapStudent = async (targetId: string): Promise<boolean> => {
+    setUnmappingLoading(true);
+    setUnmappingError(null);
+    try {
+      const res = await fetch(
+        `/api/admin/registrations?id=${encodeURIComponent(targetId)}&studentId=${encodeURIComponent(targetId)}`,
+        {
+          method: "DELETE",
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setUnmappingError(data.error || "Failed to unmap student.");
+        setUnmappingLoading(false);
+        return false;
+      }
+      await Promise.all([
+        fetchStudents(studentPage, studentSearch, studentFilter),
+        fetchRegistrations(registrationPage, registrationSearch),
+        fetchDashboardData(),
+        fetchProjects(projectPage, projectSearch, projectCategoryFilter),
+        fetchAllProjectsForMapping(),
+      ]);
+      return true;
+    } catch (err: any) {
+      setUnmappingError(err.message || "Network error.");
+      return false;
+    } finally {
+      setUnmappingLoading(false);
     }
   };
 
@@ -611,6 +752,7 @@ export default function AdminPortalPage() {
         fetchRegistrations(1),
         fetchFacultyAccess(),
         fetchSpocData(),
+        fetchAllProjectsForMapping(),
       ]);
 
       setLoading(false);
@@ -884,6 +1026,116 @@ export default function AdminPortalPage() {
           </button>
         </div>
 
+        {/* Quick Operations Bar — Smooth, Zero-Clutter Direct Actions */}
+        <div className="bg-white/90 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-sm flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <span className="w-2 h-2 rounded-full bg-[#cda34f] animate-pulse" />
+            <span className="uppercase tracking-wider text-[11px] text-slate-500">Quick Operations:</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* + Add Student */}
+            <button
+              type="button"
+              onClick={() => {
+                setStudentCrudError(null);
+                setStudentForm({
+                  id: "",
+                  enrollmentNumber: "",
+                  name: "",
+                  department: "School of Engineering & Sciences",
+                  programme: "B.Tech CSE",
+                  gender: "Male",
+                  internalMarks: 32,
+                  externalMarks: 48,
+                  attendancePercent: 85,
+                  semester: activeSemester,
+                  batch: "2025",
+                  admissionNumber: "",
+                  academicYear: activeAcademicYear,
+                });
+                setShowAddStudentModal(true);
+              }}
+              className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-all shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 text-[#cda34f]" />
+              <span>Add Student</span>
+            </button>
+
+            {/* + Add Faculty */}
+            <button
+              type="button"
+              onClick={() => {
+                setFacultyCrudError(null);
+                setFacultyForm({
+                  id: "",
+                  name: "",
+                  email: "",
+                  department: "School of Engineering & Sciences",
+                  phone: "",
+                  passcode: "gdgu@2026",
+                  isAdmin: false,
+                  isSpoc: false,
+                  spocDepartment: "",
+                });
+                setShowAddFacultyModal(true);
+              }}
+              className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-all shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 text-[#cda34f]" />
+              <span>Add Faculty</span>
+            </button>
+
+            {/* Map Student to Guide */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedStudentForMapping(null);
+                setMappingError(null);
+                setShowMapModal(true);
+              }}
+              className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a192f]/5 hover:bg-[#0a192f]/10 text-[#0a192f] border border-[#0a192f]/15 text-xs font-semibold transition-all shadow-subtle"
+            >
+              <Layers className="w-3.5 h-3.5 text-[#cda34f]" />
+              <span>Map Student</span>
+            </button>
+
+            {/* Assign SPOC */}
+            <button
+              type="button"
+              onClick={() => setActiveDashboardTab("FACULTY")}
+              className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a192f]/5 hover:bg-[#0a192f]/10 text-[#0a192f] border border-[#0a192f]/15 text-xs font-semibold transition-all shadow-subtle"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#cda34f]" />
+              <span>Assign SPOC</span>
+            </button>
+
+            {/* + Add Admin */}
+            <button
+              type="button"
+              onClick={() => {
+                setAdminCrudError(null);
+                setAdminForm({ name: "", email: "", passcode: "gdgu@admin2026" });
+                setShowAddAdminModal(true);
+              }}
+              className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold transition-all shadow-subtle"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-600" />
+              <span>Add Admin</span>
+            </button>
+
+            {/* Database Master */}
+            <button
+              type="button"
+              onClick={() => setActiveDashboardTab("DATABASE")}
+              className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#cda34f]/15 hover:bg-[#cda34f]/25 text-[#73530e] border border-[#cda34f]/40 text-xs font-bold transition-all shadow-subtle"
+            >
+              <Database className="w-3.5 h-3.5 text-[#cda34f]" />
+              <span>Database Console</span>
+            </button>
+          </div>
+        </div>
+
         {/* Four-Part Segregated Navigation Switcher — Apple HIG Segmented Control */}
         <div className="bg-slate-200/60 p-1.5 rounded-3xl border border-slate-300/60 shadow-inner flex items-center gap-1.5 overflow-x-auto">
           {/* Part 1: Dashboard */}
@@ -1124,6 +1376,16 @@ export default function AdminPortalPage() {
                 });
                 setShowDeleteStudentModal(true);
               }}
+              onMapClick={(st) => {
+                setSelectedStudentForMapping(st);
+                setMappingError(null);
+                setShowMapModal(true);
+              }}
+              onUnmapClick={(st) => {
+                setSelectedStudentForUnmapping(st);
+                setUnmappingError(null);
+                setShowUnmapModal(true);
+              }}
             />
 
             {/* Registrations Table */}
@@ -1137,6 +1399,33 @@ export default function AdminPortalPage() {
               loadingRegistrations={loadingRegistrations}
               onFetchRegistrations={fetchRegistrations}
               onDownloadCohorts={handleDownloadCohorts}
+              onReassignClick={(reg) => {
+                setSelectedStudentForMapping({
+                  id: reg.studentId,
+                  studentId: reg.studentId,
+                  name: reg.studentName,
+                  enrollment: reg.enrollment,
+                  department: reg.department,
+                  programme: reg.program,
+                  projectId: reg.projectId,
+                  projectCode: reg.projectCode,
+                });
+                setMappingError(null);
+                setShowMapModal(true);
+              }}
+              onUnmapClick={(reg) => {
+                setSelectedStudentForUnmapping({
+                  id: reg.id,
+                  registrationId: reg.id,
+                  studentId: reg.studentId,
+                  name: reg.studentName,
+                  studentName: reg.studentName,
+                  enrollment: reg.enrollment,
+                  projectCode: reg.projectCode,
+                });
+                setUnmappingError(null);
+                setShowUnmapModal(true);
+              }}
             />
           </div>
         )}
@@ -1192,6 +1481,7 @@ export default function AdminPortalPage() {
             {/* Faculty Access Management */}
             <FacultyAccessCard
               faculties={faculties}
+              systemAdmins={systemAdmins}
               onAddClick={() => {
                 setFacultyCrudError(null);
                 setFacultyForm({
@@ -1243,6 +1533,12 @@ export default function AdminPortalPage() {
                 setNewPasscodeInput("gdgu@2026");
                 setResetPasscodeMessage(null);
               }}
+              onAddAdminClick={() => {
+                setAdminCrudError(null);
+                setAdminForm({ name: "", email: "", passcode: "gdgu@admin2026" });
+                setShowAddAdminModal(true);
+              }}
+              onDeleteAdminClick={handleDeleteAdmin}
             />
           </div>
         )}
@@ -1369,6 +1665,16 @@ export default function AdminPortalPage() {
                 setShowDeleteStudentModal(true);
               }}
               onDownloadCohorts={handleDownloadCohorts}
+              onMapStudent={(st) => {
+                setSelectedStudentForMapping(st || null);
+                setMappingError(null);
+                setShowMapModal(true);
+              }}
+              onUnmapStudent={(st) => {
+                setSelectedStudentForUnmapping(st);
+                setUnmappingError(null);
+                setShowUnmapModal(true);
+              }}
               onDataChanged={async () => {
                 await Promise.all([
                   fetchStudents(1),
@@ -1422,6 +1728,42 @@ export default function AdminPortalPage() {
           onUpdateFaculty={handleUpdateFaculty}
           onDeleteFaculty={handleDeleteFaculty}
           onResetPasscode={handleResetFacultyPasscode}
+          showAddAdminModal={showAddAdminModal}
+          setShowAddAdminModal={setShowAddAdminModal}
+          adminForm={adminForm}
+          setAdminForm={setAdminForm}
+          adminCrudLoading={adminCrudLoading}
+          adminCrudError={adminCrudError}
+          onAddAdmin={handleCreateAdmin}
+        />
+
+        {/* Map & Unmap Student Modals */}
+        <MapStudentModal
+          isOpen={showMapModal}
+          onClose={() => {
+            setShowMapModal(false);
+            setSelectedStudentForMapping(null);
+            setMappingError(null);
+          }}
+          student={selectedStudentForMapping}
+          allStudents={students}
+          allProjects={allProjectsList.length > 0 ? allProjectsList : projects}
+          onConfirmMap={handleConfirmMapStudent}
+          loading={mappingLoading}
+          error={mappingError}
+        />
+
+        <UnmapStudentModal
+          isOpen={showUnmapModal}
+          onClose={() => {
+            setShowUnmapModal(false);
+            setSelectedStudentForUnmapping(null);
+            setUnmappingError(null);
+          }}
+          student={selectedStudentForUnmapping}
+          onConfirmUnmap={handleConfirmUnmapStudent}
+          loading={unmappingLoading}
+          error={unmappingError}
         />
 
         {/* SPOC Password Reset Modal */}

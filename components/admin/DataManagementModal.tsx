@@ -22,6 +22,7 @@ import {
   FolderKanban,
   KeyRound,
   ShieldCheck,
+  UserX,
   CheckSquare,
   Square,
   RefreshCw,
@@ -573,6 +574,8 @@ export interface DatabaseDashboardCardProps {
   onDeleteStudent: (st: any) => void;
   onDownloadCohorts?: () => void;
   onDataChanged?: () => void;
+  onMapStudent?: (student?: any) => void;
+  onUnmapStudent?: (student: any) => void;
 }
 
 type SubTab = "MAPPINGS" | "STUDENTS" | "FACULTY" | "PROJECTS";
@@ -591,6 +594,8 @@ export function DatabaseDashboardCard({
   onDeleteStudent,
   onDownloadCohorts,
   onDataChanged,
+  onMapStudent,
+  onUnmapStudent,
 }: DatabaseDashboardCardProps) {
   const [activeTab, setActiveTab] = useState<SubTab>("MAPPINGS");
   const [loading, setLoading] = useState(true);
@@ -1664,6 +1669,18 @@ export function DatabaseDashboardCard({
             </button>
           )}
 
+          {/* Map Student Action Button */}
+          {activeTab === "MAPPINGS" && onMapStudent && (
+            <button
+              type="button"
+              onClick={() => onMapStudent()}
+              className="tactile-btn px-3 py-2 rounded-xl bg-[#0a192f] text-white hover:bg-[#162a45] text-xs font-bold flex items-center gap-1.5 shadow-subtle ml-1"
+            >
+              <Layers className="w-3.5 h-3.5 text-[#c59b27]" />
+              <span>+ Map Student</span>
+            </button>
+          )}
+
           {/* Add Student Action Button */}
           {activeTab === "STUDENTS" && (
             <button
@@ -1831,6 +1848,9 @@ export function DatabaseDashboardCard({
                       <span>STATUS</span>
                       {renderSortIndicator("status")}
                     </th>
+                    {(onMapStudent || onUnmapStudent) && (
+                      <th className="py-3 px-3 font-semibold text-center">ACTIONS</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
@@ -1889,6 +1909,53 @@ export function DatabaseDashboardCard({
                             {r.status || "Approved"}
                           </span>
                         </td>
+                        {(onMapStudent || onUnmapStudent) && (
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              {onMapStudent && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onMapStudent({
+                                      id: r.student?.id,
+                                      enrollment: r.student?.enrollmentNumber,
+                                      name: r.student?.name,
+                                      department: r.student?.department,
+                                      projectCode: r.project?.projectId,
+                                      projectId: r.project?.id,
+                                      facultyName: r.project?.faculty?.name,
+                                      registered: true,
+                                      registrationId: r.id,
+                                    })
+                                  }
+                                  className="p-1 rounded-lg text-slate-600 hover:text-[#0a192f] hover:bg-slate-100"
+                                  title="Reassign Project Guide"
+                                >
+                                  <Layers className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {onUnmapStudent && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onUnmapStudent({
+                                      id: r.student?.id,
+                                      enrollment: r.student?.enrollmentNumber,
+                                      name: r.student?.name,
+                                      projectCode: r.project?.projectId,
+                                      registrationId: r.id,
+                                      facultyName: r.project?.faculty?.name,
+                                    })
+                                  }
+                                  className="p-1 rounded-lg text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                                  title="Unmap / Free Allocation"
+                                >
+                                  <UserX className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -2062,6 +2129,28 @@ export function DatabaseDashboardCard({
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           <div className="flex items-center justify-center gap-1">
+                            {onMapStudent && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onMapStudent({
+                                    id: s.id,
+                                    enrollment: s.enrollmentNumber,
+                                    name: s.name,
+                                    department: s.department,
+                                    projectCode: s.registration?.project?.projectId,
+                                    projectId: s.registration?.project?.id,
+                                    facultyName: s.registration?.project?.faculty?.name,
+                                    registered: !!s.registration,
+                                    registrationId: s.registration?.id,
+                                  })
+                                }
+                                className="p-1 rounded text-slate-600 hover:text-[#0a192f] hover:bg-slate-100"
+                                title={s.registration ? "Reassign Project Guide" : "Map to Project Guide"}
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() =>

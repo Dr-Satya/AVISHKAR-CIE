@@ -358,7 +358,7 @@ export function ManuscriptModal({
                         3. Confirmation on Avishkar Affiliation in Paper <span className="text-red-500">*</span>
                       </span>
                       <p className="text-[11px] text-amber-900 mt-0.5">
-                        &ldquo;I confirm that <strong>Avishkar Centre for Innovation and Entrepreneurship, G.D. Goenka University</strong> has been explicitly included in the author affiliations in the submitted draft.&rdquo;
+                        &ldquo;I confirm that <strong>Avishkar Centre for Innovation and Entrepreneurship, G D Goenka University</strong> has been explicitly included in the author affiliations in the submitted draft.&rdquo;
                       </p>
                     </div>
                   </label>
@@ -552,7 +552,7 @@ export function ManuscriptModal({
                         3. Confirmation on Avishkar Affiliation in Published Paper <span className="text-red-500">*</span>
                       </span>
                       <p className="text-[11px] text-emerald-900 mt-0.5">
-                        &ldquo;I confirm that <strong>Avishkar Centre for Innovation and Entrepreneurship, G.D. Goenka University</strong> is formally listed as an author affiliation in the final published paper.&rdquo;
+                        &ldquo;I confirm that <strong>Avishkar Centre for Innovation and Entrepreneurship, G D Goenka University</strong> is formally listed as an author affiliation in the final published paper.&rdquo;
                       </p>
                     </div>
                   </label>

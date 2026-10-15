@@ -84,7 +84,7 @@ export function exportToPdf(data: Record<string, any>[], title: string) {
         .join("")}
     </tbody>
   </table>
-  <div class="footer">Confidential · G.D. Goenka University Institutional Project Portal</div>
+  <div class="footer">Confidential · G D Goenka University Institutional Project Portal</div>
   <script>
     window.onload = function() {
       setTimeout(function() {

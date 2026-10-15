@@ -81,7 +81,7 @@ export default function StudentLoginPage() {
             Student Access
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-1.5 leading-relaxed">
-            Sign in using your University Enrollment Number or official G.D. Goenka University email.
+            Sign in using your University Enrollment Number or official G D Goenka University email.
           </p>
 
           {error && (
@@ -241,7 +241,7 @@ export default function StudentLoginPage() {
                   1. Information Collected & Used
                 </h3>
                 <p className="mb-2">
-                  The portal accesses and verifies official student records maintained by G.D. Goenka University, including:
+                  The portal accesses and verifies official student records maintained by G D Goenka University, including:
                 </p>
                 <ul className="list-disc pl-5 space-y-1 text-slate-600">
                   <li><strong>University Identity:</strong> Official institutional Google email (`@gdgu.org`) and unique University Enrollment Number.</li>

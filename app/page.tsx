@@ -1,9 +1,9 @@
 /**
- * G.D. Goenka University - Inter-Disciplinary Project (IDP) Portal
+ * G D Goenka University - Inter-Disciplinary Project (IDP) Portal
  * 
  * Code Attribution:
  * - Dr. Satya Prakash (Avishkar Centre for Innovation and Entrepreneurship,
- *   School of Engineering and Sciences, G.D. Goenka University, Haryana)
+ *   School of Engineering and Sciences, G D Goenka University, Haryana)
  * - Potla Sri Sharan
  * - Sarthak Singh
  * 
@@ -43,7 +43,7 @@ export default function HomePage() {
                 IDP <span className="text-[#c59b27]">(Inter-Disciplinary Project)</span> Portal
               </h1>
               <p className="text-slate-600 mt-2.5 text-sm sm:text-base leading-relaxed max-w-2xl">
-                Unified academic coordination platform for G.D. Goenka University. Select your assigned designation to manage project allocations, semester artifacts, and validation rosters.
+                Unified academic coordination platform for G D Goenka University. Select your assigned designation to manage project allocations, semester artifacts, and validation rosters.
               </p>
             </div>
 

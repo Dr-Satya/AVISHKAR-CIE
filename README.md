@@ -1,6 +1,6 @@
 # GDGU Project Registration Portal
 
-Production-quality Inter-Disciplinary Project (IDP) Registration Portal for G.D. Goenka University built with Next.js 14, TypeScript, Tailwind CSS, PostgreSQL, and Prisma ORM.
+Production-quality Inter-Disciplinary Project (IDP) Registration Portal for G D Goenka University built with Next.js 14, TypeScript, Tailwind CSS, PostgreSQL, and Prisma ORM.
 
 ---
 
@@ -100,7 +100,7 @@ npx tsx scripts/test-concurrency.ts
 
 - **Director & Project Lead:** **Dr. Satya Prakash**  
   *Avishkar Centre for Innovation and Entrepreneurship (CIE)*  
-  *School of Engineering and Sciences, G.D. Goenka University, Haryana*
+  *School of Engineering and Sciences, G D Goenka University, Haryana*
 - **Architecture & Full-Stack Development:** **Potla Sri Sharan**
 - **Engineering & Development Contributor:** **Sarthak Singh**
 
