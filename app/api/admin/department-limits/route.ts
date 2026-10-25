@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { broadcastEvent } from "@/lib/events";
+import { getCanonicalDepartment, clearProjectQueryCache } from "@/services/registration.service";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Limits must be non-negative integers." }, { status: 400 });
   }
 
-  const cleanDept = department.trim();
+  const cleanDept = getCanonicalDepartment(department.trim());
 
   const record = await prisma.departmentRegistrationLimit.upsert({
     where: { department: cleanDept },
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  clearProjectQueryCache();
   broadcastEvent("configuration.updated", record);
 
   return NextResponse.json({ success: true, limit: record });
@@ -93,6 +95,7 @@ export async function DELETE(req: NextRequest) {
     },
   });
 
+  clearProjectQueryCache();
   broadcastEvent("configuration.updated", { deleted: id });
 
   return NextResponse.json({ success: true, message: "Limit removed." });

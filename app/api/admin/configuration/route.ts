@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { broadcastEvent } from "@/lib/events";
+import { clearProjectQueryCache } from "@/services/registration.service";
+import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +19,6 @@ export async function GET() {
 
   return NextResponse.json({ config });
 }
-
-import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -169,6 +169,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  clearProjectQueryCache();
   broadcastEvent("configuration.updated", updated);
 
   return NextResponse.json({ success: true, config: updated });

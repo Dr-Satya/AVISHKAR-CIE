@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { cleanErrorMessage } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -11,33 +12,40 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const [faculties, systemAdmins] = await Promise.all([
-    prisma.faculty.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        department: true,
-        phone: true,
-        isAdmin: true,
-        isSpoc: true,
-        spocDepartment: true,
-      },
-      orderBy: [{ isSpoc: "desc" }, { isAdmin: "desc" }, { name: "asc" }],
-    }),
-    prisma.admin.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-  ]);
+  try {
+    const [faculties, systemAdmins] = await Promise.all([
+      prisma.faculty.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          department: true,
+          phone: true,
+          isAdmin: true,
+          isSpoc: true,
+          spocDepartment: true,
+        },
+        orderBy: [{ isSpoc: "desc" }, { isAdmin: "desc" }, { name: "asc" }],
+      }),
+      prisma.admin.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
 
-  return NextResponse.json({ faculties, systemAdmins });
+    return NextResponse.json({ faculties, systemAdmins });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: cleanErrorMessage(err, "Failed to load faculty access list.") },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -46,8 +54,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { action, name, email, department, phone, passcode, facultyId, isAdmin, isSpoc, spocDepartment, newPasscode } = body;
+  try {
+    const body = await req.json();
+    const { action, name, email, department, phone, passcode, facultyId, isAdmin, isSpoc, spocDepartment, newPasscode } = body;
 
   // ACTION: CREATE NEW FACULTY
   if (action === "CREATE") {
@@ -141,6 +150,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, admin: createdAdmin });
   }
 
+  // ACTION: REPLACE FACULTY (REASSIGN ALL PROJECTS FROM ONE FACULTY TO ANOTHER)
+  if (action === "REPLACE_FACULTY") {
+    const { sourceFacultyId, targetFacultyId } = body;
+    if (!sourceFacultyId || !targetFacultyId) {
+      return NextResponse.json(
+        { error: "Both source faculty and replacement faculty are required." },
+        { status: 400 }
+      );
+    }
+
+    if (sourceFacultyId === targetFacultyId) {
+      return NextResponse.json(
+        { error: "Source and replacement faculty cannot be the same person." },
+        { status: 400 }
+      );
+    }
+
+    const [sourceFaculty, targetFaculty] = await Promise.all([
+      prisma.faculty.findUnique({ where: { id: sourceFacultyId } }),
+      prisma.faculty.findUnique({ where: { id: targetFacultyId } }),
+    ]);
+
+    if (!sourceFaculty || !targetFaculty) {
+      return NextResponse.json({ error: "Faculty member not found." }, { status: 404 });
+    }
+
+    const updateResult = await prisma.project.updateMany({
+      where: { facultyId: sourceFacultyId },
+      data: { facultyId: targetFacultyId },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor: session.name,
+        actorRole: "ADMIN",
+        action: "REPLACE_FACULTY",
+        target: sourceFaculty.email,
+        metadata: JSON.stringify({
+          sourceFaculty: sourceFaculty.name,
+          targetFaculty: targetFaculty.name,
+          projectsReassigned: updateResult.count,
+        }),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully transferred ${updateResult.count} project(s) from ${sourceFaculty.name} to ${targetFaculty.name}.`,
+      projectsMoved: updateResult.count,
+    });
+  }
+
   // DEFAULT: UPDATE PERMISSIONS OR RESET PASSCODE
   if (!facultyId) {
     return NextResponse.json({ error: "Faculty ID is required." }, { status: 400 });
@@ -188,7 +249,13 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ success: true, faculty: updated });
+    return NextResponse.json({ success: true, faculty: updated });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: cleanErrorMessage(err, "Failed to process faculty request.") },
+      { status: 500 }
+    );
+  }
 }
 
 // EDIT FACULTY (PUT)
@@ -242,7 +309,10 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ success: true, faculty: updated });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to update faculty." }, { status: 500 });
+    return NextResponse.json(
+      { error: cleanErrorMessage(err, "Failed to update faculty.") },
+      { status: 500 }
+    );
   }
 }
 
@@ -301,21 +371,88 @@ export async function DELETE(req: NextRequest) {
       });
     }
 
+    const replacementFacultyId = searchParams.get("replacementFacultyId");
+
     const faculty = await prisma.faculty.findUnique({ where: { id } });
     if (!faculty) {
       return NextResponse.json({ error: "Faculty not found." }, { status: 404 });
     }
 
-    // Safeguard: nullify artifact review references and detach SPOC to prevent foreign key errors
-    await prisma.projectArtifact.updateMany({
-      where: { reviewedById: id },
-      data: { reviewedById: null },
-    });
-    await prisma.spoc.deleteMany({
-      where: { facultyId: id },
-    });
+    // Safety guard: Handle projects assigned to this faculty member
+    const activeProjectsCount = await prisma.project.count({ where: { facultyId: id } });
+    if (activeProjectsCount > 0) {
+      if (!replacementFacultyId) {
+        return NextResponse.json(
+          {
+            error: `Cannot delete faculty member '${faculty.name}'. They are assigned as mentor to ${activeProjectsCount} project(s). Please choose a replacement faculty member to take over their projects before deleting.`,
+            requiresReplacement: true,
+            activeProjectsCount,
+          },
+          { status: 400 }
+        );
+      }
 
-    await prisma.faculty.delete({ where: { id } });
+      if (replacementFacultyId === id) {
+        return NextResponse.json(
+          { error: "Replacement faculty cannot be the same faculty being deleted." },
+          { status: 400 }
+        );
+      }
+
+      const replacementFaculty = await prisma.faculty.findUnique({ where: { id: replacementFacultyId } });
+      if (!replacementFaculty) {
+        return NextResponse.json(
+          { error: "Selected replacement faculty member not found." },
+          { status: 404 }
+        );
+      }
+
+      await prisma.$transaction([
+        prisma.project.updateMany({
+          where: { facultyId: id },
+          data: { facultyId: replacementFacultyId },
+        }),
+        prisma.projectArtifact.updateMany({
+          where: { reviewedById: id },
+          data: { reviewedById: null },
+        }),
+        prisma.spoc.deleteMany({
+          where: { facultyId: id },
+        }),
+        prisma.faculty.delete({ where: { id } }),
+      ]);
+
+      await prisma.auditLog.create({
+        data: {
+          actor: session.name,
+          actorRole: "ADMIN",
+          action: "DELETE_FACULTY_WITH_REPLACEMENT",
+          target: faculty.email,
+          metadata: JSON.stringify({
+            deletedFaculty: faculty.name,
+            replacementFaculty: replacementFaculty.name,
+            projectsReassigned: activeProjectsCount,
+          }),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Faculty ${faculty.name} deleted successfully. ${activeProjectsCount} project(s) reassigned to ${replacementFaculty.name}.`,
+      });
+    }
+
+    // Safeguard: nullify artifact review references and detach SPOC in an atomic transaction
+    await prisma.$transaction([
+      prisma.projectArtifact.updateMany({
+        where: { reviewedById: id },
+        data: { reviewedById: null },
+      }),
+      prisma.spoc.deleteMany({
+        where: { facultyId: id },
+      }),
+      prisma.faculty.delete({ where: { id } }),
+    ]);
 
     await prisma.auditLog.create({
       data: {
@@ -329,6 +466,9 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: `Faculty ${faculty.name} deleted successfully.` });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to delete faculty." }, { status: 500 });
+    return NextResponse.json(
+      { error: cleanErrorMessage(err, "Failed to delete faculty.") },
+      { status: 500 }
+    );
   }
 }

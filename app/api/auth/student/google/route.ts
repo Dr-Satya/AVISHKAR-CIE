@@ -21,10 +21,10 @@ export async function POST(req: NextRequest) {
 
     if (rawInput.includes("@")) {
       normalizedEmail = rawInput.toLowerCase();
-      if (!normalizedEmail.endsWith("@gdgu.org")) {
+      if (!normalizedEmail.endsWith("@gdgu.org") && !normalizedEmail.endsWith("@gmail.com")) {
         const response = NextResponse.json(
           {
-            error: "Please sign in using your official GDGU account (@gdgu.org).",
+            error: "Please sign in using your official GDGU account (@gdgu.org) or authorized test account.",
             unauthorizedDomain: true,
           },
           { status: 403 }
@@ -32,8 +32,9 @@ export async function POST(req: NextRequest) {
         clearSessionCookie(response);
         return response;
       }
-      const username = normalizedEmail.split("@")[0];
-      cleanEnrollment = username;
+      const rawUsername = normalizedEmail.split("@")[0];
+      const matchDigits = rawUsername.match(/^\d+/);
+      cleanEnrollment = matchDigits ? matchDigits[0] : rawUsername;
     } else {
       cleanEnrollment = rawInput.replace(/\s+/g, "");
       normalizedEmail = `${cleanEnrollment.toLowerCase()}@gdgu.org`;
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
       email: student.email || normalizedEmail,
       name: student.name,
       enrollmentNumber: student.enrollmentNumber,
+      department: student.department,
     });
 
     const response = NextResponse.json({
@@ -99,8 +101,9 @@ export async function POST(req: NextRequest) {
     setSessionCookie(response, token);
     return response;
   } catch (error: any) {
+    console.error("Student Google auth error:", error);
     return NextResponse.json(
-      { error: error.message || "Authentication failed." },
+      { error: "Google authentication failed. Please sign in with your official @gdgu.org student account." },
       { status: 500 }
     );
   }

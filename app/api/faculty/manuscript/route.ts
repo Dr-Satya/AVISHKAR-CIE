@@ -24,8 +24,14 @@ async function saveFile(
     );
   }
 
-  const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const fileName = `${Date.now()}_${prefix}_${sanitized}`;
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const ALLOWED_EXT = new Set(["pdf", "docx", "doc"]);
+  if (!ALLOWED_EXT.has(ext)) {
+    throw new Error(`Invalid manuscript file format (.${ext}). Only PDF and DOCX files are allowed.`);
+  }
+
+  const cleanName = path.basename(file.name).replace(/\.+/g, ".").replace(/[^a-zA-Z0-9._-]/g, "_");
+  const fileName = `${Date.now()}_${prefix}_${cleanName}`;
   const r2Key = `${academicYear}/manuscripts/${projectId}/${fileName}`;
   const fileUrl = `/api/artifacts/${encodeURIComponent(r2Key)}`;
   const arrayBuffer = await file.arrayBuffer();
@@ -38,19 +44,23 @@ async function saveFile(
       await env.ARTIFACTS.put(r2Key, arrayBuffer, {
         httpMetadata: { contentType: mimeType },
       });
-      return { fileName, fileUrl };
+      return { fileName: r2Key, fileUrl };
     }
   } catch (e) {
     // Cloudflare context unavailable in local node run
   }
 
-  // Fallback to local uploads directory
-  const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, "manuscripts", projectId);
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  // Fallback to local uploads directory (dev mode only)
+  if (process.env.NODE_ENV !== "production") {
+    const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, "manuscripts", projectId);
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(uploadsDir, fileName), Buffer.from(arrayBuffer));
+    return { fileName: r2Key, fileUrl };
   }
-  fs.writeFileSync(path.join(uploadsDir, fileName), Buffer.from(arrayBuffer));
-  return { fileName, fileUrl };
+
+  throw new Error("Cloudflare R2 storage is unavailable.");
 }
 
 // GET MANUSCRIPT DETAILS FOR PROJECT
@@ -73,7 +83,9 @@ export async function GET(req: NextRequest) {
         id: true,
         projectId: true,
         title: true,
+        department: true,
         facultyId: true,
+        hasDraftManuscript: true,
         hasCommunicatedManuscript: true,
         draftManuscriptUrl: true,
         draftManuscriptFileName: true,
@@ -96,6 +108,28 @@ export async function GET(req: NextRequest) {
       return apiError("Project not found.", 404);
     }
 
+    // Verify authorization scope
+    if (session.role === "FACULTY") {
+      const isOwner = project.facultyId === session.id;
+      const isDeptSpoc = session.isSpoc && session.spocDepartment === project.department;
+      if (!isOwner && !isDeptSpoc) {
+        return apiError("Unauthorized to view manuscript data for this project.", 403);
+      }
+    } else if (session.role === "SPOC") {
+      let dept = session.spocDepartment || session.department;
+      if (!dept) {
+        const spoc = await prisma.spoc.findUnique({ where: { id: session.id } });
+        dept = spoc?.department;
+      }
+      if (!dept) {
+        const faculty = await prisma.faculty.findUnique({ where: { id: session.id } });
+        if (faculty?.isSpoc) dept = faculty.spocDepartment || faculty.department;
+      }
+      if (!dept || project.department !== dept) {
+        return apiError("Unauthorized to view manuscript data outside your department.", 403);
+      }
+    }
+
     return apiSuccess({ project });
   } catch (error) {
     return handleApiError(error, "Failed to retrieve manuscript details.");
@@ -106,8 +140,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "FACULTY") {
-      return apiError("Unauthorized. Faculty access required.", 401);
+    if (!session || (session.role !== "FACULTY" && session.role !== "SPOC" && session.role !== "ADMIN")) {
+      return apiError("Unauthorized.", 401);
     }
 
     const formData = await req.formData();
@@ -116,31 +150,84 @@ export async function POST(req: NextRequest) {
       return apiError("Project ID is required.", 400);
     }
 
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        facultyId: session.id,
-      },
-    });
+    let project = null;
+    if (session.role === "ADMIN") {
+      project = await prisma.project.findUnique({ where: { id: projectId } });
+    } else if (session.role === "SPOC") {
+      let dept = session.spocDepartment || session.department;
+      if (!dept) {
+        const spoc = await prisma.spoc.findUnique({ where: { id: session.id } });
+        dept = spoc?.department;
+      }
+      if (!dept) {
+        const faculty = await prisma.faculty.findUnique({ where: { id: session.id } });
+        if (faculty?.isSpoc) dept = faculty.spocDepartment || faculty.department;
+      }
+      if (!dept) {
+        return apiError("Access forbidden. SPOC department authorization missing.", 403);
+      }
+      project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          department: dept,
+        },
+      });
+    } else if (session.role === "FACULTY") {
+      if (session.isSpoc && session.spocDepartment) {
+        project = await prisma.project.findFirst({
+          where: {
+            id: projectId,
+            OR: [
+              { facultyId: session.id },
+              { department: session.spocDepartment },
+            ],
+          },
+        });
+      } else {
+        project = await prisma.project.findFirst({
+          where: {
+            id: projectId,
+            facultyId: session.id,
+          },
+        });
+      }
+    }
 
     if (!project) {
-      return apiError("Project not found or not assigned to your profile.", 404);
+      return apiError("Project not found or not assigned to your authorized scope.", 404);
     }
 
     const globalConfig = await prisma.globalConfig.findUnique({ where: { id: "default" } });
     const academicYear = project.academicYear || globalConfig?.activeAcademicYear || "2025-2026";
 
     // Parse options
+    const hasDraftManuscript = formData.get("hasDraftManuscript") === "true";
     const hasCommunicatedManuscript = formData.get("hasCommunicatedManuscript") === "true";
     const isManuscriptPublished = formData.get("isManuscriptPublished") === "true";
 
     const updateData: any = {
+      hasDraftManuscript: hasDraftManuscript || hasCommunicatedManuscript || isManuscriptPublished,
       hasCommunicatedManuscript,
       isManuscriptPublished,
       manuscriptSubmittedAt: new Date(),
     };
 
-    // 1. Process Communicated Manuscript
+    // 1. Process Draft Manuscript Upload
+    const draftFile = formData.get("draftFile") as File | null;
+    if (draftFile && typeof draftFile === "object" && draftFile.size > 0) {
+      const { fileName, fileUrl } = await saveFile(draftFile, "draft", academicYear, project.projectId);
+      updateData.draftManuscriptFileName = fileName;
+      updateData.draftManuscriptUrl = fileUrl;
+      updateData.hasDraftManuscript = true;
+    } else if (hasDraftManuscript && !project.draftManuscriptUrl) {
+      return apiError("Please upload the draft manuscript file.", 400);
+    }
+
+    if (!hasDraftManuscript && !hasCommunicatedManuscript && !isManuscriptPublished) {
+      updateData.hasDraftManuscript = false;
+    }
+
+    // 2. Process Communicated Manuscript
     if (hasCommunicatedManuscript) {
       const journalName = formData.get("journalName") as string;
       const avishkarAffiliationCommunicated = formData.get("avishkarAffiliationCommunicated") === "true";
@@ -164,14 +251,6 @@ export async function POST(req: NextRequest) {
       if (aiPercentStr) {
         const ai = parseFloat(aiPercentStr);
         if (!isNaN(ai)) updateData.manuscriptAiPercent = ai;
-      }
-
-      // Draft file
-      const draftFile = formData.get("draftFile") as File | null;
-      if (draftFile && typeof draftFile === "object" && draftFile.size > 0) {
-        const { fileName, fileUrl } = await saveFile(draftFile, "draft", academicYear, project.projectId);
-        updateData.draftManuscriptFileName = fileName;
-        updateData.draftManuscriptUrl = fileUrl;
       }
 
       // Plagiarism 3-5 pages file
@@ -221,14 +300,16 @@ export async function POST(req: NextRequest) {
     await prisma.auditLog.create({
       data: {
         actor: session.name,
-        actorRole: "FACULTY",
-        action: "FACULTY_MANUSCRIPT_TRACKING_UPDATED",
+        actorRole: session.role,
+        action: "PROJECT_MANUSCRIPT_TRACKING_UPDATED",
         target: `${project.projectId}: ${project.title}`,
         metadata: JSON.stringify({
+          hasDraftManuscript: updateData.hasDraftManuscript,
           hasCommunicatedManuscript,
           journalName: updateData.journalName,
           isManuscriptPublished,
           publicationDoi: updateData.publicationDoi,
+          updatedByRole: session.role,
         }),
       },
     });
@@ -236,6 +317,7 @@ export async function POST(req: NextRequest) {
     broadcastEvent("project.updated", {
       projectId: updated.id,
       projectCode: updated.projectId,
+      hasDraftManuscript: updated.hasDraftManuscript,
       hasCommunicatedManuscript: updated.hasCommunicatedManuscript,
       isManuscriptPublished: updated.isManuscriptPublished,
     });

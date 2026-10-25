@@ -159,8 +159,8 @@ export function StudentsTableCard({
       "Phone": s.phone || "N/A",
       "Phone Verified": s.phoneVerified ? "Yes" : "No",
       "Attendance (%)": `${s.attendance}%`,
-      "Internal Marks (/40)": s.internals,
-      "External Marks (/60)": s.externals,
+      "Internal Marks (/50)": s.internals,
+      "External Marks (/50)": s.externals,
       "Total Marks (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
       "Registered": s.registered ? "Yes" : "No",
       "Project Code": s.projectCode || "N/A",
@@ -186,8 +186,8 @@ export function StudentsTableCard({
       "Phone": s.phone || "N/A",
       "Phone Verified": s.phoneVerified ? "Yes" : "No",
       "Attendance (%)": `${s.attendance}%`,
-      "Internal Marks (/40)": s.internals,
-      "External Marks (/60)": s.externals,
+      "Internal Marks (/50)": s.internals,
+      "External Marks (/50)": s.externals,
       "Total Marks (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
       "Registered": s.registered ? "Yes" : "No",
       "Project Code": s.projectCode || "N/A",
@@ -207,8 +207,8 @@ export function StudentsTableCard({
       "School": s.department,
       "Branch": s.program || "N/A",
       "Attendance %": `${s.attendance}%`,
-      "Internals (/40)": s.internals,
-      "Externals (/60)": s.externals,
+      "Internals (/50)": s.internals,
+      "Externals (/50)": s.externals,
       "Total (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
       "Status": s.registered ? "Registered" : "Unregistered",
       "Project": s.projectCode || "N/A",
@@ -693,7 +693,7 @@ export function StudentsTableCard({
               : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
           }`}
         >
-          <span>Internals (/40)</span>
+          <span>Internals (/50)</span>
           {renderSortIcon("internals")}
         </button>
 
@@ -707,14 +707,14 @@ export function StudentsTableCard({
               : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
           }`}
         >
-          <span>Externals (/60)</span>
+          <span>Externals (/50)</span>
           {renderSortIcon("externals")}
         </button>
       </div>
 
       {/* Main Student Data Table */}
       <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[1050px]">
           <thead>
             <tr className="bg-[#0d2137] text-white select-none">
               <th
@@ -763,14 +763,14 @@ export function StudentsTableCard({
                 onClick={() => handleSortToggle("internals")}
                 className="py-3 px-2.5 font-semibold cursor-pointer hover:bg-slate-800 transition-colors text-center whitespace-nowrap"
               >
-                <span>INTERNALS (/40)</span>
+                <span>INTERNALS (/50)</span>
                 {renderSortIcon("internals")}
               </th>
               <th
                 onClick={() => handleSortToggle("externals")}
                 className="py-3 px-2.5 font-semibold cursor-pointer hover:bg-slate-800 transition-colors text-center whitespace-nowrap"
               >
-                <span>EXTERNALS (/60)</span>
+                <span>EXTERNALS (/50)</span>
                 {renderSortIcon("externals")}
               </th>
               <th className="py-3 px-2.5 font-semibold text-center whitespace-nowrap">
@@ -877,13 +877,13 @@ export function StudentsTableCard({
                     {/* Internals */}
                     <td className="py-3 px-2.5 text-center font-mono">
                       <span className="font-semibold text-slate-800">{internals}</span>
-                      <span className="text-slate-400 text-[10px]">/40</span>
+                      <span className="text-slate-400 text-[10px]">/50</span>
                     </td>
 
                     {/* Externals */}
                     <td className="py-3 px-2.5 text-center font-mono">
                       <span className="font-semibold text-slate-800">{externals}</span>
-                      <span className="text-slate-400 text-[10px]">/60</span>
+                      <span className="text-slate-400 text-[10px]">/50</span>
                     </td>
 
                     {/* Total */}
@@ -1131,17 +1131,17 @@ export function StudentsTableCard({
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-xs space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-500 font-medium">Internal Marks</span>
-                    <span className="text-[10px] font-mono text-slate-400">Max: 40</span>
+                    <span className="text-[10px] font-mono text-slate-400">Max: 50</span>
                   </div>
                   <div className="text-2xl font-black text-[#0d2137]">
                     {selectedStudentDetails.internals}
-                    <span className="text-sm font-normal text-slate-400">/40</span>
+                    <span className="text-sm font-normal text-slate-400">/50</span>
                   </div>
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-500 rounded-full"
                       style={{
-                        width: `${Math.min(100, Math.max(0, (Number(selectedStudentDetails.internals ?? 0) / 40) * 100))}%`,
+                        width: `${Math.min(100, Math.max(0, (Number(selectedStudentDetails.internals ?? 0) / 50) * 100))}%`,
                       }}
                     />
                   </div>
@@ -1151,17 +1151,17 @@ export function StudentsTableCard({
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-xs space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-500 font-medium">External Marks</span>
-                    <span className="text-[10px] font-mono text-slate-400">Max: 60</span>
+                    <span className="text-[10px] font-mono text-slate-400">Max: 50</span>
                   </div>
                   <div className="text-2xl font-black text-[#0d2137]">
                     {selectedStudentDetails.externals}
-                    <span className="text-sm font-normal text-slate-400">/60</span>
+                    <span className="text-sm font-normal text-slate-400">/50</span>
                   </div>
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-[#cda34f] rounded-full"
                       style={{
-                        width: `${Math.min(100, Math.max(0, (Number(selectedStudentDetails.externals ?? 0) / 60) * 100))}%`,
+                        width: `${Math.min(100, Math.max(0, (Number(selectedStudentDetails.externals ?? 0) / 50) * 100))}%`,
                       }}
                     />
                   </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AlertTriangle, RefreshCw, Home, ShieldCheck } from "lucide-react";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 export default function ErrorBoundary({
   error,
@@ -45,8 +46,8 @@ export default function ErrorBoundary({
               <span>Error Diagnosis</span>
               {error.digest && <span className="font-mono">Ref: {error.digest}</span>}
             </div>
-            <p className="font-mono text-slate-800 break-all text-[11px] leading-relaxed">
-              {error.message || "Unknown runtime exception encountered."}
+            <p className="text-slate-800 break-all text-xs leading-relaxed">
+              {cleanErrorMessage(error, "An unexpected issue was encountered. Please try refreshing or return home.")}
             </p>
           </div>
 

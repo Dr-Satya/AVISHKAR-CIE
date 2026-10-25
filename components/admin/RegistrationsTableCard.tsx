@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Search, Loader2, FileText, FileSpreadsheet, Download, Layers, UserX } from "lucide-react";
 import { PaginationBar } from "@/components/common/PaginationBar";
 import { exportToCsv, exportToXlsx, exportToPdf, downloadIdpCohortsXlsx } from "@/lib/export";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 interface RegistrationsTableCardProps {
   registrations: any[];
@@ -41,7 +42,7 @@ export function RegistrationsTableCard({
       setDownloadingCohorts(true);
       await downloadIdpCohortsXlsx("registered");
     } catch (err: any) {
-      alert("Error exporting cohort details: " + err.message);
+      alert(cleanErrorMessage(err, "Failed to export cohort details."));
     } finally {
       setDownloadingCohorts(false);
     }

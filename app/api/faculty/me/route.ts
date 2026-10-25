@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cleanErrorMessage } from "@/lib/api-response";
 import { resolveProjectLimits } from "@/services/registration.service";
-import { sendStudentOtp, verifyStudentOtp } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +58,7 @@ export async function GET() {
         spocReviewNote: p.spocReviewNote,
         reviewedAt: p.reviewedAt?.toISOString() || null,
         // Research Manuscript & Publication (Optional)
+        hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
         hasCommunicatedManuscript: p.hasCommunicatedManuscript,
         draftManuscriptUrl: p.draftManuscriptUrl,
         draftManuscriptFileName: p.draftManuscriptFileName,
@@ -136,7 +137,7 @@ export async function GET() {
       spocDepartment: faculty.spocDepartment,
     },
     projects: enrichedProjects,
-    smsOtpEnabled: Boolean(globalConfig?.smsOtpEnabled),
+    smsOtpEnabled: false,
   });
 }
 
@@ -148,12 +149,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { phone, confirmPhone, otp, consent, action = "SAVE_PHONE" } = body;
-
-    const globalConfig = await prisma.globalConfig.findUnique({
-      where: { id: "default" },
-    });
-    const smsOtpEnabled = Boolean(globalConfig?.smsOtpEnabled);
+    const { phone, confirmPhone, consent } = body;
 
     const clean = (phone || "").replace(/\D/g, "");
     if (clean.length < 10) {
@@ -165,82 +161,26 @@ export async function PUT(req: NextRequest) {
 
     const normalizedPhone = clean.slice(-10);
 
+    const cleanConfirm = (confirmPhone || "").replace(/\D/g, "").slice(-10);
+    if (!cleanConfirm || cleanConfirm !== normalizedPhone) {
+      return NextResponse.json(
+        { error: "Mobile numbers do not match. Please re-enter to confirm." },
+        { status: 400 }
+      );
+    }
+
+    if (!consent) {
+      return NextResponse.json(
+        { error: "Consent is required: please tick 'this will be used for further communication'." },
+        { status: 400 }
+      );
+    }
+
     const faculty = await prisma.faculty.findUnique({
       where: { id: session.id },
     });
     if (!faculty) {
       return NextResponse.json({ error: "Faculty record not found." }, { status: 404 });
-    }
-
-    // 1. ACTION: SEND_OTP
-    if (action === "SEND_OTP") {
-      const result = await sendStudentOtp(faculty.email, normalizedPhone, faculty.id);
-      return NextResponse.json({
-        success: true,
-        message: result.message,
-        devOtp: result.debugOtp,
-      });
-    }
-
-    // 2. ACTION: VERIFY_OTP
-    if (action === "VERIFY_OTP") {
-      if (!consent) {
-        return NextResponse.json(
-          { error: "Please check the consent box to proceed." },
-          { status: 400 }
-        );
-      }
-      if (!otp || typeof otp !== "string" || otp.trim().length !== 6) {
-        return NextResponse.json(
-          { error: "Please enter the valid 6-digit OTP received on your mobile." },
-          { status: 400 }
-        );
-      }
-
-      const cleanOtp = otp.trim();
-      const isValid = await verifyStudentOtp(faculty.email, cleanOtp, normalizedPhone);
-      if (!isValid) {
-        return NextResponse.json(
-          { error: "Invalid or expired OTP. Please request a new code." },
-          { status: 400 }
-        );
-      }
-
-      const updated = await prisma.faculty.update({
-        where: { id: faculty.id },
-        data: { phone: normalizedPhone },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: "Mobile number verified and saved successfully.",
-        phone: updated.phone,
-      });
-    }
-
-    // 3. ACTION: SAVE_PHONE (When SMS OTP is OFF)
-    if (smsOtpEnabled) {
-      return NextResponse.json(
-        { error: "SMS OTP verification is currently active. Please verify using OTP." },
-        { status: 400 }
-      );
-    }
-
-    if (confirmPhone) {
-      const cleanConfirm = confirmPhone.replace(/\D/g, "").slice(-10);
-      if (cleanConfirm !== normalizedPhone) {
-        return NextResponse.json(
-          { error: "Mobile numbers do not match. Please re-enter to confirm." },
-          { status: 400 }
-        );
-      }
-    }
-
-    if (!consent) {
-      return NextResponse.json(
-        { error: "Please check the consent box to proceed." },
-        { status: 400 }
-      );
     }
 
     const updated = await prisma.faculty.update({
@@ -254,8 +194,9 @@ export async function PUT(req: NextRequest) {
       phone: updated.phone,
     });
   } catch (err: any) {
+    console.error("Faculty profile update error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to update phone number." },
+      { error: cleanErrorMessage(err, "Failed to update phone number. Please try again.") },
       { status: 500 }
     );
   }

@@ -471,8 +471,8 @@ export function SpocFacultyDirectoryTab({
                         <th className="pb-2.5 px-3">Programme</th>
                         <th className="pb-2.5 px-3">Project Title</th>
                         <th className="pb-2.5 px-3 text-center">Attendance</th>
-                        <th className="pb-2.5 px-3 text-center">Internal (/40)</th>
-                        <th className="pb-2.5 px-3 text-center">External (/60)</th>
+                        <th className="pb-2.5 px-3 text-center">Internal (/50)</th>
+                        <th className="pb-2.5 px-3 text-center">External (/50)</th>
                         <th className="pb-2.5 pl-3 text-right">Status</th>
                       </tr>
                     </thead>

@@ -189,28 +189,28 @@ export function StudentModals({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Internals (/40)
+                    Internals (/50)
                   </label>
                   <input
                     type="number"
                     min={0}
-                    max={40}
-                    placeholder="e.g. 32"
-                    value={studentForm.internalMarks ?? 32}
+                    max={50}
+                    placeholder="e.g. 40"
+                    value={studentForm.internalMarks ?? 40}
                     onChange={(e) => setStudentForm({ ...studentForm, internalMarks: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Externals (/60)
+                    Externals (/50)
                   </label>
                   <input
                     type="number"
                     min={0}
-                    max={60}
-                    placeholder="e.g. 48"
-                    value={studentForm.externalMarks ?? 48}
+                    max={50}
+                    placeholder="e.g. 40"
+                    value={studentForm.externalMarks ?? 40}
                     onChange={(e) => setStudentForm({ ...studentForm, externalMarks: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
                   />
@@ -434,26 +434,26 @@ export function StudentModals({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Internals (/40)
+                    Internals (/50)
                   </label>
                   <input
                     type="number"
                     min={0}
-                    max={40}
-                    value={studentForm.internalMarks ?? 32}
+                    max={50}
+                    value={studentForm.internalMarks ?? 40}
                     onChange={(e) => setStudentForm({ ...studentForm, internalMarks: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Externals (/60)
+                    Externals (/50)
                   </label>
                   <input
                     type="number"
                     min={0}
-                    max={60}
-                    value={studentForm.externalMarks ?? 48}
+                    max={50}
+                    value={studentForm.externalMarks ?? 40}
                     onChange={(e) => setStudentForm({ ...studentForm, externalMarks: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
                   />

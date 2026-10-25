@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cleanErrorMessage } from "@/lib/api-response";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
@@ -579,12 +580,20 @@ export async function GET(req: NextRequest) {
 
     // 3. PDF / Printable Structured View
     if (format === "pdf") {
+      const escapeHtml = (val: any) =>
+        String(val ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+
       const headers = Object.keys(rows[0] || {});
       const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>${title}</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     @page { size: landscape; margin: 12mm; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 15px; font-size: 11px; }
@@ -605,13 +614,13 @@ export async function GET(req: NextRequest) {
   <div class="header">
     <div>
       <h1 class="title">GD GUENKA UNIVERSITY · IDP PORTAL</h1>
-      <div class="meta">${title.replace(/_/g, " ")} · Generated on ${new Date().toLocaleString()} · Total Records: ${rows.length}</div>
+      <div class="meta">${escapeHtml(title.replace(/_/g, " "))} · Generated on ${new Date().toLocaleString()} · Total Records: ${rows.length}</div>
     </div>
   </div>
   <table>
     <thead>
       <tr>
-        ${headers.map((h) => `<th>${h}</th>`).join("")}
+        ${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}
       </tr>
     </thead>
     <tbody>
@@ -619,7 +628,7 @@ export async function GET(req: NextRequest) {
         .map(
           (r) =>
             `<tr>${headers
-              .map((h) => `<td>${r[h] !== undefined && r[h] !== null ? r[h] : ""}</td>`)
+              .map((h) => `<td>${escapeHtml(r[h] !== undefined && r[h] !== null ? r[h] : "")}</td>`)
               .join("")}</tr>`
         )
         .join("")}
@@ -644,7 +653,7 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error("Export error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to generate export." },
+      { error: cleanErrorMessage(error, "Failed to generate export file. Please try again.") },
       { status: 500 }
     );
   }

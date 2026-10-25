@@ -2,9 +2,11 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || "gdgu-super-secret-jwt-key-2026-production-ready"
-);
+const secret = process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "gdgu-super-secret-jwt-key-2026-production-ready" : "");
+if (!secret) {
+  throw new Error("FATAL: JWT_SECRET environment variable is required.");
+}
+const SECRET_KEY = new TextEncoder().encode(secret);
 
 export type UserRole = "STUDENT" | "FACULTY" | "ADMIN" | "SPOC";
 
@@ -67,5 +69,6 @@ export function clearSessionCookie(response: NextResponse) {
     sameSite: "lax",
     path: "/",
     maxAge: 0,
+    expires: new Date(0),
   });
 }

@@ -41,13 +41,47 @@ export function DepartmentLimitsCard({
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
           <input
+            list="department-datalist"
             type="text"
-            placeholder="Enter department name"
+            placeholder="Select or enter department (e.g. SOES)"
             value={deptInput}
             onChange={(e) => setDeptInput(e.target.value)}
             className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
             required
           />
+          <datalist id="department-datalist">
+            <option value="School of Engineering & Sciences (SOES)" />
+            <option value="School of Management (SOM)" />
+            <option value="School of Law (SOL)" />
+            <option value="School of Hospitality & Tourism (SOHT)" />
+            <option value="School of Healthcare and Allied Sciences (SOHAS)" />
+            <option value="School of Agricultural Sciences (SOAS)" />
+            <option value="School of Liberal Arts (SOLA)" />
+            <option value="United World Institute of Design (UID)" />
+            <option value="Center of Aerospace and Energy Studies (CAES)" />
+            <option value="Centre Of Excellence: Occupational Health, Safety, Fire & Environment" />
+          </datalist>
+          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+            <span className="text-[10px] text-slate-400">Quick:</span>
+            {[
+              { label: "SOES", full: "School of Engineering & Sciences" },
+              { label: "SOM", full: "School of Management" },
+              { label: "SOL", full: "School of Law" },
+              { label: "SOHT", full: "School of Hospitality & Tourism" },
+              { label: "SOHAS", full: "School of Healthcare and Allied Sciences" },
+              { label: "UID", full: "United World Institute of Design (UID)" },
+            ].map((d) => (
+              <button
+                key={d.label}
+                type="button"
+                onClick={() => setDeptInput(d.full)}
+                className="px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors"
+                title={`Select ${d.full}`}
+              >
+                +{d.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">Same Dept Limit</label>

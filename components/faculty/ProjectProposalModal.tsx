@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Lightbulb, X, Loader2, AlertCircle, CheckCircle2, BookOpen } from "lucide-react";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 interface ProjectProposalModalProps {
   isOpen: boolean;
@@ -70,7 +71,7 @@ export function ProjectProposalModal({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to submit project idea.");
+        throw new Error(cleanErrorMessage(data.error, "Failed to submit project idea."));
       }
 
       setSuccess(data.message || "Project idea submitted successfully!");
@@ -79,7 +80,7 @@ export function ProjectProposalModal({
         onClose();
       }, 1200);
     } catch (err: any) {
-      setError(err.message || "Submission failed.");
+      setError(cleanErrorMessage(err, "Submission failed."));
     } finally {
       setSubmitting(false);
     }

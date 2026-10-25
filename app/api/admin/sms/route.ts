@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendCustomSms } from "@/lib/sms";
+import { cleanErrorMessage } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
       message: `SMS broadcast dispatched successfully to ${result.sentCount} recipient(s).`,
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to dispatch SMS." }, { status: 500 });
+    console.error("SMS broadcast error:", err);
+    return NextResponse.json({ error: cleanErrorMessage(err, "Failed to dispatch SMS broadcast. Please try again.") }, { status: 500 });
   }
 }

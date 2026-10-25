@@ -11,6 +11,7 @@ export type DataAction = "EXPORT_ALL" | "PURGE" | "EXPORT_AND_PURGE";
 export type PurgeScope =
   | "STUDENTS"
   | "STUDENTS_AND_UPLOADS"
+  | "STUDENTS_PROJECTS_UPLOADS"
   | "REGISTRATIONS"
   | "PROJECTS"
   | "FACULTY"
@@ -63,18 +64,15 @@ const CONFIRM_CODE = "PURGE_CONFIRMED";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export async function getTableSnapshot(): Promise<TableSnapshot> {
-  const [students, registrations, projects, faculty, artifacts, spocs, identities, otps, auditLogs] =
-    await Promise.all([
-      prisma.student.count(),
-      prisma.registration.count(),
-      prisma.project.count(),
-      prisma.faculty.count(),
-      prisma.projectArtifact.count(),
-      prisma.spoc.count(),
-      prisma.studentIdentity.count(),
-      prisma.studentPhoneOtp.count(),
-      prisma.auditLog.count(),
-    ]);
+  const students = await prisma.student.count();
+  const registrations = await prisma.registration.count();
+  const projects = await prisma.project.count();
+  const faculty = await prisma.faculty.count();
+  const artifacts = await prisma.projectArtifact.count();
+  const spocs = await prisma.spoc.count();
+  const identities = await prisma.studentIdentity.count();
+  const otps = await prisma.studentPhoneOtp.count();
+  const auditLogs = await prisma.auditLog.count();
 
   return { students, registrations, projects, faculty, artifacts, spocs, identities, otps, auditLogs };
 }
@@ -100,53 +98,45 @@ export async function exportAllTables(
     ? { academicYear: academicYearFilter }
     : {};
 
-  // Fetch all data
-  const [
-    students,
-    registrations,
-    projects,
-    faculties,
-    artifacts,
-    spocs,
-    identities,
-    configs,
-    deptLimits,
-    auditLogs,
-  ] = await Promise.all([
-    prisma.student.findMany({
-      where: yearWhere,
-      include: { registration: { include: { project: { select: { projectId: true, title: true } } } } },
-      orderBy: { enrollmentNumber: "asc" },
-    }),
-    prisma.registration.findMany({
-      include: {
-        student: { select: { enrollmentNumber: true, name: true, department: true } },
-        project: { select: { projectId: true, title: true, department: true, faculty: { select: { name: true, email: true } } } },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.project.findMany({
-      ...(academicYearFilter && academicYearFilter !== "all" ? { where: { academicYear: academicYearFilter } } : {}),
-      include: {
-        faculty: { select: { name: true, email: true, department: true } },
-        _count: { select: { registrations: true } },
-      },
-      orderBy: { projectId: "asc" },
-    }),
-    prisma.faculty.findMany({
-      include: { _count: { select: { projects: true } } },
-      orderBy: { name: "asc" },
-    }),
-    prisma.projectArtifact.findMany({
-      include: { project: { select: { projectId: true, title: true } } },
-      orderBy: { submittedAt: "asc" },
-    }),
-    prisma.spoc.findMany({ orderBy: { department: "asc" } }),
-    prisma.studentIdentity.findMany({ orderBy: { createdAt: "asc" } }),
-    prisma.globalConfig.findMany(),
-    prisma.departmentRegistrationLimit.findMany({ orderBy: { department: "asc" } }),
-    prisma.auditLog.findMany({ orderBy: { timestamp: "desc" }, take: 5000 }),
-  ]);
+  // Fetch data sequentially to avoid SQLite/D1 connection deadlocks and runtime timeouts
+  const students = await prisma.student.findMany({
+    where: yearWhere,
+    include: { registration: { include: { project: { select: { projectId: true, title: true } } } } },
+    orderBy: { enrollmentNumber: "asc" },
+  });
+
+  const registrations = await prisma.registration.findMany({
+    include: {
+      student: { select: { enrollmentNumber: true, name: true, department: true } },
+      project: { select: { projectId: true, title: true, department: true, faculty: { select: { name: true, email: true } } } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const projects = await prisma.project.findMany({
+    ...(academicYearFilter && academicYearFilter !== "all" ? { where: { academicYear: academicYearFilter } } : {}),
+    include: {
+      faculty: { select: { name: true, email: true, department: true } },
+      _count: { select: { registrations: true } },
+    },
+    orderBy: { projectId: "asc" },
+  });
+
+  const faculties = await prisma.faculty.findMany({
+    include: { _count: { select: { projects: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  const artifacts = await prisma.projectArtifact.findMany({
+    include: { project: { select: { projectId: true, title: true } } },
+    orderBy: { submittedAt: "asc" },
+  });
+
+  const spocs = await prisma.spoc.findMany({ orderBy: { department: "asc" } });
+  const identities = await prisma.studentIdentity.findMany({ orderBy: { createdAt: "asc" } });
+  const configs = await prisma.globalConfig.findMany();
+  const deptLimits = await prisma.departmentRegistrationLimit.findMany({ orderBy: { department: "asc" } });
+  const auditLogs = await prisma.auditLog.findMany({ orderBy: { timestamp: "desc" }, take: 100 });
 
   // Build XLSX workbook
   const wb = XLSX.utils.book_new();
@@ -212,6 +202,7 @@ export async function exportAllTables(
     "Submission Status": p.submissionStatus,
     "SPOC Review Note": p.spocReviewNote || "",
     "Reviewed At": p.reviewedAt?.toISOString?.() || "",
+    "Manuscript in Draft": (p.draftManuscriptUrl || (p as any).hasDraftManuscript) ? "Yes" : "No",
     "Manuscript Communicated": p.hasCommunicatedManuscript ? "Yes" : "No",
     "Journal Name": p.journalName || "",
     "Avishkar Affiliation (Draft)": p.avishkarAffiliationCommunicated ? "Confirmed" : "No",
@@ -312,7 +303,7 @@ export async function exportAllTables(
     "Faculty": snapshot.faculty,
     "Artifacts": snapshot.artifacts,
     "SPOCs": snapshot.spocs,
-    "Audit Logs (capped 5000)": auditLogs.length,
+    "Audit Logs (capped 100)": auditLogs.length,
   }];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(metaRows), "_Metadata");
 
@@ -412,25 +403,11 @@ export async function purgeData(
 
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
 
-    if (artifacts.length > 0) {
-      for (const a of artifacts) {
-        if (r2) {
-          try {
-            if (a.fileName) { await r2.delete(a.fileName); r2FilesDeleted++; }
-            if (a.plagiarismReportFileName) { await r2.delete(a.plagiarismReportFileName); r2FilesDeleted++; }
-          } catch { /* R2 delete best-effort */ }
-        }
-        try {
-          if (a.fileName) {
-            const p = path.join(uploadsDir, a.fileName);
-            if (fs.existsSync(p)) { fs.unlinkSync(p); r2FilesDeleted++; }
-          }
-          if (a.plagiarismReportFileName) {
-            const p = path.join(uploadsDir, a.plagiarismReportFileName);
-            if (fs.existsSync(p)) { fs.unlinkSync(p); r2FilesDeleted++; }
-          }
-        } catch { /* Local delete best-effort */ }
-      }
+    // Gather all file keys
+    const keysToDelete: string[] = [];
+    for (const a of artifacts) {
+      if (a.fileName) keysToDelete.push(a.fileName);
+      if (a.plagiarismReportFileName) keysToDelete.push(a.plagiarismReportFileName);
     }
 
     // Also clean any project-level manuscript uploads
@@ -444,20 +421,37 @@ export async function purgeData(
     });
 
     for (const p of projectsWithFiles) {
-      const files = [
-        p.draftManuscriptFileName,
-        p.publishedManuscriptFileName,
-        p.manuscriptPlagiarismFileName,
-      ].filter(Boolean) as string[];
+      if (p.draftManuscriptFileName) keysToDelete.push(p.draftManuscriptFileName);
+      if (p.publishedManuscriptFileName) keysToDelete.push(p.publishedManuscriptFileName);
+      if (p.manuscriptPlagiarismFileName) keysToDelete.push(p.manuscriptPlagiarismFileName);
+    }
 
-      for (const fn of files) {
-        if (r2) {
-          try { await r2.delete(fn); r2FilesDeleted++; } catch {}
+    if (keysToDelete.length > 0) {
+      if (r2) {
+        // Chunk R2 deletes into batches to avoid exceeding subrequest limits
+        for (let i = 0; i < keysToDelete.length; i += 50) {
+          const chunk = keysToDelete.slice(i, i + 50);
+          try {
+            await r2.delete(chunk);
+            r2FilesDeleted += chunk.length;
+          } catch {
+            for (const fn of chunk) {
+              try { await r2.delete(fn); r2FilesDeleted++; } catch {}
+            }
+          }
         }
-        try {
-          const lp = path.join(uploadsDir, fn);
-          if (fs.existsSync(lp)) { fs.unlinkSync(lp); r2FilesDeleted++; }
-        } catch {}
+      }
+
+      if (!r2 && process.env.NODE_ENV !== "production") {
+        for (const fn of keysToDelete) {
+          try {
+            const lp = path.join(uploadsDir, fn);
+            if (fs.existsSync(lp)) {
+              fs.unlinkSync(lp);
+              r2FilesDeleted++;
+            }
+          } catch {}
+        }
       }
     }
 
@@ -465,7 +459,12 @@ export async function purgeData(
   }
 
   // Cascade-aware deletion per scope
-  if (scope === "STUDENTS_AND_UPLOADS" || scope === "STUDENTS" || scope === "ALL") {
+  if (
+    scope === "STUDENTS_AND_UPLOADS" ||
+    scope === "STUDENTS_PROJECTS_UPLOADS" ||
+    scope === "STUDENTS" ||
+    scope === "ALL"
+  ) {
     const studentWhere = yearWhere ? { student: yearWhere } : undefined;
     const studentDirectWhere = yearWhere || undefined;
 
@@ -474,10 +473,17 @@ export async function purgeData(
       const students = await prisma.student.findMany({ where: studentDirectWhere, select: { id: true } });
       const studentIds = students.map((s) => s.id);
       if (studentIds.length > 0) {
-        const otpDel = await prisma.studentPhoneOtp.deleteMany({ where: { studentId: { in: studentIds } } });
-        deleted.studentPhoneOtps = otpDel.count;
-        const idDel = await prisma.studentIdentity.deleteMany({ where: { studentId: { in: studentIds } } });
-        deleted.studentIdentities = idDel.count;
+        let otpCount = 0;
+        let idCount = 0;
+        for (let i = 0; i < studentIds.length; i += 400) {
+          const chunk = studentIds.slice(i, i + 400);
+          const otpDel = await prisma.studentPhoneOtp.deleteMany({ where: { studentId: { in: chunk } } });
+          otpCount += otpDel.count;
+          const idDel = await prisma.studentIdentity.deleteMany({ where: { studentId: { in: chunk } } });
+          idCount += idDel.count;
+        }
+        deleted.studentPhoneOtps = otpCount;
+        deleted.studentIdentities = idCount;
       }
     } else {
       const otpDel = await prisma.studentPhoneOtp.deleteMany();
@@ -503,11 +509,11 @@ export async function purgeData(
     deleted.registrations = regDel.count;
   }
 
-  // Uploads/Artifacts deletion for STUDENTS_AND_UPLOADS
+  // Uploads/Artifacts deletion for STUDENTS_AND_UPLOADS (Keeps Projects)
   if (scope === "STUDENTS_AND_UPLOADS") {
     const projectWhere = yearWhere || undefined;
     const artifactFileWhere = projectWhere
-      ? { project: { academicYear: projectWhere.academicYear } }
+      ? { academicYear: projectWhere.academicYear }
       : undefined;
 
     await deleteArtifactFiles(artifactFileWhere);
@@ -533,25 +539,26 @@ export async function purgeData(
     });
   }
 
-  if (scope === "PROJECTS" || scope === "ALL") {
+  // Projects deletion for PROJECTS, STUDENTS_PROJECTS_UPLOADS, or ALL
+  if (scope === "PROJECTS" || scope === "STUDENTS_PROJECTS_UPLOADS" || scope === "ALL") {
     const projectWhere = yearWhere || undefined;
 
     // Delete R2 and disk files first
     const artifactFileWhere = projectWhere
-      ? { project: { academicYear: projectWhere.academicYear } }
+      ? { academicYear: projectWhere.academicYear }
       : undefined;
     await deleteArtifactFiles(artifactFileWhere);
 
     // Artifacts
     const artDel = await prisma.projectArtifact.deleteMany({ where: artifactFileWhere });
-    deleted.artifacts = artDel.count;
+    deleted.artifacts = (deleted.artifacts || 0) + artDel.count;
 
     // Registrations under these projects (if not already deleted by STUDENTS scope)
     if (scope === "PROJECTS") {
       const regDel = await prisma.registration.deleteMany({
         where: projectWhere ? { project: { academicYear: projectWhere.academicYear } } : undefined,
       });
-      deleted.registrations = regDel.count;
+      deleted.registrations = (deleted.registrations || 0) + regDel.count;
     }
 
     // Projects

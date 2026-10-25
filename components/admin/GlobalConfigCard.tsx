@@ -32,7 +32,7 @@ export function GlobalConfigCard({
       )}
 
       <form onSubmit={onSave} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
           {/* Registration Open Toggle */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-2">
@@ -58,36 +58,6 @@ export function GlobalConfigCard({
                 {config.registrationOpen ? "Open" : "Closed"}
               </span>
             </div>
-          </div>
-
-          {/* First-Time Login Mobile OTP Toggle (Students & Faculty) */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-2">
-              First-Time Login Mobile OTP
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  setConfig((c) => ({ ...c, smsOtpEnabled: !c.smsOtpEnabled }))
-                }
-                className={`w-14 h-7 rounded-full p-1 transition-colors flex items-center ${
-                  config.smsOtpEnabled ? "bg-[#cda34f]" : "bg-slate-300"
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${
-                    config.smsOtpEnabled ? "translate-x-7" : "translate-x-0"
-                  }`}
-                />
-              </button>
-              <span className="text-xs font-medium text-slate-600">
-                {config.smsOtpEnabled ? "Active" : "Disabled"}
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-1">
-              {config.smsOtpEnabled ? "SMS OTP for students & faculty" : "Direct entry & consent (OTP off)"}
-            </p>
           </div>
 
           {/* Maximum Seats */}

@@ -9,6 +9,7 @@ import {
   School,
   Sparkles,
 } from "lucide-react";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 interface SmsBroadcastCardProps {
   schools: string[];
@@ -55,13 +56,13 @@ export function SmsBroadcastCard({ schools }: SmsBroadcastCardProps) {
 
       const data = await res.json();
       if (!res.ok) {
-        setErrorMessage(data.error || "Failed to dispatch SMS broadcast.");
+        setErrorMessage(cleanErrorMessage(data.error, "Failed to dispatch SMS broadcast."));
       } else {
         setSendResult(data.summary);
         setMessageText("");
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "Network error while sending SMS.");
+      setErrorMessage(cleanErrorMessage(err, "Network error while sending SMS."));
     } finally {
       setIsSending(false);
     }

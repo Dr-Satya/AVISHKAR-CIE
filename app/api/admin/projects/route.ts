@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { resolveProjectLimits } from "@/services/registration.service";
+import { cleanErrorMessage } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,108 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json({ projects: simpleList });
+  }
+
+  // Bulk File Download for Admin: Fetch all projects with artifacts, manuscripts, and enrolled student marks
+  if (searchParams.get("exportFiles") === "true") {
+    const search = searchParams.get("search")?.trim() || "";
+    const categoryFilter = searchParams.get("category") || "all";
+    const statusFilter = searchParams.get("status") || "all";
+    const schoolFilter = searchParams.get("school") || "all";
+
+    const where: Prisma.ProjectWhereInput = {};
+    if (search) {
+      where.OR = [
+        { projectId: { contains: search } },
+        { title: { contains: search } },
+        { department: { contains: search } },
+        { theme: { contains: search } },
+        { faculty: { name: { contains: search } } },
+      ];
+    }
+    if (categoryFilter !== "all") where.category = categoryFilter;
+    if (statusFilter !== "all") where.submissionStatus = statusFilter;
+    if (schoolFilter !== "all") where.department = schoolFilter;
+
+    const projectsWithFiles = await prisma.project.findMany({
+      where,
+      orderBy: [{ department: "asc" }, { projectId: "asc" }],
+      include: {
+        faculty: { select: { name: true, email: true, department: true } },
+        artifacts: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            type: true,
+            title: true,
+            fileName: true,
+            fileUrl: true,
+            fileSize: true,
+            semester: true,
+            similarityPercent: true,
+            aiPercent: true,
+            plagiarismReportFileName: true,
+            plagiarismReportUrl: true,
+            status: true,
+          },
+        },
+        registrations: {
+          include: {
+            student: {
+              select: {
+                id: true,
+                enrollmentNumber: true,
+                name: true,
+                department: true,
+                programme: true,
+                semester: true,
+                batch: true,
+                attendancePercent: true,
+                internalMarks: true,
+                externalMarks: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      projects: projectsWithFiles.map((p) => ({
+        id: p.id,
+        projectId: p.projectId,
+        title: p.title,
+        department: p.department,
+        category: p.category,
+        theme: p.theme,
+        submissionStatus: p.submissionStatus,
+        hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
+        hasCommunicatedManuscript: p.hasCommunicatedManuscript,
+        draftManuscriptUrl: p.draftManuscriptUrl,
+        draftManuscriptFileName: p.draftManuscriptFileName,
+        journalName: p.journalName,
+        isManuscriptPublished: p.isManuscriptPublished,
+        publicationDoi: p.publicationDoi,
+        publishedManuscriptUrl: p.publishedManuscriptUrl,
+        publishedManuscriptFileName: p.publishedManuscriptFileName,
+        manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
+        manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
+        manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
+        faculty: p.faculty,
+        artifacts: p.artifacts,
+        students: p.registrations.map((r) => ({
+          enrollmentNumber: r.student.enrollmentNumber,
+          name: r.student.name,
+          department: r.student.department,
+          programme: r.student.programme,
+          semester: r.student.semester,
+          batch: r.student.batch,
+          attendancePercent: r.student.attendancePercent,
+          internalMarks: r.student.internalMarks,
+          externalMarks: r.student.externalMarks,
+        })),
+      })),
+    });
   }
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
@@ -85,7 +188,23 @@ export async function GET(req: NextRequest) {
       orderBy: { projectId: "asc" },
       include: {
         faculty: { select: { name: true, department: true } },
-        registrations: { select: { id: true } },
+        registrations: {
+          select: {
+            id: true,
+            student: {
+              select: {
+                id: true,
+                enrollmentNumber: true,
+                name: true,
+                department: true,
+                programme: true,
+                attendancePercent: true,
+                internalMarks: true,
+                externalMarks: true,
+              },
+            },
+          },
+        },
         artifacts: {
           select: {
             id: true,
@@ -98,8 +217,10 @@ export async function GET(req: NextRequest) {
             similarityPercent: true,
             aiPercent: true,
             plagiarismReportUrl: true,
+            plagiarismReportFileName: true,
             status: true,
             spocNote: true,
+            submittedAt: true,
           },
         },
       },
@@ -215,7 +336,37 @@ export async function GET(req: NextRequest) {
           aiPercent: a.aiPercent,
           status: a.status,
           spocNote: a.spocNote,
+          plagiarismReportUrl: a.plagiarismReportUrl,
+          plagiarismReportFileName: a.plagiarismReportFileName,
+          submittedAt: a.submittedAt,
         })),
+        students: (p.registrations || []).map((r) => ({
+          id: r.student.id,
+          enrollmentNumber: r.student.enrollmentNumber,
+          name: r.student.name,
+          department: r.student.department,
+          programme: r.student.programme,
+          attendancePercent: r.student.attendancePercent ?? 100,
+          internalMarks: r.student.internalMarks ?? 0,
+          externalMarks: r.student.externalMarks ?? 0,
+          totalMarks: (r.student.internalMarks ?? 0) + (r.student.externalMarks ?? 0),
+        })),
+        hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
+        hasCommunicatedManuscript: Boolean(p.hasCommunicatedManuscript),
+        draftManuscriptUrl: p.draftManuscriptUrl,
+        draftManuscriptFileName: p.draftManuscriptFileName,
+        journalName: p.journalName,
+        avishkarAffiliationCommunicated: Boolean(p.avishkarAffiliationCommunicated),
+        isManuscriptPublished: Boolean(p.isManuscriptPublished),
+        publicationDoi: p.publicationDoi,
+        publishedManuscriptUrl: p.publishedManuscriptUrl,
+        publishedManuscriptFileName: p.publishedManuscriptFileName,
+        avishkarAffiliationPublished: Boolean(p.avishkarAffiliationPublished),
+        manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
+        manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
+        manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
+        manuscriptAiPercent: p.manuscriptAiPercent,
+        manuscriptSubmittedAt: p.manuscriptSubmittedAt,
         similarityPercent: reportArtifact?.similarityPercent ?? null,
         aiPercent: reportArtifact?.aiPercent ?? null,
         plagiarismReportUrl: reportArtifact?.plagiarismReportUrl ?? null,
@@ -245,4 +396,137 @@ export async function GET(req: NextRequest) {
       schoolBreakdown,
     },
   });
+}
+
+// REASSIGN / REPLACE FACULTY MENTOR ON A PROJECT (PATCH)
+export async function PATCH(req: NextRequest) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json();
+    const { projectId, newFacultyId } = body;
+
+    if (!projectId || !newFacultyId) {
+      return NextResponse.json(
+        { error: "Both projectId and newFacultyId are required." },
+        { status: 400 }
+      );
+    }
+
+    const project = await prisma.project.findFirst({
+      where: {
+        OR: [{ id: projectId }, { projectId: projectId }],
+      },
+      include: {
+        faculty: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    }
+
+    const newFaculty = await prisma.faculty.findUnique({
+      where: { id: newFacultyId },
+      select: { id: true, name: true, email: true, department: true },
+    });
+
+    if (!newFaculty) {
+      return NextResponse.json({ error: "Replacement faculty not found." }, { status: 404 });
+    }
+
+    if (project.facultyId === newFacultyId) {
+      return NextResponse.json(
+        { error: `Project is already assigned to ${newFaculty.name}.` },
+        { status: 400 }
+      );
+    }
+
+    const updated = await prisma.project.update({
+      where: { id: project.id },
+      data: { facultyId: newFacultyId },
+      include: {
+        faculty: { select: { id: true, name: true, email: true, department: true } },
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor: session.name,
+        actorRole: "ADMIN",
+        action: "REPLACE_PROJECT_MENTOR",
+        target: project.projectId,
+        metadata: JSON.stringify({
+          projectTitle: project.title,
+          previousFaculty: project.faculty.name,
+          newFaculty: newFaculty.name,
+        }),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Project ${project.projectId} mentor successfully updated to ${newFaculty.name}.`,
+      project: updated,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: cleanErrorMessage(err, "Failed to reassign project mentor.") },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE PROJECT (DELETE)
+export async function DELETE(req: NextRequest) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ error: "Project ID is required." }, { status: 400 });
+    }
+
+    const project = await prisma.project.findFirst({
+      where: { OR: [{ id }, { projectId: id }] },
+      include: { registrations: true },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    }
+
+    await prisma.$transaction([
+      prisma.registration.deleteMany({ where: { projectId: project.id } }),
+      prisma.projectArtifact.deleteMany({ where: { projectId: project.id } }),
+      prisma.project.delete({ where: { id: project.id } }),
+    ]);
+
+    await prisma.auditLog.create({
+      data: {
+        actor: session.name,
+        actorRole: "ADMIN",
+        action: "DELETE_PROJECT",
+        target: project.projectId,
+        metadata: JSON.stringify({ title: project.title }),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Project ${project.projectId} removed successfully.`,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: cleanErrorMessage(err, "Failed to delete project.") },
+      { status: 500 }
+    );
+  }
 }

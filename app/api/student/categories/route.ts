@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getCachedGlobalConfig } from "@/services/registration.service";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function GET() {
     });
   }
 
-  const config = await prisma.globalConfig.findUnique({ where: { id: "default" } });
+  const config = await getCachedGlobalConfig();
   const activeYear = config?.activeAcademicYear || "2025-2026";
 
   // Fetch unique categories and themes for active academic year

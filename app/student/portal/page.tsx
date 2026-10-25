@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -10,7 +10,6 @@ import {
   Smartphone,
   ShieldCheck,
   RefreshCw,
-  ArrowRight,
 } from "lucide-react";
 import { StudentData, ProjectCardData } from "@/types/student";
 import { StudentHeader } from "@/components/student/StudentHeader";
@@ -18,6 +17,7 @@ import { RegisteredStatusCard } from "@/components/student/RegisteredStatusCard"
 import { CategorySelector } from "@/components/student/CategorySelector";
 import { ThemeSelector } from "@/components/student/ThemeSelector";
 import { AvailableProjectsList } from "@/components/student/AvailableProjectsList";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 export default function StudentPortalPage() {
   const router = useRouter();
@@ -25,13 +25,10 @@ export default function StudentPortalPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Dynamic SMS 2FA Mode & Phone Verification State
-  const [smsOtpEnabled, setSmsOtpEnabled] = useState(false);
+  // Mandatory Phone Declaration State
+  const [registrationOpen, setRegistrationOpen] = useState(true);
   const [phoneInput, setPhoneInput] = useState("");
   const [confirmPhoneInput, setConfirmPhoneInput] = useState("");
-  const [otpInput, setOtpInput] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
   const [consentChecked, setConsentChecked] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -47,6 +44,17 @@ export default function StudentPortalPage() {
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
 
+  // High-concurrency SSE throttle refs to prevent 5,000-user thundering herd
+  const selectedCategoryRef = useRef<string | null>(null);
+  const selectedThemeRef = useRef<string | null>(null);
+  const lastFetchTimeRef = useRef<number>(0);
+  const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    selectedCategoryRef.current = selectedCategory;
+    selectedThemeRef.current = selectedTheme;
+  }, [selectedCategory, selectedTheme]);
+
   // Fetch initial student data
   const fetchStudentData = async () => {
     try {
@@ -61,8 +69,8 @@ export default function StudentPortalPage() {
         return;
       }
       setStudent(data.user);
-      if (typeof data.smsOtpEnabled === "boolean") {
-        setSmsOtpEnabled(data.smsOtpEnabled);
+      if (typeof data.registrationOpen === "boolean") {
+        setRegistrationOpen(data.registrationOpen);
       }
       if (data.user.phone) {
         setPhoneInput(data.user.phone);
@@ -92,8 +100,9 @@ export default function StudentPortalPage() {
   const fetchProjects = async (category: string, theme: string) => {
     setLoadingProjects(true);
     try {
+      const deptParam = student?.department ? `&dept=${encodeURIComponent(student.department)}` : "";
       const res = await fetch(
-        `/api/student/projects?category=${encodeURIComponent(category)}&theme=${encodeURIComponent(theme)}`
+        `/api/student/projects?category=${encodeURIComponent(category)}&theme=${encodeURIComponent(theme)}${deptParam}`
       );
       const data = await res.json();
       setProjects(data.projects || []);
@@ -106,17 +115,21 @@ export default function StudentPortalPage() {
   useEffect(() => {
     fetchStudentData();
 
-    // Setup Real-time SSE listener
-    const eventSource = new EventSource("/api/events");
-    eventSource.addEventListener("registration.created", () => {
-      // Re-fetch project counts if viewing projects list
-      if (selectedCategory && selectedTheme) {
-        fetchProjects(selectedCategory, selectedTheme);
+    // Auto-refresh project seat availability when student refocuses portal tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (selectedCategoryRef.current && selectedThemeRef.current) {
+          fetchProjects(selectedCategoryRef.current, selectedThemeRef.current);
+        }
       }
-    });
+    };
 
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      eventSource.close();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -130,85 +143,6 @@ export default function StudentPortalPage() {
     setSelectedTheme(thm);
     if (selectedCategory) {
       fetchProjects(selectedCategory, thm);
-    }
-  };
-
-  const handleSendOtp = async () => {
-    const clean = phoneInput.replace(/\D/g, "");
-    if (clean.length !== 10) {
-      setPhoneError("Please enter a valid 10-digit mobile number.");
-      return;
-    }
-    setPhoneLoading(true);
-    setPhoneError(null);
-    setPhoneSuccess(null);
-    try {
-      const res = await fetch("/api/auth/me", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "SEND_OTP", phone: clean }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setPhoneError(data.error || "Failed to send OTP.");
-        return;
-      }
-      setOtpSent(true);
-      if (data.devOtp) setDevOtpHint(data.devOtp);
-      setPhoneSuccess(data.message || "OTP sent successfully.");
-    } catch {
-      setPhoneError("Network error while sending OTP.");
-    } finally {
-      setPhoneLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    const clean = phoneInput.replace(/\D/g, "");
-    if (clean.length !== 10) {
-      setPhoneError("Please enter a valid 10-digit mobile number.");
-      return;
-    }
-    if (otpInput.trim().length !== 6) {
-      setPhoneError("Please enter the 6-digit OTP code.");
-      return;
-    }
-    if (!consentChecked) {
-      setPhoneError("Please tick the consent box: 'this will be used for further communication'.");
-      return;
-    }
-    setPhoneLoading(true);
-    setPhoneError(null);
-    try {
-      const res = await fetch("/api/auth/me", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "VERIFY_OTP",
-          phone: clean,
-          otp: otpInput.trim(),
-          consent: consentChecked,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setPhoneError(data.error || "OTP verification failed.");
-        return;
-      }
-      setStudent((prev) =>
-        prev
-          ? {
-              ...prev,
-              phone: data.student.phone,
-              phoneVerified: true,
-            }
-          : prev
-      );
-      setPhoneSuccess("Mobile number verified successfully!");
-    } catch {
-      setPhoneError("Network error while verifying OTP.");
-    } finally {
-      setPhoneLoading(false);
     }
   };
 
@@ -234,7 +168,6 @@ export default function StudentPortalPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "SAVE_PHONE",
           phone: clean,
           confirmPhone: cleanConfirm,
           consent: consentChecked,
@@ -242,7 +175,7 @@ export default function StudentPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setPhoneError(data.error || "Failed to save mobile number.");
+        setPhoneError(cleanErrorMessage(data.error, "Failed to save mobile number."));
         return;
       }
       setStudent((prev) =>
@@ -277,7 +210,7 @@ export default function StudentPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Registration failed.");
+        setError(cleanErrorMessage(data.error, "Registration failed."));
         setRegisteringId(null);
         return;
       }
@@ -285,7 +218,7 @@ export default function StudentPortalPage() {
       setRegistrationSuccessMessage("Registration Successful!");
       await fetchStudentData();
     } catch (err: any) {
-      setError("Registration request failed.");
+      setError(cleanErrorMessage(err, "Registration request failed."));
     } finally {
       setRegisteringId(null);
     }
@@ -355,6 +288,16 @@ export default function StudentPortalPage() {
 
         {student.registration ? (
           <RegisteredStatusCard registration={student.registration} />
+        ) : !registrationOpen ? (
+          <div className="bg-white rounded-2xl p-8 border border-amber-200/90 shadow-sm text-center space-y-3 animate-in fade-in">
+            <div className="w-12 h-12 mx-auto rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-[#0d2137]">Project Registration Currently Closed</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              The university administration has temporarily paused IDP project registrations. Project browsing and selection will resume once the registration window is re-opened by administration.
+            </p>
+          </div>
         ) : (
           <div>
             {!selectedCategory && (
@@ -384,6 +327,7 @@ export default function StudentPortalPage() {
                 loadingProjects={loadingProjects}
                 registeringId={registeringId}
                 onRegister={handleRegister}
+                onRefresh={() => fetchProjects(selectedCategory, selectedTheme)}
                 onBack={() => {
                   setSelectedTheme(null);
                   setProjects([]);
@@ -409,9 +353,7 @@ export default function StudentPortalPage() {
                     {student.registration ? "Confirm Contact Details" : "Mobile Number Verification"}
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
-                    {smsOtpEnabled
-                      ? "Two-Factor SMS OTP Verification Required"
-                      : "First-Time Mobile Number Confirmation"}
+                    First-Time Mobile Number Declaration
                   </p>
                 </div>
               </div>
@@ -441,243 +383,96 @@ export default function StudentPortalPage() {
                 </div>
               )}
 
-              {/* DYNAMIC MODE 1: SMS OTP 2FA */}
-              {smsOtpEnabled ? (
-                <div className="space-y-4">
-                  {!otpSent ? (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Enter 10-Digit Mobile Number
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">
-                          +91
-                        </span>
-                        <input
-                          type="tel"
-                          maxLength={10}
-                          placeholder="e.g. 9876543210"
-                          value={phoneInput}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, "");
-                            setPhoneInput(val);
-                            setPhoneError(null);
-                          }}
-                          className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-slate-300 font-mono text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
-                        />
-                      </div>
-                      <p className="text-[11px] text-slate-400 mt-1.5">
-                        A 6-digit OTP verification code will be sent to this number.
-                      </p>
+              {/* DOUBLE-ENTRY CONFIRMATION & DECLARATION */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Mobile Number
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      placeholder="10-digit mobile number"
+                      value={phoneInput}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setPhoneInput(val);
+                        setPhoneError(null);
+                      }}
+                      className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-slate-300 font-mono text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
+                    />
+                  </div>
+                </div>
 
-                      <div className="mt-5 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          disabled={phoneLoading || phoneInput.length !== 10}
-                          className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#0d2137] hover:bg-[#1a3a60] text-white text-xs sm:text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          {phoneLoading ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <span>Send Verification OTP</span>
-                              <ArrowRight className="w-4 h-4" />
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="text-slate-500 font-medium">OTP sent to: </span>
-                          <span className="font-mono font-bold text-[#0d2137]">+91 {phoneInput}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOtpSent(false);
-                            setOtpInput("");
-                            setDevOtpHint(null);
-                            setPhoneError(null);
-                          }}
-                          className="text-[#cda34f] hover:underline font-semibold text-xs"
-                        >
-                          Change Number
-                        </button>
-                      </div>
-
-                      {devOtpHint && (
-                        <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-800 flex items-center justify-between">
-                          <span>
-                            🔑 Demo OTP: <strong className="font-mono">{devOtpHint}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setOtpInput(devOtpHint)}
-                            className="text-xs text-blue-600 underline font-semibold hover:text-blue-800"
-                          >
-                            Auto-fill
-                          </button>
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Enter 6-Digit OTP Code
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={6}
-                          placeholder="6-digit OTP"
-                          value={otpInput}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, "");
-                            setOtpInput(val);
-                            setPhoneError(null);
-                          }}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-mono text-center tracking-[0.3em] text-base font-bold text-[#0d2137] focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
-                        />
-                      </div>
-
-                      {/* Mandatory Consent Checkbox */}
-                      <label className="flex items-start gap-2.5 cursor-pointer pt-1 group">
-                        <input
-                          type="checkbox"
-                          checked={consentChecked}
-                          onChange={(e) => setConsentChecked(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0d2137] focus:ring-[#cda34f]"
-                        />
-                        <span className="text-xs text-slate-700 group-hover:text-slate-900 font-medium leading-relaxed">
-                          I confirm this is my mobile number and tick the consent box:{" "}
-                          <strong className="text-[#0d2137]">&quot;this will be used for further communication&quot;</strong>.
-                        </span>
-                      </label>
-
-                      <div className="pt-2 flex flex-col sm:flex-row items-center gap-3 justify-between">
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          disabled={phoneLoading}
-                          className="text-xs text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${phoneLoading ? "animate-spin" : ""}`} />
-                          <span>Resend OTP</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleVerifyOtp}
-                          disabled={phoneLoading || otpInput.trim().length !== 6 || !consentChecked}
-                          className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#0d2137] hover:bg-[#1a3a60] text-white text-xs sm:text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          {phoneLoading ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <span>Verify & Continue</span>
-                              <CheckCircle2 className="w-4 h-4" />
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Confirm Mobile Number (Enter Twice)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      placeholder="Re-enter same mobile number"
+                      value={confirmPhoneInput}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setConfirmPhoneInput(val);
+                        setPhoneError(null);
+                      }}
+                      className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-slate-300 font-mono text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
+                    />
+                  </div>
+                  {phoneInput && confirmPhoneInput && phoneInput !== confirmPhoneInput && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">
+                      Mobile numbers do not match.
+                    </p>
                   )}
                 </div>
-              ) : (
-                /* DYNAMIC MODE 2: DOUBLE-ENTRY CONFIRMATION (SMS OTP OFF) */
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Mobile Number
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">
-                        +91
-                      </span>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        placeholder="10-digit mobile number"
-                        value={phoneInput}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "");
-                          setPhoneInput(val);
-                          setPhoneError(null);
-                        }}
-                        className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-slate-300 font-mono text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Confirm Mobile Number (Enter Twice)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">
-                        +91
-                      </span>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        placeholder="Re-enter same mobile number"
-                        value={confirmPhoneInput}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "");
-                          setConfirmPhoneInput(val);
-                          setPhoneError(null);
-                        }}
-                        className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-slate-300 font-mono text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
-                      />
-                    </div>
-                    {phoneInput && confirmPhoneInput && phoneInput !== confirmPhoneInput && (
-                      <p className="text-[11px] text-red-500 mt-1 font-medium">
-                        Mobile numbers do not match.
-                      </p>
+                {/* Mandatory Consent Checkbox */}
+                <label className="flex items-start gap-2.5 cursor-pointer pt-1 group">
+                  <input
+                    type="checkbox"
+                    checked={consentChecked}
+                    onChange={(e) => setConsentChecked(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0d2137] focus:ring-[#cda34f]"
+                  />
+                  <span className="text-xs text-slate-700 group-hover:text-slate-900 font-medium leading-relaxed">
+                    I confirm both numbers match and tick the consent box:{" "}
+                    <strong className="text-[#0d2137]">&quot;this will be used for further communication&quot;</strong>.
+                  </span>
+                </label>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSavePhoneDoubleEntry}
+                    disabled={
+                      phoneLoading ||
+                      phoneInput.length !== 10 ||
+                      phoneInput !== confirmPhoneInput ||
+                      !consentChecked
+                    }
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#0d2137] hover:bg-[#1a3a60] text-white text-xs sm:text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {phoneLoading ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <span>Save Mobile Number & Continue</span>
+                        <CheckCircle2 className="w-4 h-4" />
+                      </>
                     )}
-                  </div>
-
-                  {/* Mandatory Consent Checkbox */}
-                  <label className="flex items-start gap-2.5 cursor-pointer pt-1 group">
-                    <input
-                      type="checkbox"
-                      checked={consentChecked}
-                      onChange={(e) => setConsentChecked(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0d2137] focus:ring-[#cda34f]"
-                    />
-                    <span className="text-xs text-slate-700 group-hover:text-slate-900 font-medium leading-relaxed">
-                      I confirm both numbers match and tick the consent box:{" "}
-                      <strong className="text-[#0d2137]">&quot;this will be used for further communication&quot;</strong>.
-                    </span>
-                  </label>
-
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleSavePhoneDoubleEntry}
-                      disabled={
-                        phoneLoading ||
-                        phoneInput.length !== 10 ||
-                        phoneInput !== confirmPhoneInput ||
-                        !consentChecked
-                      }
-                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#0d2137] hover:bg-[#1a3a60] text-white text-xs sm:text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {phoneLoading ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <span>Save Mobile Number & Continue</span>
-                          <CheckCircle2 className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}

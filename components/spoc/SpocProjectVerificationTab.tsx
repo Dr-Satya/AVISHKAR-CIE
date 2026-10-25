@@ -20,9 +20,13 @@ import {
   Mail,
   Edit3,
   BookOpen,
+  Archive,
+  Upload,
 } from "lucide-react";
 import { ProjectData } from "@/types/spoc";
 import { SpocProjectEditModal } from "@/components/spoc/SpocProjectEditModal";
+import { ArtifactUploadModal } from "@/components/faculty/ArtifactUploadModal";
+import { ManuscriptModal } from "@/components/faculty/ManuscriptModal";
 
 interface SpocProjectVerificationTabProps {
   projects: ProjectData[];
@@ -33,12 +37,16 @@ interface SpocProjectVerificationTabProps {
     artifactTitle?: string
   ) => void;
   onRefresh?: () => void;
+  onDownloadProjectZip?: (project: ProjectData) => void;
+  onDownloadAllProjectsZip?: (filteredProjects: ProjectData[]) => void;
 }
 
 export function SpocProjectVerificationTab({
   projects,
   onOpenReview,
   onRefresh,
+  onDownloadProjectZip,
+  onDownloadAllProjectsZip,
 }: SpocProjectVerificationTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -46,6 +54,13 @@ export function SpocProjectVerificationTab({
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   const [editProject, setEditProject] = useState<ProjectData | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // SPOC Direct Upload States
+  const [uploadProject, setUploadProject] = useState<ProjectData | null>(null);
+  const [uploadSemester, setUploadSemester] = useState<number | undefined>(undefined);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [manuscriptProject, setManuscriptProject] = useState<ProjectData | null>(null);
+  const [showManuscriptModal, setShowManuscriptModal] = useState(false);
 
   const toggleExpand = (projectId: string) => {
     setExpandedProjects((prev) => ({
@@ -371,6 +386,18 @@ export function SpocProjectVerificationTab({
               )
             )}
           </div>
+
+          {onDownloadAllProjectsZip && filteredProjects.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onDownloadAllProjectsZip(filteredProjects)}
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#0d2137] text-[#cda34f] hover:bg-[#162a45] flex items-center gap-1.5 transition-all shadow-xs self-end sm:self-auto ml-auto"
+              title="Download all submitted files for matching projects (.zip)"
+            >
+              <Archive className="w-3.5 h-3.5" />
+              <span>Download Files ({filteredProjects.length})</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -539,6 +566,31 @@ export function SpocProjectVerificationTab({
                         <span>Edit Idea</span>
                       </button>
 
+                      <button
+                        onClick={() => {
+                          setManuscriptProject(proj);
+                          setShowManuscriptModal(true);
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-[#0d2137] border border-amber-300 text-xs font-semibold flex items-center gap-1 shadow-xs transition-all"
+                        title="Upload or update research manuscript & publication data"
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-[#c59b27]" />
+                        <span className="hidden sm:inline">Manuscript</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setUploadProject(proj);
+                          setUploadSemester(proj.semester || 3);
+                          setShowUploadModal(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-[#0d2137] hover:bg-[#1a3a60] text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+                        title="Upload reports, slides, or Turnitin reports for this project"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-[#cda34f]" />
+                        <span>Upload</span>
+                      </button>
+
                       {proj.submissionStatus !== "APPROVED" ? (
                         <>
                           <button
@@ -566,6 +618,17 @@ export function SpocProjectVerificationTab({
                         >
                           <XCircle className="w-3.5 h-3.5 text-red-500" />
                           <span>Reject</span>
+                        </button>
+                      )}
+
+                      {onDownloadProjectZip && (
+                        <button
+                          onClick={() => onDownloadProjectZip(proj)}
+                          className="px-2.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 shadow-xs transition-all"
+                          title="Download all submission files for this project (.zip)"
+                        >
+                          <Archive className="w-3.5 h-3.5 text-slate-600" />
+                          <span className="hidden sm:inline">Files (.zip)</span>
                         </button>
                       )}
 
@@ -651,9 +714,23 @@ export function SpocProjectVerificationTab({
                               {sem1HasReport ? "Report Uploaded" : "Report Missing"}
                             </span>
                           </div>
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            Turnitin &lt; 10% · AI &lt; 20%
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                              Turnitin &lt; 10% · AI &lt; 20%
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadProject(proj);
+                                setUploadSemester(baseSem);
+                                setShowUploadModal(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>+ Upload Sem {baseSem}</span>
+                            </button>
+                          </div>
                         </div>
 
                         {sem1Artifacts.length === 0 ? (
@@ -686,9 +763,23 @@ export function SpocProjectVerificationTab({
                               {sem2HasReport ? "Report Uploaded" : "Report Missing"}
                             </span>
                           </div>
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            Turnitin &lt; 10% · AI &lt; 20%
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                              Turnitin &lt; 10% · AI &lt; 20%
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadProject(proj);
+                                setUploadSemester(nextSem);
+                                setShowUploadModal(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>+ Upload Sem {nextSem}</span>
+                            </button>
+                          </div>
                         </div>
 
                         {sem2Artifacts.length === 0 ? (
@@ -707,25 +798,84 @@ export function SpocProjectVerificationTab({
                     </div>
 
                     {/* RESEARCH MANUSCRIPT & PUBLICATION INSPECTION CARD */}
-                    {(proj.hasCommunicatedManuscript || proj.isManuscriptPublished) && (
-                      <div className="bg-white rounded-xl border border-slate-200/90 p-5 space-y-3.5 shadow-xs">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <div className="flex items-center gap-2">
-                            <BookOpen className="w-4 h-4 text-[#c59b27]" />
-                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                              Research Manuscript &amp; Publication Status (Avishkar CIE Affiliated)
-                            </h4>
-                          </div>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                            Academic Paper Linked
-                          </span>
+                    <div className="bg-white rounded-xl border border-slate-200/90 p-5 space-y-3.5 shadow-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-[#c59b27]" />
+                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            Research Manuscript &amp; Publication Status (Avishkar CIE Affiliated)
+                          </h4>
+                          {(proj.hasDraftManuscript || proj.draftManuscriptUrl || proj.hasCommunicatedManuscript || proj.isManuscriptPublished) && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                              Academic Paper Linked
+                            </span>
+                          )}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setManuscriptProject(proj);
+                            setShowManuscriptModal(true);
+                          }}
+                          className="self-start sm:self-center px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-[#0d2137] border border-amber-300 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        >
+                          <BookOpen className="w-3 h-3 text-[#c59b27]" />
+                          <span>
+                            {proj.hasDraftManuscript || proj.draftManuscriptUrl || proj.hasCommunicatedManuscript || proj.isManuscriptPublished
+                              ? "Edit / Upload Manuscript"
+                              : "+ Link Research Manuscript"}
+                          </span>
+                        </button>
+                      </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      {!(proj.hasDraftManuscript || proj.draftManuscriptUrl || proj.hasCommunicatedManuscript || proj.isManuscriptPublished) ? (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
+                          <p className="text-xs text-slate-600 font-medium">No research manuscript or conference paper linked yet.</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Click &ldquo;+ Link Research Manuscript&rdquo; to attach the draft paper, publication DOI, or Turnitin plagiarism report.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+                          {/* Draft details */}
+                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700">Manuscript in Draft:</span>
+                              {proj.draftManuscriptUrl || proj.hasDraftManuscript ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200">
+                                  Draft Attached ✓
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-medium text-slate-400">No Draft</span>
+                              )}
+                            </div>
+
+                            {(proj.draftManuscriptUrl || proj.hasDraftManuscript) && (
+                              <div className="space-y-1.5 text-xs">
+                                <div className="text-[11px] text-slate-600">
+                                  Draft manuscript prepared.
+                                </div>
+                                {proj.draftManuscriptUrl && (
+                                  <div className="pt-1">
+                                    <a
+                                      href={proj.draftManuscriptUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold inline-flex items-center gap-1"
+                                    >
+                                      <Download className="w-3 h-3" />
+                                      <span>Draft Manuscript</span>
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
                           {/* Communicated details */}
                           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-slate-700">Manuscript Communication:</span>
+                              <span className="font-bold text-slate-700">Manuscript Communicated:</span>
                               {proj.hasCommunicatedManuscript ? (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-200">
                                   Communicated / Under Review
@@ -745,17 +895,6 @@ export function SpocProjectVerificationTab({
                                   <span>Avishkar Affiliation: Confirmed ✓</span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                                  {proj.draftManuscriptUrl && (
-                                    <a
-                                      href={proj.draftManuscriptUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold flex items-center gap-1"
-                                    >
-                                      <Download className="w-3 h-3" />
-                                      <span>Draft Manuscript</span>
-                                    </a>
-                                  )}
                                   {proj.manuscriptPlagiarismUrl && (
                                     <a
                                       href={proj.manuscriptPlagiarismUrl}
@@ -825,8 +964,8 @@ export function SpocProjectVerificationTab({
                             )}
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {/* SECTION 2: APPLICATION VERDICT & DECISION PANEL */}
                     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -852,7 +991,7 @@ export function SpocProjectVerificationTab({
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2.5 flex-shrink-0">
+                      <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">
                         <button
                           onClick={() => onOpenReview(proj, "APPROVE")}
                           className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
@@ -870,13 +1009,15 @@ export function SpocProjectVerificationTab({
                       </div>
                     </div>
 
-                    {/* SECTION 3: ENROLLED STUDENTS IN THIS PROJECT */}
+                    {/* SECTION 3: ENROLLED STUDENTS & FACULTY MARKS */}
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5 flex items-center gap-2">
-                        <Users className="w-4 h-4 text-slate-500" />
-                        <span>
-                          Enrolled Students in {proj.projectId} ({proj.students.length})
-                        </span>
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-slate-500" />
+                          <span>
+                            Enrolled Students & Faculty Marks in {proj.projectId} ({proj.students.length})
+                          </span>
+                        </div>
                       </h4>
 
                       {proj.students.length === 0 ? (
@@ -885,32 +1026,64 @@ export function SpocProjectVerificationTab({
                         </p>
                       ) : (
                         <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
-                          <table className="w-full text-left text-xs">
+                          <table className="w-full text-left text-xs min-w-[750px]">
                             <thead>
                               <tr className="border-b border-slate-100 text-slate-500 font-semibold bg-slate-50/50">
                                 <th className="py-2.5 px-3">Enrollment No.</th>
-                                <th className="py-2.5 px-3">Name</th>
+                                <th className="py-2.5 px-3">Student Name</th>
                                 <th className="py-2.5 px-3">Department</th>
                                 <th className="py-2.5 px-3">Programme</th>
-                                <th className="py-2.5 px-3">Semester</th>
-                                <th className="py-2.5 px-3">Batch</th>
+                                <th className="py-2.5 px-3 text-center">Attendance</th>
+                                <th className="py-2.5 px-3 text-center">Internal (/50)</th>
+                                <th className="py-2.5 px-3 text-center">External (/50)</th>
+                                <th className="py-2.5 px-3 text-center">Total (/100)</th>
+                                <th className="py-2.5 px-3 text-right">Marks Status</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                              {proj.students.map((s) => (
-                                <tr key={s.id} className="hover:bg-slate-50/50">
-                                  <td className="py-2 px-3 font-mono font-bold text-[#0d2137]">
-                                    {s.enrollment}
-                                  </td>
-                                  <td className="py-2 px-3 font-semibold text-slate-800">
-                                    {s.name}
-                                  </td>
-                                  <td className="py-2 px-3 text-slate-600">{s.department}</td>
-                                  <td className="py-2 px-3 text-slate-600">{s.programme || "—"}</td>
-                                  <td className="py-2 px-3 text-slate-600">Sem {s.semester}</td>
-                                  <td className="py-2 px-3 text-slate-600">{s.batch}</td>
-                                </tr>
-                              ))}
+                              {proj.students.map((s) => {
+                                const intMarks = s.internalMarks ?? 0;
+                                const extMarks = s.externalMarks ?? 0;
+                                const totMarks = intMarks + extMarks;
+                                const hasMarks = intMarks > 0 || extMarks > 0;
+                                return (
+                                  <tr key={s.id} className="hover:bg-slate-50/50">
+                                    <td className="py-2 px-3 font-mono font-bold text-[#0d2137]">
+                                      {s.enrollment}
+                                    </td>
+                                    <td className="py-2 px-3 font-semibold text-slate-800">
+                                      {s.name}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-600">{s.department}</td>
+                                    <td className="py-2 px-3 text-slate-600">{s.programme || "—"}</td>
+                                    <td className="py-2 px-3 text-center font-mono font-medium">
+                                      {s.attendancePercent !== undefined && s.attendancePercent !== null
+                                        ? `${s.attendancePercent}%`
+                                        : "—"}
+                                    </td>
+                                    <td className="py-2 px-3 text-center font-mono font-bold text-blue-700">
+                                      {intMarks > 0 ? `${intMarks} / 50` : "—"}
+                                    </td>
+                                    <td className="py-2 px-3 text-center font-mono font-bold text-indigo-700">
+                                      {extMarks > 0 ? `${extMarks} / 50` : "—"}
+                                    </td>
+                                    <td className="py-2 px-3 text-center font-mono font-bold text-slate-900">
+                                      {hasMarks ? `${totMarks} / 100` : "—"}
+                                    </td>
+                                    <td className="py-2 px-3 text-right">
+                                      {hasMarks ? (
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                          Submitted
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                          Pending
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -934,6 +1107,40 @@ export function SpocProjectVerificationTab({
             setEditProject(null);
           }}
           onSuccess={() => {
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
+
+      {/* SPOC ARTIFACT UPLOAD MODAL */}
+      {showUploadModal && uploadProject && (
+        <ArtifactUploadModal
+          project={uploadProject as any}
+          initialSemester={uploadSemester}
+          onClose={() => {
+            setShowUploadModal(false);
+            setUploadProject(null);
+          }}
+          onSuccess={() => {
+            setShowUploadModal(false);
+            setUploadProject(null);
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
+
+      {/* SPOC RESEARCH MANUSCRIPT MODAL */}
+      {showManuscriptModal && manuscriptProject && (
+        <ManuscriptModal
+          isOpen={showManuscriptModal}
+          project={manuscriptProject as any}
+          onClose={() => {
+            setShowManuscriptModal(false);
+            setManuscriptProject(null);
+          }}
+          onSuccess={() => {
+            setShowManuscriptModal(false);
+            setManuscriptProject(null);
             if (onRefresh) onRefresh();
           }}
         />

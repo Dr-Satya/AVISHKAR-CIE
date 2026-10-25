@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { executeBulkRegistration } from "@/services/registration.service";
+import { cleanErrorMessage } from "@/lib/api-response";
 import * as XLSX from "xlsx";
 import bcrypt from "bcryptjs";
 
@@ -76,24 +77,58 @@ export async function POST(req: NextRequest) {
           const semester = parseInt(cleanStr(r["Semester"]), 10) || 3;
           const batch = cleanStr(r["Batch"]) || "2025";
           const admissionNumber = cleanStr(r["Admission No."] || r["AdmissionNumber"] || r["Admission No"]) || null;
+          const phone = cleanStr(r["Contact No."] || r["Phone"] || r["Mobile"] || r["Mobile No."] || r["Phone Number"]) || null;
           const email = `${enrollmentNumber.toLowerCase()}@gdgu.org`;
 
+          const rawInternals = r["Internal Marks (/50)"] ?? r["Internal Marks"] ?? r["Internal"] ?? r["internals"] ?? r["internalMarks"];
+          const rawExternals = r["External Marks (/50)"] ?? r["External Marks"] ?? r["External"] ?? r["externals"] ?? r["externalMarks"];
+          const rawAtt = r["Attendance (%)"] ?? r["Attendance %"] ?? r["Attendance"] ?? r["attendancePercent"];
+
+          const internalMarks = rawInternals !== undefined && rawInternals !== "" && !isNaN(Number(rawInternals)) ? Math.min(50, Math.max(0, Number(rawInternals))) : undefined;
+          const externalMarks = rawExternals !== undefined && rawExternals !== "" && !isNaN(Number(rawExternals)) ? Math.min(50, Math.max(0, Number(rawExternals))) : undefined;
+          const attendancePercent = rawAtt !== undefined && rawAtt !== "" && !isNaN(Number(rawAtt)) ? Math.min(100, Math.max(0, Number(rawAtt))) : undefined;
+
           try {
-            const existing = await prisma.student.findUnique({ where: { enrollmentNumber } });
-            if (existing) {
-              await prisma.student.update({
-                where: { enrollmentNumber },
-                data: { name, department, programme, gender, semester, batch, admissionNumber, academicYear },
-              });
-              updatedCount++;
-            } else {
-              await prisma.student.create({
-                data: { enrollmentNumber, name, department, programme, gender, semester, batch, admissionNumber, email, academicYear },
-              });
+            const student = await prisma.student.upsert({
+              where: { enrollmentNumber },
+              update: {
+                name,
+                department,
+                programme,
+                gender,
+                semester,
+                batch,
+                admissionNumber,
+                academicYear,
+                ...(phone ? { phone } : {}),
+                ...(internalMarks !== undefined ? { internalMarks } : {}),
+                ...(externalMarks !== undefined ? { externalMarks } : {}),
+                ...(attendancePercent !== undefined ? { attendancePercent } : {}),
+              },
+              create: {
+                enrollmentNumber,
+                name,
+                department,
+                programme,
+                gender,
+                semester,
+                batch,
+                admissionNumber,
+                email,
+                academicYear,
+                phone,
+                internalMarks: internalMarks ?? 0,
+                externalMarks: externalMarks ?? 0,
+                attendancePercent: attendancePercent ?? 100,
+              },
+            });
+            if (Math.abs(student.createdAt.getTime() - student.updatedAt.getTime()) < 1000) {
               insertedCount++;
+            } else {
+              updatedCount++;
             }
           } catch (err: any) {
-            errors.push(`Row ${i + 2} (${enrollmentNumber}): ${err.message}`);
+            errors.push(`Row ${i + 2} (${enrollmentNumber}): ${cleanErrorMessage(err, "Invalid record format or database constraint.")}`);
             skippedCount++;
           }
         }
@@ -116,21 +151,18 @@ export async function POST(req: NextRequest) {
           const phone = cleanStr(r["Contact No."] || r["Phone"]) || null;
 
           try {
-            const existing = await prisma.faculty.findUnique({ where: { email } });
-            if (existing) {
-              await prisma.faculty.update({
-                where: { email },
-                data: { name, department, phone },
-              });
-              updatedCount++;
-            } else {
-              await prisma.faculty.create({
-                data: { name, email, department, phone, passcodeHash },
-              });
+            const faculty = await prisma.faculty.upsert({
+              where: { email },
+              update: { name, department, phone },
+              create: { name, email, department, phone, passcodeHash },
+            });
+            if (Math.abs(faculty.createdAt.getTime() - faculty.updatedAt.getTime()) < 1000) {
               insertedCount++;
+            } else {
+              updatedCount++;
             }
           } catch (err: any) {
-            errors.push(`Row ${i + 2} (${email}): ${err.message}`);
+            errors.push(`Row ${i + 2} (${email}): ${cleanErrorMessage(err, "Invalid record format or duplicate entry.")}`);
             skippedCount++;
           }
         }
@@ -171,13 +203,16 @@ export async function POST(req: NextRequest) {
             });
             insertedCount++;
           } catch (err: any) {
-            errors.push(`Row ${i + 2} (${department}): ${err.message}`);
+            errors.push(`Row ${i + 2} (${department}): ${cleanErrorMessage(err, "Invalid SPOC entry.")}`);
             skippedCount++;
           }
         }
       }
       // 4. IMPORT PROJECTS (Supports CHC Service Report & Custom Proposal formats)
       else if (importType === "PROJECTS") {
+        const defaultPasscode = process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026";
+        const passcodeHash = await bcrypt.hash(defaultPasscode, 10);
+
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
           const title = cleanStr(
@@ -253,8 +288,6 @@ export async function POST(req: NextRequest) {
               : null;
 
             if (!faculty && facultyEmail) {
-              const defaultPasscode = process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026";
-              const passcodeHash = await bcrypt.hash(defaultPasscode, 10);
               faculty = await prisma.faculty.create({
                 data: {
                   name: facultyName,
@@ -319,7 +352,7 @@ export async function POST(req: NextRequest) {
               insertedCount++;
             }
           } catch (err: any) {
-            errors.push(`Row ${i + 2} (${projectId || title}): ${err.message}`);
+            errors.push(`Row ${i + 2} (${projectId || title}): ${cleanErrorMessage(err, "Invalid project data.")}`);
             skippedCount++;
           }
         }
@@ -345,7 +378,16 @@ export async function POST(req: NextRequest) {
           const category = cleanStr(r["Project  Category  (IDP2501/IDP2502)"] || r["Category"]) || "IDP2502";
           const theme = cleanStr(r["Theme"]) || "Others";
           const description = cleanStr(r["Description  of IDP  project"] || r["Description"]) || null;
-          const phone = cleanStr(r["Contact No."] || r["Phone"]) || null;
+          const phone = cleanStr(r["Faculty Contact No."] || r["Contact No."] || r["Phone"]) || null;
+          const studentPhone = cleanStr(r["Student Contact No."] || r["Student Phone"] || r["Student Mobile"]) || null;
+
+          const rawInternals = r["Internal Marks (/50)"] ?? r["Internal Marks"] ?? r["Internal"] ?? r["internals"] ?? r["internalMarks"];
+          const rawExternals = r["External Marks (/50)"] ?? r["External Marks"] ?? r["External"] ?? r["externals"] ?? r["externalMarks"];
+          const rawAtt = r["Attendance (%)"] ?? r["Attendance %"] ?? r["Attendance"] ?? r["attendancePercent"];
+
+          const internalMarks = rawInternals !== undefined && rawInternals !== "" && !isNaN(Number(rawInternals)) ? Math.min(50, Math.max(0, Number(rawInternals))) : undefined;
+          const externalMarks = rawExternals !== undefined && rawExternals !== "" && !isNaN(Number(rawExternals)) ? Math.min(50, Math.max(0, Number(rawExternals))) : undefined;
+          const attendancePercent = rawAtt !== undefined && rawAtt !== "" && !isNaN(Number(rawAtt)) ? Math.min(100, Math.max(0, Number(rawAtt))) : undefined;
 
           if (!enrollmentNumber || !pId) {
             skippedCount++;
@@ -408,6 +450,10 @@ export async function POST(req: NextRequest) {
                 name: studentName || "Student",
                 department: school,
                 academicYear,
+                ...(studentPhone ? { phone: studentPhone } : {}),
+                ...(internalMarks !== undefined ? { internalMarks } : {}),
+                ...(externalMarks !== undefined ? { externalMarks } : {}),
+                ...(attendancePercent !== undefined ? { attendancePercent } : {}),
               },
               create: {
                 enrollmentNumber,
@@ -417,6 +463,10 @@ export async function POST(req: NextRequest) {
                 academicYear,
                 semester: 3,
                 batch: "2025",
+                phone: studentPhone,
+                internalMarks: internalMarks ?? 0,
+                externalMarks: externalMarks ?? 0,
+                attendancePercent: attendancePercent ?? 100,
               },
             });
 
@@ -435,7 +485,7 @@ export async function POST(req: NextRequest) {
 
             insertedCount++;
           } catch (err: any) {
-            errors.push(`Row ${i + 2} (${enrollmentNumber} / ${pId}): ${err.message}`);
+            errors.push(`Row ${i + 2} (${enrollmentNumber} / ${pId}): ${cleanErrorMessage(err, "Failed to map cohort record.")}`);
             skippedCount++;
           }
         }
@@ -463,7 +513,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (err: any) {
       console.error("XLSX import failed:", err);
-      return NextResponse.json({ error: err.message || "Failed to process Excel file." }, { status: 500 });
+      return NextResponse.json({ error: cleanErrorMessage(err, "Failed to process Excel file. Please verify sheet columns.") }, { status: 500 });
     }
   }
 
@@ -476,8 +526,9 @@ export async function POST(req: NextRequest) {
       result,
     });
   } catch (error: any) {
+    console.error("Bulk registration error:", error);
     return NextResponse.json(
-      { error: error.message || "Bulk registration failed." },
+      { error: cleanErrorMessage(error, "Bulk registration execution failed.") },
       { status: 500 }
     );
   }

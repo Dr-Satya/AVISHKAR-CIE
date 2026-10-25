@@ -38,6 +38,7 @@ import { DataManagementModal, DatabaseDashboardCard } from "@/components/admin/D
 import { TemplatesModal } from "@/components/admin/TemplatesModal";
 import { BulkImportModal } from "@/components/admin/BulkImportModal";
 import { downloadIdpCohortsXlsx } from "@/lib/export";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 // Types
 import {
@@ -187,8 +188,8 @@ export default function AdminPortalPage() {
     phone: "",
     phoneVerified: false,
     gender: "Male",
-    internalMarks: 32,
-    externalMarks: 48,
+    internalMarks: 40,
+    externalMarks: 40,
     attendancePercent: 85,
     semester: 3,
     batch: "2025",
@@ -202,6 +203,8 @@ export default function AdminPortalPage() {
   const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
   const [showEditFacultyModal, setShowEditFacultyModal] = useState(false);
   const [showDeleteFacultyModal, setShowDeleteFacultyModal] = useState(false);
+  const [showReplaceFacultyModal, setShowReplaceFacultyModal] = useState(false);
+  const [selectedReplaceFaculty, setSelectedReplaceFaculty] = useState<any | null>(null);
   const [facultyForm, setFacultyForm] = useState<FacultyFormData>({
     id: "",
     name: "",
@@ -264,7 +267,7 @@ export default function AdminPortalPage() {
     try {
       await downloadIdpCohortsXlsx("registered", studentSchool !== "all" ? studentSchool : undefined);
     } catch (err: any) {
-      alert("Error downloading cohort details: " + err.message);
+      alert(cleanErrorMessage(err, "Failed to download cohort details."));
     }
   };
 
@@ -382,7 +385,7 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setStudentCrudError(data.error || "Failed to create student.");
+        setStudentCrudError(cleanErrorMessage(data.error, "Failed to create student."));
         setStudentCrudLoading(false);
         return;
       }
@@ -400,7 +403,7 @@ export default function AdminPortalPage() {
       });
       await fetchStudents(studentPage, studentSearch, studentFilter);
     } catch (err: any) {
-      setStudentCrudError(err.message || "Network error.");
+      setStudentCrudError(cleanErrorMessage(err, "Network error while creating student."));
     } finally {
       setStudentCrudLoading(false);
     }
@@ -418,14 +421,14 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setStudentCrudError(data.error || "Failed to update student.");
+        setStudentCrudError(cleanErrorMessage(data.error, "Failed to update student."));
         setStudentCrudLoading(false);
         return;
       }
       setShowEditStudentModal(false);
       await fetchStudents(studentPage, studentSearch, studentFilter);
     } catch (err: any) {
-      setStudentCrudError(err.message || "Network error.");
+      setStudentCrudError(cleanErrorMessage(err, "Network error while updating student."));
     } finally {
       setStudentCrudLoading(false);
     }
@@ -441,14 +444,18 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setStudentCrudError(data.error || "Failed to delete student.");
+        setStudentCrudError(cleanErrorMessage(data.error, "Failed to delete student."));
         setStudentCrudLoading(false);
         return;
       }
       setShowDeleteStudentModal(false);
-      await fetchStudents(studentPage, studentSearch, studentFilter);
+      await Promise.all([
+        fetchStudents(studentPage, studentSearch, studentFilter),
+        fetchProjects(projectPage),
+        fetchDashboardData(),
+      ]);
     } catch (err: any) {
-      setStudentCrudError(err.message || "Network error.");
+      setStudentCrudError(cleanErrorMessage(err, "Network error while deleting student."));
     } finally {
       setStudentCrudLoading(false);
     }
@@ -466,7 +473,7 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setFacultyCrudError(data.error || "Failed to create faculty.");
+        setFacultyCrudError(cleanErrorMessage(data.error, "Failed to create faculty."));
         setFacultyCrudLoading(false);
         return;
       }
@@ -484,7 +491,7 @@ export default function AdminPortalPage() {
       });
       await fetchFacultyAccess();
     } catch (err: any) {
-      setFacultyCrudError(err.message || "Network error.");
+      setFacultyCrudError(cleanErrorMessage(err, "Network error while creating faculty."));
     } finally {
       setFacultyCrudLoading(false);
     }
@@ -502,39 +509,95 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setFacultyCrudError(data.error || "Failed to update faculty.");
+        setFacultyCrudError(cleanErrorMessage(data.error, "Failed to update faculty."));
         setFacultyCrudLoading(false);
         return;
       }
       setShowEditFacultyModal(false);
       await fetchFacultyAccess();
     } catch (err: any) {
-      setFacultyCrudError(err.message || "Network error.");
+      setFacultyCrudError(cleanErrorMessage(err, "Network error while updating faculty."));
     } finally {
       setFacultyCrudLoading(false);
     }
   };
 
-  const handleDeleteFaculty = async () => {
+  const handleDeleteFaculty = async (replacementFacultyId?: string) => {
     if (!facultyForm.id) return;
     setFacultyCrudLoading(true);
     setFacultyCrudError(null);
     try {
-      const res = await fetch(`/api/admin/faculty-access?id=${encodeURIComponent(facultyForm.id)}`, {
+      let url = `/api/admin/faculty-access?id=${encodeURIComponent(facultyForm.id)}`;
+      if (replacementFacultyId) {
+        url += `&replacementFacultyId=${encodeURIComponent(replacementFacultyId)}`;
+      }
+      const res = await fetch(url, {
         method: "DELETE",
       });
       const data = await res.json();
       if (!res.ok) {
-        setFacultyCrudError(data.error || "Failed to delete faculty.");
+        setFacultyCrudError(cleanErrorMessage(data.error, "Failed to delete faculty."));
         setFacultyCrudLoading(false);
         return;
       }
       setShowDeleteFacultyModal(false);
-      await fetchFacultyAccess();
+      await Promise.all([
+        fetchFacultyAccess(),
+        fetchProjects(projectPage),
+        fetchDashboardData(),
+      ]);
     } catch (err: any) {
-      setFacultyCrudError(err.message || "Network error.");
+      setFacultyCrudError(cleanErrorMessage(err, "Network error while deleting faculty."));
     } finally {
       setFacultyCrudLoading(false);
+    }
+  };
+
+  const handleReplaceFaculty = async (sourceFacultyId: string, targetFacultyId: string): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/admin/faculty-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "REPLACE_FACULTY",
+          sourceFacultyId,
+          targetFacultyId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(cleanErrorMessage(data.error, "Failed to transfer faculty projects."));
+      }
+      await Promise.all([
+        fetchFacultyAccess(),
+        fetchProjects(projectPage),
+        fetchDashboardData(),
+      ]);
+      return true;
+    } catch (err: any) {
+      throw err;
+    }
+  };
+
+  const handleChangeProjectMentor = async (projectId: string, newFacultyId: string): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/admin/projects", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, newFacultyId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(cleanErrorMessage(data.error, "Failed to reassign mentor."));
+      }
+      await Promise.all([
+        fetchProjects(projectPage),
+        fetchFacultyAccess(),
+        fetchDashboardData(),
+      ]);
+      return true;
+    } catch (err: any) {
+      throw err;
     }
   };
 
@@ -618,7 +681,7 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setAdminCrudError(data.error || "Failed to create administrator.");
+        setAdminCrudError(cleanErrorMessage(data.error, "Failed to create administrator."));
         setAdminCrudLoading(false);
         return;
       }
@@ -626,7 +689,7 @@ export default function AdminPortalPage() {
       setAdminForm({ name: "", email: "", passcode: "gdgu@admin2026" });
       await fetchFacultyAccess();
     } catch (err: any) {
-      setAdminCrudError(err.message || "Network error.");
+      setAdminCrudError(cleanErrorMessage(err, "Network error while creating administrator."));
     } finally {
       setAdminCrudLoading(false);
     }
@@ -642,12 +705,12 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Failed to remove administrator.");
+        alert(cleanErrorMessage(data.error, "Failed to remove administrator."));
         return;
       }
       await fetchFacultyAccess();
     } catch (err: any) {
-      alert(err.message || "Network error.");
+      alert(cleanErrorMessage(err, "Network error while removing administrator."));
     }
   };
 
@@ -662,7 +725,7 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setMappingError(data.error || "Failed to map student.");
+        setMappingError(cleanErrorMessage(data.error, "Failed to map student."));
         setMappingLoading(false);
         return false;
       }
@@ -675,7 +738,7 @@ export default function AdminPortalPage() {
       ]);
       return true;
     } catch (err: any) {
-      setMappingError(err.message || "Network error.");
+      setMappingError(cleanErrorMessage(err, "Network error while mapping student."));
       return false;
     } finally {
       setMappingLoading(false);
@@ -694,7 +757,7 @@ export default function AdminPortalPage() {
       );
       const data = await res.json();
       if (!res.ok) {
-        setUnmappingError(data.error || "Failed to unmap student.");
+        setUnmappingError(cleanErrorMessage(data.error, "Failed to unmap student."));
         setUnmappingLoading(false);
         return false;
       }
@@ -707,7 +770,7 @@ export default function AdminPortalPage() {
       ]);
       return true;
     } catch (err: any) {
-      setUnmappingError(err.message || "Network error.");
+      setUnmappingError(cleanErrorMessage(err, "Network error while unmapping student."));
       return false;
     } finally {
       setUnmappingLoading(false);
@@ -728,43 +791,82 @@ export default function AdminPortalPage() {
       }
       setAdminName(data.user.name || "System Admin");
 
+      let targetTab = "DASHBOARD";
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const tabParam = urlParams.get("tab")?.toUpperCase();
         if (tabParam === "DATABASE" || tabParam === "DB") {
+          targetTab = "DATABASE";
           setActiveDashboardTab("DATABASE");
         } else if (tabParam === "REGISTRATION" || tabParam === "STUDENTS") {
+          targetTab = "REGISTRATION";
           setActiveDashboardTab("REGISTRATION");
         } else if (tabParam === "PROJECTS") {
+          targetTab = "PROJECTS";
           setActiveDashboardTab("PROJECTS");
         } else if (tabParam === "FACULTY") {
+          targetTab = "FACULTY";
           setActiveDashboardTab("FACULTY");
         }
       } catch {}
 
-      await Promise.all([
+      const initialFetches: Promise<any>[] = [
         fetchDashboardData(),
         fetchConfig(),
         fetchDeptLimits(),
-        fetchStudents(1),
-        fetchProjects(1),
-        fetchRegistrations(1),
-        fetchFacultyAccess(),
-        fetchSpocData(),
-        fetchAllProjectsForMapping(),
-      ]);
+      ];
 
+      if (targetTab === "REGISTRATION") {
+        initialFetches.push(fetchStudents(1), fetchRegistrations(1), fetchAllProjectsForMapping());
+      } else if (targetTab === "PROJECTS") {
+        initialFetches.push(fetchProjects(1), fetchAllProjectsForMapping());
+      } else if (targetTab === "FACULTY") {
+        initialFetches.push(fetchFacultyAccess(), fetchSpocData());
+      }
+
+      await Promise.all(initialFetches);
       setLoading(false);
+
+      // Asynchronously pre-fetch secondary datasets in background without blocking initial paint
+      setTimeout(() => {
+        Promise.all([
+          fetchStudents(1),
+          fetchProjects(1),
+          fetchRegistrations(1),
+          fetchFacultyAccess(),
+          fetchSpocData(),
+          fetchAllProjectsForMapping(),
+        ]).catch(() => {});
+      }, 100);
     };
 
     init();
 
     const eventSource = new EventSource("/api/events");
+    eventSource.onerror = () => {
+      // EventSource automatically handles reconnection; suppress unhandled error console noise
+    };
     eventSource.addEventListener("registration.created", () => {
       fetchDashboardData();
       fetchRegistrations(1, registrationSearch);
       fetchProjects(projectPage, projectSearch, projectCategoryFilter);
       fetchStudents(studentPage, studentSearch, studentFilter);
+    });
+
+    eventSource.addEventListener("artifact.submitted", () => {
+      fetchProjects(projectPage, projectSearch, projectCategoryFilter);
+      fetchDashboardData();
+    });
+
+    eventSource.addEventListener("submission.reviewed", () => {
+      fetchProjects(projectPage, projectSearch, projectCategoryFilter);
+      fetchStudents(studentPage, studentSearch, studentFilter);
+      fetchDashboardData();
+    });
+
+    eventSource.addEventListener("project.updated", () => {
+      fetchProjects(projectPage, projectSearch, projectCategoryFilter);
+      fetchDashboardData();
     });
 
     eventSource.addEventListener("spoc.updated", () => {
@@ -1045,8 +1147,8 @@ export default function AdminPortalPage() {
                   department: "School of Engineering & Sciences",
                   programme: "B.Tech CSE",
                   gender: "Male",
-                  internalMarks: 32,
-                  externalMarks: 48,
+                  internalMarks: 40,
+                  externalMarks: 40,
                   attendancePercent: 85,
                   semester: activeSemester,
                   batch: "2025",
@@ -1320,8 +1422,8 @@ export default function AdminPortalPage() {
                   department: "School of Engineering & Sciences",
                   programme: "B.Tech CSE",
                   gender: "Male",
-                  internalMarks: 32,
-                  externalMarks: 48,
+                  internalMarks: 40,
+                  externalMarks: 40,
                   attendancePercent: 85,
                   semester: activeSemester,
                   batch: "2025",
@@ -1341,8 +1443,8 @@ export default function AdminPortalPage() {
                   phone: st.phone || "",
                   phoneVerified: Boolean(st.phoneVerified),
                   gender: st.gender || "Male",
-                  internalMarks: st.internals ?? 32,
-                  externalMarks: st.externals ?? 48,
+                  internalMarks: st.internals ?? 40,
+                  externalMarks: st.externals ?? 40,
                   attendancePercent: st.attendance ?? 85,
                   semester: st.sem || 3,
                   batch: st.batch || "2025",
@@ -1362,8 +1464,8 @@ export default function AdminPortalPage() {
                   phone: st.phone || "",
                   phoneVerified: Boolean(st.phoneVerified),
                   gender: st.gender || "Male",
-                  internalMarks: st.internals ?? 32,
-                  externalMarks: st.externals ?? 48,
+                  internalMarks: st.internals ?? 40,
+                  externalMarks: st.externals ?? 40,
                   attendancePercent: st.attendance ?? 85,
                   semester: st.sem || 3,
                   batch: st.batch || "2025",
@@ -1447,6 +1549,8 @@ export default function AdminPortalPage() {
               projectTotalPages={projectTotalPages}
               loadingProjects={loadingProjects}
               onFetchProjects={fetchProjects}
+              faculties={faculties}
+              onChangeMentor={handleChangeProjectMentor}
             />
           </div>
         )}
@@ -1522,6 +1626,11 @@ export default function AdminPortalPage() {
                   spocDepartment: f.spocDepartment || "",
                 });
                 setShowDeleteFacultyModal(true);
+              }}
+              onReplaceClick={(f) => {
+                setFacultyCrudError(null);
+                setSelectedReplaceFaculty(f);
+                setShowReplaceFacultyModal(true);
               }}
               onToggleAdmin={handleToggleFacultyAdmin}
               onResetPasscodeClick={(f) => {
@@ -1608,8 +1717,8 @@ export default function AdminPortalPage() {
                   department: "School of Engineering & Sciences",
                   programme: "B.Tech CSE",
                   gender: "Male",
-                  internalMarks: 32,
-                  externalMarks: 48,
+                  internalMarks: 40,
+                  externalMarks: 40,
                   attendancePercent: 85,
                   semester: activeSemester,
                   batch: "2025",
@@ -1629,8 +1738,8 @@ export default function AdminPortalPage() {
                   phone: st.phone || "",
                   phoneVerified: Boolean(st.phoneVerified),
                   gender: st.gender || "Male",
-                  internalMarks: st.internals ?? 32,
-                  externalMarks: st.externals ?? 48,
+                  internalMarks: st.internals ?? 40,
+                  externalMarks: st.externals ?? 40,
                   attendancePercent: st.attendance ?? 85,
                   semester: st.sem || 3,
                   batch: st.batch || "2025",
@@ -1650,8 +1759,8 @@ export default function AdminPortalPage() {
                   phone: st.phone || "",
                   phoneVerified: Boolean(st.phoneVerified),
                   gender: st.gender || "Male",
-                  internalMarks: st.internals ?? 32,
-                  externalMarks: st.externals ?? 48,
+                  internalMarks: st.internals ?? 40,
+                  externalMarks: st.externals ?? 40,
                   attendancePercent: st.attendance ?? 85,
                   semester: st.sem || 3,
                   batch: st.batch || "2025",
@@ -1731,6 +1840,12 @@ export default function AdminPortalPage() {
           adminCrudLoading={adminCrudLoading}
           adminCrudError={adminCrudError}
           onAddAdmin={handleCreateAdmin}
+          faculties={faculties}
+          showReplaceModal={showReplaceFacultyModal}
+          setShowReplaceModal={setShowReplaceFacultyModal}
+          selectedReplaceFaculty={selectedReplaceFaculty}
+          setSelectedReplaceFaculty={setSelectedReplaceFaculty}
+          onReplaceFaculty={handleReplaceFaculty}
         />
 
         {/* Map & Unmap Student Modals */}

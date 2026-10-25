@@ -197,7 +197,7 @@ export async function PUT(req: NextRequest) {
       }
 
       const allowedStudentIds = new Set(project.registrations.map((r) => r.studentId));
-      let updatedCount = 0;
+      const updateOperations: any[] = [];
 
       for (const item of studentMarks) {
         if (!item.studentId || !allowedStudentIds.has(item.studentId)) continue;
@@ -208,14 +208,14 @@ export async function PUT(req: NextRequest) {
           item.internalMarks !== null &&
           !isNaN(Number(item.internalMarks))
         ) {
-          updateData.internalMarks = Math.max(0, Number(item.internalMarks));
+          updateData.internalMarks = Math.min(50, Math.max(0, Number(item.internalMarks)));
         }
         if (
           item.externalMarks !== undefined &&
           item.externalMarks !== null &&
           !isNaN(Number(item.externalMarks))
         ) {
-          updateData.externalMarks = Math.max(0, Number(item.externalMarks));
+          updateData.externalMarks = Math.min(50, Math.max(0, Number(item.externalMarks)));
         }
         if (
           item.attendancePercent !== undefined &&
@@ -226,13 +226,22 @@ export async function PUT(req: NextRequest) {
         }
 
         if (Object.keys(updateData).length > 0) {
-          await prisma.student.update({
-            where: { id: item.studentId },
-            data: updateData,
-          });
-          updatedCount++;
+          updateOperations.push(
+            prisma.student.update({
+              where: { id: item.studentId },
+              data: updateData,
+            })
+          );
         }
       }
+
+      if (updateOperations.length > 0) {
+        const BATCH_SIZE = 25;
+        for (let i = 0; i < updateOperations.length; i += BATCH_SIZE) {
+          await prisma.$transaction(updateOperations.slice(i, i + BATCH_SIZE));
+        }
+      }
+      const updatedCount = updateOperations.length;
 
       await prisma.auditLog.create({
         data: {
@@ -284,7 +293,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updated = await prisma.project.update({
-      where: { id },
+      where: { id: project.id },
       data: updateData,
     });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cleanErrorMessage } from "@/lib/api-response";
 import { broadcastEvent } from "@/lib/events";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import fs from "fs";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "FACULTY") {
+    if (!session || (session.role !== "FACULTY" && session.role !== "SPOC" && session.role !== "ADMIN")) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
@@ -35,17 +36,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Document title is required." }, { status: 400 });
     }
 
-    // Verify faculty owns this project
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        facultyId: session.id,
-      },
-    });
+    // Verify user authorization for this project
+    let project = null;
+    if (session.role === "ADMIN") {
+      project = await prisma.project.findUnique({
+        where: { id: projectId },
+      });
+    } else if (session.role === "SPOC") {
+      let dept = session.spocDepartment || session.department;
+      if (!dept) {
+        const spoc = await prisma.spoc.findUnique({ where: { id: session.id } });
+        dept = spoc?.department;
+      }
+      if (!dept) {
+        const faculty = await prisma.faculty.findUnique({ where: { id: session.id } });
+        if (faculty?.isSpoc) dept = faculty.spocDepartment || faculty.department;
+      }
+      if (!dept) {
+        return NextResponse.json({ error: "Access forbidden. SPOC department authorization missing." }, { status: 403 });
+      }
+      project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          department: dept,
+        },
+      });
+    } else if (session.role === "FACULTY") {
+      if (session.isSpoc && session.spocDepartment) {
+        project = await prisma.project.findFirst({
+          where: {
+            id: projectId,
+            OR: [
+              { facultyId: session.id },
+              { department: session.spocDepartment },
+            ],
+          },
+        });
+      } else {
+        project = await prisma.project.findFirst({
+          where: {
+            id: projectId,
+            facultyId: session.id,
+          },
+        });
+      }
+    }
 
     if (!project) {
       return NextResponse.json(
-        { error: "Project not found or not assigned to your profile." },
+        { error: "Project not found or not assigned to your authorized scope." },
         { status: 404 }
       );
     }
@@ -119,14 +158,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Whitelist allowed extensions and MIME types to prevent Stored XSS
+    const ALLOWED_EXTENSIONS = new Set(["pdf", "pptx", "ppt", "docx", "doc", "zip"]);
+    if (file && typeof file === "object" && "name" in file) {
+      const ext = ((file.name as string).split(".").pop() || "").toLowerCase();
+      if (!ALLOWED_EXTENSIONS.has(ext)) {
+        return NextResponse.json(
+          { error: `Invalid file format (.${ext}). Only PDF, PPTX, PPT, DOCX, and ZIP files are permitted.` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Process main file
     let fileName = `${title.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`;
     let fileSize = 1024 * 150; // default 150KB
     let mimeType = "application/pdf";
 
     if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      fileName = `${Date.now()}_${sanitizedName}`;
+      const cleanName = path.basename(file.name).replace(/\.+/g, ".").replace(/[^a-zA-Z0-9._-]/g, "_");
+      fileName = `${Date.now()}_${cleanName}`;
       fileSize = file.size;
       mimeType = file.type || "application/octet-stream";
     }
@@ -145,15 +196,19 @@ export async function POST(req: NextRequest) {
           await env.ARTIFACTS.put(r2Key, arrayBuffer, {
             httpMetadata: { contentType: mimeType },
           });
-        } else {
-          const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`);
+        } else if (process.env.NODE_ENV !== "production") {
+          const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`, project.projectId);
           if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
           fs.writeFileSync(path.join(uploadsDir, fileName), Buffer.from(arrayBuffer));
+        } else {
+          throw new Error("R2 storage bucket is not available.");
         }
-      } catch {
-        const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`);
-        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-        fs.writeFileSync(path.join(uploadsDir, fileName), Buffer.from(arrayBuffer));
+      } catch (err: any) {
+        console.error("Artifact upload error:", err);
+        return NextResponse.json(
+          { error: cleanErrorMessage(err, "Failed to store artifact in cloud storage.") },
+          { status: 500 }
+        );
       }
     }
 
@@ -169,7 +224,15 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const sanitizedPlagName = plagiarismFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const plagExt = ((plagiarismFile.name as string).split(".").pop() || "").toLowerCase();
+      if (!ALLOWED_EXTENSIONS.has(plagExt)) {
+        return NextResponse.json(
+          { error: `Invalid plagiarism report format (.${plagExt}). Only PDF, PPTX, DOCX are permitted.` },
+          { status: 400 }
+        );
+      }
+
+      const sanitizedPlagName = path.basename(plagiarismFile.name).replace(/\.+/g, ".").replace(/[^a-zA-Z0-9._-]/g, "_");
       const plagFileName = `${Date.now()}_plag_${sanitizedPlagName}`;
       const plagR2Key = `${academicYear}/sem${semester}/${project.projectId}/${plagFileName}`;
       plagiarismReportFileName = plagR2Key;
@@ -185,55 +248,53 @@ export async function POST(req: NextRequest) {
           await env.ARTIFACTS.put(plagR2Key, plagArrayBuffer, {
             httpMetadata: { contentType: plagMimeType },
           });
-        } else {
-          const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`);
+        } else if (process.env.NODE_ENV !== "production") {
+          const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`, project.projectId);
           if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
           fs.writeFileSync(path.join(uploadsDir, plagFileName), Buffer.from(plagArrayBuffer));
         }
-      } catch {
-        const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`);
-        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-        fs.writeFileSync(path.join(uploadsDir, plagFileName), Buffer.from(plagArrayBuffer));
+      } catch (err) {
+        console.error("Plagiarism upload error:", err);
       }
     }
 
-    // Create ProjectArtifact record
-    const artifact = await prisma.projectArtifact.create({
-      data: {
-        projectId: project.id,
-        type: type as "REPORT" | "PPT" | "OTHER",
-        title: title.trim(),
-        fileName: r2Key,
-        fileUrl,
-        fileSize,
-        mimeType,
-        academicYear,
-        semester,
-        similarityPercent,
-        aiPercent,
-        similarityChecked,
-        aiChecked,
-        plagiarismReportFileName,
-        plagiarismReportUrl,
-        selfDeclaration,
-        status: "PENDING",
-      },
-    });
-
-    // Update project submission status
-    await prisma.project.update({
-      where: { id: project.id },
-      data: {
-        submissionStatus: "PENDING",
-        spocReviewNote: null, // reset previous rejection note on new upload
-      },
-    });
+    // Create ProjectArtifact record & update Project status atomically
+    const [artifact] = await prisma.$transaction([
+      prisma.projectArtifact.create({
+        data: {
+          projectId: project.id,
+          type: type as "REPORT" | "PPT" | "OTHER",
+          title: title.trim(),
+          fileName: r2Key,
+          fileUrl,
+          fileSize,
+          mimeType,
+          academicYear,
+          semester,
+          similarityPercent,
+          aiPercent,
+          similarityChecked,
+          aiChecked,
+          plagiarismReportFileName,
+          plagiarismReportUrl,
+          selfDeclaration,
+          status: "PENDING",
+        },
+      }),
+      prisma.project.update({
+        where: { id: project.id },
+        data: {
+          submissionStatus: "PENDING",
+          spocReviewNote: null, // reset previous rejection note on new upload
+        },
+      }),
+    ]);
 
     // Audit log
     await prisma.auditLog.create({
       data: {
         actor: session.name,
-        actorRole: "FACULTY",
+        actorRole: session.role,
         action: "PROJECT_ARTIFACT_UPLOADED",
         target: `${project.projectId}: ${type} - ${title}`,
         metadata: JSON.stringify({
@@ -241,6 +302,7 @@ export async function POST(req: NextRequest) {
           type,
           similarityPercent,
           aiPercent,
+          uploadedByRole: session.role,
         }),
       },
     });
@@ -260,7 +322,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Error uploading artifact:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to upload artifact." },
+      { error: cleanErrorMessage(error, "Failed to upload artifact.") },
       { status: 500 }
     );
   }
@@ -269,7 +331,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "FACULTY") {
+    if (!session || (session.role !== "FACULTY" && session.role !== "SPOC" && session.role !== "ADMIN")) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
@@ -285,8 +347,26 @@ export async function DELETE(req: NextRequest) {
       include: { project: true },
     });
 
-    if (!artifact || artifact.project.facultyId !== session.id) {
-      return NextResponse.json({ error: "Artifact not found or unauthorized." }, { status: 404 });
+    if (!artifact) {
+      return NextResponse.json({ error: "Artifact not found." }, { status: 404 });
+    }
+
+    const isOwnerFaculty = session.role === "FACULTY" && artifact.project.facultyId === session.id;
+    const isDeptSpoc =
+      (session.role === "SPOC" || (session.role === "FACULTY" && session.isSpoc)) &&
+      artifact.project.department === (session.spocDepartment || session.department);
+    const isAdmin = session.role === "ADMIN";
+
+    if (!isOwnerFaculty && !isDeptSpoc && !isAdmin) {
+      return NextResponse.json({ error: "Unauthorized to delete this artifact." }, { status: 403 });
+    }
+
+    // Protect approved academic evaluations from deletion by faculty
+    if (session.role === "FACULTY" && artifact.status === "APPROVED") {
+      return NextResponse.json(
+        { error: "Cannot delete an artifact that has already been approved by the Department SPOC." },
+        { status: 403 }
+      );
     }
 
     // Delete files from R2 or local disk
@@ -296,7 +376,7 @@ export async function DELETE(req: NextRequest) {
       if (env?.ARTIFACTS) {
         if (artifact.fileName) await env.ARTIFACTS.delete(artifact.fileName);
         if (artifact.plagiarismReportFileName) await env.ARTIFACTS.delete(artifact.plagiarismReportFileName);
-      } else {
+      } else if (process.env.NODE_ENV !== "production") {
         if (artifact.fileName) {
           const localPath = path.join(process.cwd(), "public", "uploads", artifact.fileName);
           if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
@@ -306,37 +386,48 @@ export async function DELETE(req: NextRequest) {
           if (fs.existsSync(localPlagPath)) fs.unlinkSync(localPlagPath);
         }
       }
-    } catch {
-      if (artifact.fileName) {
-        const localPath = path.join(process.cwd(), "public", "uploads", artifact.fileName);
-        if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
-      }
-      if (artifact.plagiarismReportFileName) {
-        const localPlagPath = path.join(process.cwd(), "public", "uploads", artifact.plagiarismReportFileName);
-        if (fs.existsSync(localPlagPath)) fs.unlinkSync(localPlagPath);
-      }
+    } catch (storageErr) {
+      console.error("Storage delete warning:", storageErr);
     }
 
-    await prisma.projectArtifact.delete({
-      where: { id: artifactId },
-    });
-
-    // Check if remaining artifacts exist
-    const remaining = await prisma.projectArtifact.count({
-      where: { projectId: artifact.projectId },
-    });
-
-    if (remaining === 0) {
-      await prisma.project.update({
-        where: { id: artifact.projectId },
-        data: { submissionStatus: "NOT_SUBMITTED" },
+    // Atomically delete artifact, log audit, and reset project status if 0 artifacts remain
+    await prisma.$transaction(async (tx) => {
+      await tx.projectArtifact.delete({
+        where: { id: artifactId },
       });
-    }
+
+      await tx.auditLog.create({
+        data: {
+          actor: session.name,
+          actorRole: session.role,
+          action: "PROJECT_ARTIFACT_DELETED",
+          target: `${artifact.project.projectId}: ${artifact.type} - ${artifact.title}`,
+          metadata: JSON.stringify({
+            artifactId: artifact.id,
+            fileName: artifact.fileName,
+            plagiarismReportFileName: artifact.plagiarismReportFileName,
+            deletedByRole: session.role,
+          }),
+        },
+      });
+
+      const remaining = await tx.projectArtifact.count({
+        where: { projectId: artifact.projectId },
+      });
+
+      if (remaining === 0) {
+        await tx.project.update({
+          where: { id: artifact.projectId },
+          data: { submissionStatus: "NOT_SUBMITTED" },
+        });
+      }
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error("Error deleting artifact:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to delete artifact." },
+      { error: cleanErrorMessage(error, "Failed to delete artifact.") },
       { status: 500 }
     );
   }

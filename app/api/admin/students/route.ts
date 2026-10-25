@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { cleanErrorMessage } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -261,8 +262,8 @@ export async function POST(req: NextRequest) {
         phone: cleanPhone || null,
         phoneVerified: phoneVerified !== undefined ? Boolean(phoneVerified) : Boolean(cleanPhone && cleanPhone.length === 10),
         gender: gender?.trim() || "Male",
-        internalMarks: internalMarks !== undefined ? parseFloat(internalMarks) : 32,
-        externalMarks: externalMarks !== undefined ? parseFloat(externalMarks) : 48,
+        internalMarks: internalMarks !== undefined ? Math.min(50, Math.max(0, parseFloat(internalMarks))) : 40,
+        externalMarks: externalMarks !== undefined ? Math.min(50, Math.max(0, parseFloat(externalMarks))) : 40,
         attendancePercent: attendancePercent !== undefined ? parseFloat(attendancePercent) : 85,
         semester: parseInt(semester, 10) || 3,
         batch: batch?.trim() || "2025",
@@ -284,7 +285,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, student });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to create student." }, { status: 500 });
+    console.error("Student create error:", err);
+    return NextResponse.json({ error: cleanErrorMessage(err, "Failed to create student.") }, { status: 500 });
   }
 }
 
@@ -335,8 +337,8 @@ export async function PUT(req: NextRequest) {
       updateData.phoneVerified = Boolean(phoneVerified);
     }
     if (gender !== undefined) updateData.gender = gender?.trim() || null;
-    if (internalMarks !== undefined) updateData.internalMarks = parseFloat(internalMarks) || 0;
-    if (externalMarks !== undefined) updateData.externalMarks = parseFloat(externalMarks) || 0;
+    if (internalMarks !== undefined) updateData.internalMarks = Math.min(50, Math.max(0, parseFloat(internalMarks) || 0));
+    if (externalMarks !== undefined) updateData.externalMarks = Math.min(50, Math.max(0, parseFloat(externalMarks) || 0));
     if (attendancePercent !== undefined) updateData.attendancePercent = parseFloat(attendancePercent) || 0;
     if (semester !== undefined) updateData.semester = parseInt(semester, 10) || 3;
     if (batch) updateData.batch = batch.trim();
@@ -360,11 +362,12 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ success: true, student: updated });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to update student." }, { status: 500 });
+    console.error("Student update error:", err);
+    return NextResponse.json({ error: cleanErrorMessage(err, "Failed to update student.") }, { status: 500 });
   }
 }
 
-// DELETE STUDENT
+// DELETE STUDENT (SINGLE OR BULK)
 export async function DELETE(req: NextRequest) {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
@@ -374,30 +377,72 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    const idsParam = searchParams.get("ids");
 
-    if (!id) {
+    let targetIds: string[] = [];
+    if (idsParam) {
+      targetIds = idsParam.split(",").map((s) => s.trim()).filter(Boolean);
+    } else if (id) {
+      targetIds = [id.trim()];
+    } else {
+      try {
+        const body = await req.json();
+        if (Array.isArray(body.ids)) {
+          targetIds = body.ids.map((s: any) => String(s).trim()).filter(Boolean);
+        } else if (body.id) {
+          targetIds = [String(body.id).trim()];
+        }
+      } catch {
+        // Body is optional
+      }
+    }
+
+    if (targetIds.length === 0) {
       return NextResponse.json({ error: "Student ID is required." }, { status: 400 });
     }
 
-    const student = await prisma.student.findUnique({ where: { id } });
-    if (!student) {
-      return NextResponse.json({ error: "Student not found." }, { status: 404 });
+    const students = await prisma.student.findMany({
+      where: { id: { in: targetIds } },
+      select: { id: true, enrollmentNumber: true, name: true, department: true },
+    });
+
+    if (students.length === 0) {
+      return NextResponse.json({ error: "Student(s) not found." }, { status: 404 });
     }
 
-    await prisma.student.delete({ where: { id } });
+    const matchedIds = students.map((s) => s.id);
+
+    // Atomically remove phone OTPs, Google identities, project registrations, and student profiles
+    await prisma.$transaction([
+      prisma.studentPhoneOtp.deleteMany({ where: { studentId: { in: matchedIds } } }),
+      prisma.studentIdentity.deleteMany({ where: { studentId: { in: matchedIds } } }),
+      prisma.registration.deleteMany({ where: { studentId: { in: matchedIds } } }),
+      prisma.student.deleteMany({ where: { id: { in: matchedIds } } }),
+    ]);
 
     await prisma.auditLog.create({
       data: {
         actor: session.name,
         actorRole: "ADMIN",
-        action: "DELETE_STUDENT",
-        target: student.enrollmentNumber,
-        metadata: JSON.stringify({ name: student.name, department: student.department }),
+        action: matchedIds.length > 1 ? "BULK_DELETE_STUDENTS" : "DELETE_STUDENT",
+        target: matchedIds.length === 1 ? students[0].enrollmentNumber : `${matchedIds.length} students`,
+        metadata: JSON.stringify({
+          count: matchedIds.length,
+          enrollments: students.map((s) => s.enrollmentNumber).slice(0, 50),
+        }),
       },
     });
 
-    return NextResponse.json({ success: true, message: `Student ${student.enrollmentNumber} deleted successfully.` });
+    return NextResponse.json({
+      success: true,
+      message:
+        matchedIds.length === 1
+          ? `Student ${students[0].enrollmentNumber} deleted successfully.`
+          : `${matchedIds.length} student records deleted successfully.`,
+      deletedCount: matchedIds.length,
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to delete student." }, { status: 500 });
+    console.error("Student delete error:", err);
+    return NextResponse.json({ error: cleanErrorMessage(err, "Failed to delete student.") }, { status: 500 });
   }
 }

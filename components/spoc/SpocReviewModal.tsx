@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  FileText,
+  Download,
+  ExternalLink,
+  ShieldCheck,
+  BookOpen,
+} from "lucide-react";
 import { ProjectData } from "@/types/spoc";
 
 interface SpocReviewModalProps {
@@ -70,9 +80,13 @@ export function SpocReviewModal({
     }
   };
 
+  const targetArtifact = artifactId
+    ? project.artifacts.find((a) => a.id === artifactId)
+    : null;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-base font-bold text-[#0d2137]">
@@ -111,33 +125,189 @@ export function SpocReviewModal({
           </div>
         )}
 
-        {/* Verification Summary for SPOC */}
-        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500">Uploaded Artifacts:</span>
-            <span className="font-semibold text-slate-800">{project.artifacts.length} file(s)</span>
+        {/* TARGET ARTIFACT PREVIEW (When reviewing a specific file) */}
+        {targetArtifact ? (
+          <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs space-y-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-200 text-blue-900">
+                  {targetArtifact.type}
+                </span>
+                <h4 className="font-bold text-slate-800 text-xs mt-1">{targetArtifact.title}</h4>
+                <p className="text-[11px] text-slate-500 font-mono mt-0.5">{targetArtifact.fileName.split("/").pop()}</p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 flex-shrink-0">
+                <a
+                  href={targetArtifact.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 rounded-lg bg-white border border-blue-300 hover:bg-blue-100 text-blue-800 text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5 text-blue-700" />
+                  <span>View File</span>
+                  <ExternalLink className="w-3 h-3 text-blue-500" />
+                </a>
+                {targetArtifact.plagiarismReportUrl && (
+                  <a
+                    href={targetArtifact.plagiarismReportUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+                    title="View Turnitin/Urkund plagiarism report"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Plagiarism</span>
+                    <ExternalLink className="w-3 h-3 text-amber-600" />
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-blue-200/60 text-[11px]">
+              {targetArtifact.similarityPercent !== null && targetArtifact.similarityPercent !== undefined && (
+                <span className="font-medium text-slate-700">
+                  Turnitin:{" "}
+                  <strong className={targetArtifact.similarityPercent <= 10 ? "text-emerald-700" : "text-red-700"}>
+                    {targetArtifact.similarityPercent}% ({targetArtifact.similarityPercent <= 10 ? "✓ Pass" : "Exceeds"})
+                  </strong>
+                </span>
+              )}
+              {targetArtifact.aiPercent !== null && targetArtifact.aiPercent !== undefined && (
+                <span className="font-medium text-slate-700">
+                  AI Score:{" "}
+                  <strong className={targetArtifact.aiPercent <= 20 ? "text-indigo-700" : "text-red-700"}>
+                    {targetArtifact.aiPercent}% ({targetArtifact.aiPercent <= 20 ? "✓ Pass" : "Exceeds"})
+                  </strong>
+                </span>
+              )}
+              {targetArtifact.selfDeclaration && (
+                <span className="text-emerald-800 font-semibold flex items-center gap-1 ml-auto">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Faculty Declaration Verified</span>
+                </span>
+              )}
+            </div>
           </div>
-          {project.artifacts.some((a) => a.similarityPercent !== null && a.similarityPercent !== undefined) && (
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500">Plagiarism Count:</span>
-              <span className="font-bold text-emerald-700">
-                {project.artifacts.find((a) => a.similarityPercent !== null && a.similarityPercent !== undefined)?.similarityPercent}% (&lt;10% ✓)
-              </span>
+        ) : (
+          /* PROJECT-LEVEL ARTIFACTS ROSTER (When reviewing overall project) */
+          <div className="space-y-2">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Uploaded Files:</span>
+                <span className="font-bold text-slate-800">{project.artifacts.length} document(s)</span>
+              </div>
+              {project.artifacts.some((a) => a.similarityPercent !== null && a.similarityPercent !== undefined) && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Max Plagiarism Count:</span>
+                  <span className="font-bold text-emerald-700">
+                    {Math.max(...project.artifacts.map((a) => a.similarityPercent || 0))}% (&lt;10% ✓)
+                  </span>
+                </div>
+              )}
+              {project.hasCommunicatedManuscript ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Research Manuscript:</span>
+                  <span className="font-bold text-blue-700">Communicated to Journal ✓</span>
+                </div>
+              ) : project.draftManuscriptUrl ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Research Manuscript:</span>
+                  <span className="font-bold text-amber-700">Manuscript in Draft ✓</span>
+                </div>
+              ) : null}
             </div>
-          )}
-          {project.artifacts.some((a) => a.plagiarismReportUrl) && (
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500">Plagiarism Report:</span>
-              <span className="font-semibold text-amber-800">Attached ✓</span>
-            </div>
-          )}
-          {project.artifacts.some((a) => a.selfDeclaration) && (
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500">Self-Declaration:</span>
-              <span className="font-semibold text-emerald-800">Verified by Faculty ✓</span>
-            </div>
-          )}
-        </div>
+
+            {project.artifacts.length > 0 && (
+              <div className="p-2.5 rounded-xl border border-slate-200 bg-white space-y-1.5 max-h-36 overflow-y-auto">
+                <div className="text-[11px] font-bold text-slate-600 px-1">Attached Project Documents:</div>
+                {project.artifacts.map((art) => (
+                  <div
+                    key={art.id}
+                    className="flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-slate-50 border border-slate-100 text-xs"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-slate-800 truncate block">{art.title}</span>
+                      <span className="text-[10px] text-slate-400 font-mono block truncate">
+                        {art.fileName.split("/").pop()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <a
+                        href={art.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>View</span>
+                      </a>
+                      {art.plagiarismReportUrl && (
+                        <a
+                          href={art.plagiarismReportUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-semibold flex items-center gap-1"
+                          title="View Plagiarism Report"
+                        >
+                          <ShieldCheck className="w-3 h-3 text-amber-700" />
+                          <span>Plagiarism</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Research Manuscript Files if attached */}
+            {(project.draftManuscriptUrl || project.manuscriptPlagiarismUrl || project.publishedManuscriptUrl) && (
+              <div className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 space-y-1 text-xs">
+                <div className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
+                  <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Research Manuscript Files:</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {project.draftManuscriptUrl && (
+                    <a
+                      href={project.draftManuscriptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold flex items-center gap-1"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Draft Paper</span>
+                      <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
+                    </a>
+                  )}
+                  {project.manuscriptPlagiarismUrl && (
+                    <a
+                      href={project.manuscriptPlagiarismUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg border border-amber-300 bg-white hover:bg-amber-50 text-amber-900 text-[11px] font-semibold flex items-center gap-1"
+                    >
+                      <ShieldCheck className="w-3 h-3 text-amber-700" />
+                      <span>Turnitin Summary</span>
+                      <ExternalLink className="w-2.5 h-2.5 text-amber-600" />
+                    </a>
+                  )}
+                  {project.publishedManuscriptUrl && (
+                    <a
+                      href={project.publishedManuscriptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-[11px] font-semibold flex items-center gap-1"
+                    >
+                      <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                      <span>Published Paper</span>
+                      <ExternalLink className="w-2.5 h-2.5 text-emerald-600" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

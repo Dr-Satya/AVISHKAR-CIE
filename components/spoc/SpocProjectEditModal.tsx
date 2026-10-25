@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Edit3, X, Loader2, AlertCircle, CheckCircle2, Check, XCircle } from "lucide-react";
 import { ProjectData } from "@/types/spoc";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 interface SpocProjectEditModalProps {
   isOpen: boolean;
@@ -98,7 +99,7 @@ export function SpocProjectEditModal({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to update project.");
+        throw new Error(cleanErrorMessage(data.error, "Failed to update project."));
       }
 
       setSuccess(`Project ${project.projectId} updated successfully!`);
@@ -107,15 +108,15 @@ export function SpocProjectEditModal({
         onClose();
       }, 1000);
     } catch (err: any) {
-      setError(err.message || "Failed to save project changes.");
+      setError(cleanErrorMessage(err, "Failed to save project changes."));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-slate-200 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl p-5 sm:p-8 max-w-xl w-full border border-slate-200 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         <div className="w-12 h-1 bg-purple-600 rounded-full mb-3" />
 
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -214,7 +215,7 @@ export function SpocProjectEditModal({
             </select>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 xs:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Max Seats
@@ -294,22 +295,22 @@ export function SpocProjectEditModal({
             />
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors text-center"
             >
               Cancel
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <button
                 type="button"
                 disabled={saving}
                 onClick={() => handleSave("APPROVED")}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-subtle flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-subtle flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>Save &amp; Approve</span>
@@ -319,7 +320,7 @@ export function SpocProjectEditModal({
                 type="button"
                 disabled={saving}
                 onClick={() => handleSave()}
-                className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-subtle flex items-center gap-1.5 disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-subtle flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 {saving ? (
                   <>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signSessionToken, setSessionCookie } from "@/lib/auth";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,19 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const ip = getClientIp(req);
+    const rateLimit = checkRateLimit(`admin_login:${cleanEmail}:${ip}`, {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 5,                   // max 5 attempts per account from this IP
+    });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        {
+          error: `Too many login attempts for this account. Access temporarily locked for security. Please try again in ${Math.ceil(rateLimit.retryAfterSeconds / 60)} minute(s).`,
+        },
+        { status: 429 }
+      );
+    }
 
     // Check system admin table
     const admin = await prisma.admin.findUnique({
@@ -24,7 +38,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (admin) {
-      const isValid = await bcrypt.compare(passcode, admin.passcodeHash);
+      const isValid = admin.passcodeHash ? await bcrypt.compare(passcode, admin.passcodeHash) : false;
       if (!isValid) {
         return NextResponse.json(
           { error: "Invalid admin credentials." },
@@ -60,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     if (faculty) {
       // Step A: Verify faculty passcode
-      const isValid = await bcrypt.compare(passcode, faculty.passcodeHash);
+      const isValid = faculty.passcodeHash ? await bcrypt.compare(passcode, faculty.passcodeHash) : false;
       if (!isValid) {
         return NextResponse.json(
           { error: "Invalid credentials. Incorrect passcode." },
@@ -106,8 +120,9 @@ export async function POST(req: NextRequest) {
       { status: 401 }
     );
   } catch (error: any) {
+    console.error("Admin login error:", error);
     return NextResponse.json(
-      { error: error.message || "Admin login failed.", stack: error.stack },
+      { error: "Admin authentication failed. Please try again or verify your credentials." },
       { status: 500 }
     );
   }

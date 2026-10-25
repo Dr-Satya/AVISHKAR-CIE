@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth";
+import { cleanErrorMessage } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -59,8 +60,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: "Passcode updated successfully." });
   } catch (error: any) {
+    console.error("Passcode update error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to update passcode." },
+      { error: cleanErrorMessage(error, "Failed to update passcode. Please try again.") },
       { status: 500 }
     );
   }

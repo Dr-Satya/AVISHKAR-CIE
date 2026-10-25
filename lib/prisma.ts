@@ -15,9 +15,9 @@ import { PrismaClient as WasmPrismaClient } from "@prisma/client/wasm";
 import { PrismaD1 } from "@prisma/adapter-d1";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
+let globalWasmClient: any = null;
+let cachedDbBinding: any = null;
 let localPrisma: NodePrismaClient | null = null;
-let d1Prisma: any = null;
-let lastDbBinding: any = null;
 
 function getLocalPrisma(): NodePrismaClient {
   if (!localPrisma) {
@@ -30,21 +30,25 @@ function getLocalPrisma(): NodePrismaClient {
 
 export function getDb(): any {
   try {
-    const ctx = getCloudflareContext();
-    if (ctx?.env?.DB) {
-      if (d1Prisma && lastDbBinding === ctx.env.DB) {
-        return d1Prisma;
+    const cfContext = getCloudflareContext();
+    if (cfContext?.env?.DB) {
+      if (!globalWasmClient || cachedDbBinding !== cfContext.env.DB) {
+        cachedDbBinding = cfContext.env.DB;
+        const adapter = new PrismaD1(cfContext.env.DB);
+        globalWasmClient = new WasmPrismaClient({ adapter });
       }
-      lastDbBinding = ctx.env.DB;
-      const adapter = new PrismaD1(ctx.env.DB);
-      d1Prisma = new WasmPrismaClient({ adapter });
-      return d1Prisma;
+      return globalWasmClient;
     }
-    throw new Error(`ctx.env.DB is missing. Available env keys: ${Object.keys(ctx?.env || {})}`);
+    if (cfContext?.env) {
+      throw new Error(
+        `Cloudflare environment detected, but ctx.env.DB binding is missing. Available env keys: ${Object.keys(cfContext.env).join(", ")}`
+      );
+    }
   } catch (err: any) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(`getDb on Cloudflare failed: ${err?.message || err}`);
+    if (err?.message?.includes("ctx.env.DB binding is missing")) {
+      throw err;
     }
+    // Running in local Node.js environment or build step -> fall back to local Prisma client
   }
   return getLocalPrisma();
 }

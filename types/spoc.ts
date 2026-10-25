@@ -1,3 +1,14 @@
+export type SubmissionStatus =
+  | "NOT_SUBMITTED"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "NEEDS_REVISION";
+
+export type ArtifactStatus = "PENDING" | "APPROVED" | "REJECTED" | "NEEDS_REVISION";
+
+export type ReviewAction = "APPROVE" | "REJECT" | "NEEDS_REVISION";
+
 export interface Artifact {
   id: string;
   type: string;
@@ -15,7 +26,7 @@ export interface Artifact {
   plagiarismReportFileName?: string | null;
   plagiarismReportUrl?: string | null;
   selfDeclaration?: boolean;
-  status: string;
+  status: ArtifactStatus | string;
   spocNote?: string;
   submittedAt: string;
   reviewedAt?: string;
@@ -31,10 +42,11 @@ export interface ProjectData {
   category: string;
   academicYear?: string;
   semester?: number;
-  submissionStatus: string;
+  submissionStatus: SubmissionStatus | string;
   spocReviewNote?: string;
   reviewedAt?: string;
   // Research Manuscript & Publication (Optional)
+  hasDraftManuscript?: boolean;
   hasCommunicatedManuscript?: boolean;
   draftManuscriptUrl?: string | null;
   draftManuscriptFileName?: string | null;
@@ -67,6 +79,9 @@ export interface ProjectData {
     programme?: string;
     semester: number;
     batch: string;
+    internalMarks?: number | null;
+    externalMarks?: number | null;
+    attendancePercent?: number | null;
   }>;
 }
 

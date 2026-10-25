@@ -122,6 +122,7 @@ model Project {
   reviewedById     String?
 
   // Research Manuscript & Publication Tracking (Optional)
+  hasDraftManuscript              Boolean   @default(false)
   hasCommunicatedManuscript       Boolean   @default(false)
   draftManuscriptUrl              String?
   draftManuscriptFileName         String?

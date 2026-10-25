@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import { AlertOctagon, RefreshCw } from "lucide-react";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 export default function GlobalError({
   error,
@@ -34,8 +35,8 @@ export default function GlobalError({
             </p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-100 text-left font-mono text-[11px] text-slate-700 break-all">
-            {error.message || "Root runtime failure"}
+          <div className="p-3.5 rounded-xl bg-slate-100 text-left text-xs text-slate-700 break-all leading-relaxed">
+            {cleanErrorMessage(error, "A temporary runtime error was detected. Please reload the portal.")}
           </div>
 
           <div className="pt-2 flex flex-col gap-2">

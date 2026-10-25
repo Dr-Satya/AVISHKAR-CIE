@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { broadcastEvent } from "@/lib/events";
+import { cleanErrorMessage } from "@/lib/api-response";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -102,7 +103,7 @@ export async function GET() {
   } catch (error: any) {
     console.error("Admin SPOC fetch error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch SPOC assignments." },
+      { error: cleanErrorMessage(error, "Failed to fetch SPOC assignments.") },
       { status: 500 }
     );
   }
@@ -206,13 +207,6 @@ export async function POST(req: NextRequest) {
         where: { id: existingSpoc.id },
         data: { passcodeHash },
       });
-
-      if (existingSpoc.facultyId) {
-        await prisma.faculty.update({
-          where: { id: existingSpoc.facultyId },
-          data: { passcodeHash },
-        });
-      }
 
       await prisma.auditLog.create({
         data: {
@@ -324,7 +318,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Admin SPOC update error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to update SPOC profile." },
+      { error: cleanErrorMessage(error, "Failed to update SPOC profile.") },
       { status: 500 }
     );
   }

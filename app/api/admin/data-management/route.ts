@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cleanErrorMessage } from "@/lib/api-response";
 import {
   exportAllTables,
   purgeData,
@@ -16,6 +17,7 @@ const VALID_ACTIONS: DataAction[] = ["EXPORT_ALL", "PURGE", "EXPORT_AND_PURGE"];
 const VALID_SCOPES: PurgeScope[] = [
   "STUDENTS",
   "STUDENTS_AND_UPLOADS",
+  "STUDENTS_PROJECTS_UPLOADS",
   "REGISTRATIONS",
   "PROJECTS",
   "FACULTY",
@@ -48,16 +50,40 @@ export async function GET(req: NextRequest) {
     }
 
     if (action === "DATABASE_MASTER") {
-      const [students, faculty, registrations, projects, snapshot] = await Promise.all([
+      const tab = searchParams.get("tab")?.toUpperCase();
+
+      const fetchStudents = () =>
         prisma.student.findMany({
           where: academicYear && academicYear !== "all" ? { academicYear } : undefined,
-          include: {
+          select: {
+            id: true,
+            enrollmentNumber: true,
+            admissionNumber: true,
+            name: true,
+            department: true,
+            programme: true,
+            gender: true,
+            internalMarks: true,
+            externalMarks: true,
+            attendancePercent: true,
+            semester: true,
+            batch: true,
+            academicYear: true,
+            email: true,
+            phone: true,
+            phoneVerified: true,
+            createdAt: true,
             registration: {
-              include: {
+              select: {
+                id: true,
+                status: true,
                 project: {
-                  include: {
+                  select: {
+                    id: true,
+                    projectId: true,
+                    title: true,
                     faculty: {
-                      select: { id: true, name: true, email: true, department: true, phone: true },
+                      select: { id: true, name: true, email: true },
                     },
                   },
                 },
@@ -65,9 +91,19 @@ export async function GET(req: NextRequest) {
             },
           },
           orderBy: { enrollmentNumber: "asc" },
-        }),
+        });
+
+      const fetchFaculty = () =>
         prisma.faculty.findMany({
-          include: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            phone: true,
+            isAdmin: true,
+            isSpoc: true,
+            spocDepartment: true,
             projects: {
               select: {
                 id: true,
@@ -80,13 +116,33 @@ export async function GET(req: NextRequest) {
             },
           },
           orderBy: { name: "asc" },
-        }),
+        });
+
+      const fetchRegistrations = () =>
         prisma.registration.findMany({
           where: academicYear && academicYear !== "all" ? { project: { academicYear } } : undefined,
-          include: {
-            student: true,
+          select: {
+            id: true,
+            createdAt: true,
+            status: true,
+            student: {
+              select: {
+                id: true,
+                enrollmentNumber: true,
+                admissionNumber: true,
+                name: true,
+                department: true,
+                programme: true,
+              },
+            },
             project: {
-              include: {
+              select: {
+                id: true,
+                projectId: true,
+                title: true,
+                category: true,
+                theme: true,
+                department: true,
                 faculty: {
                   select: { id: true, name: true, email: true, department: true, phone: true },
                 },
@@ -94,19 +150,47 @@ export async function GET(req: NextRequest) {
             },
           },
           orderBy: { createdAt: "desc" },
-        }),
+        });
+
+      const fetchProjects = () =>
         prisma.project.findMany({
           where: academicYear && academicYear !== "all" ? { academicYear } : undefined,
-          include: {
+          select: {
+            id: true,
+            projectId: true,
+            title: true,
+            department: true,
+            category: true,
+            theme: true,
+            academicYear: true,
+            semester: true,
+            maxSeats: true,
+            submissionStatus: true,
             faculty: {
               select: { id: true, name: true, email: true, department: true, phone: true },
             },
             _count: { select: { registrations: true } },
           },
           orderBy: { projectId: "asc" },
-        }),
-        getTableSnapshot(),
-      ]);
+        });
+
+      let students: any[] = [];
+      let faculty: any[] = [];
+      let registrations: any[] = [];
+      let projects: any[] = [];
+
+      if (tab === "STUDENTS") {
+        students = await fetchStudents();
+      } else if (tab === "FACULTY") {
+        faculty = await fetchFaculty();
+      } else if (tab === "PROJECTS") {
+        projects = await fetchProjects();
+      } else {
+        // Default to MAPPINGS tab only to prevent edge timeouts and payload truncation (>5MB)
+        registrations = await fetchRegistrations();
+      }
+
+      const snapshot = await getTableSnapshot();
 
       return NextResponse.json({
         success: true,
@@ -123,7 +207,8 @@ export async function GET(req: NextRequest) {
     const snapshot = await getTableSnapshot();
     return NextResponse.json({ success: true, snapshot });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to fetch data status." }, { status: 500 });
+    console.error("Data management status error:", error);
+    return NextResponse.json({ error: cleanErrorMessage(error, "Failed to fetch database status.") }, { status: 500 });
   }
 }
 
@@ -202,7 +287,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Data management error:", error);
     return NextResponse.json(
-      { error: error.message || "Data management operation failed." },
+      { error: cleanErrorMessage(error, "Data management operation failed.") },
       { status: 500 }
     );
   }

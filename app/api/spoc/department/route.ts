@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cleanErrorMessage } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -59,9 +60,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Department is required." }, { status: 400 });
     }
 
-    // 1. Fetch Faculty in this department
+    // 1. Fetch Faculty associated with this department (direct affiliation or mentoring projects in it)
     const facultyList = await prisma.faculty.findMany({
-      where: { department },
+      where: {
+        OR: [
+          { department },
+          { projects: { some: { department } } },
+        ],
+      },
       select: {
         id: true,
         name: true,
@@ -69,24 +75,11 @@ export async function GET(req: NextRequest) {
         department: true,
         phone: true,
         isSpoc: true,
-        projects: {
-          select: {
-            id: true,
-            projectId: true,
-            title: true,
-            submissionStatus: true,
-            registrations: {
-              include: {
-                student: true,
-              },
-            },
-          },
-        },
       },
       orderBy: { name: "asc" },
     });
 
-    // 2. Fetch Projects in this department with full artifacts & registrations
+    // 2. Fetch Projects in this department with artifacts and faculty
     const projects = await prisma.project.findMany({
       where: { department },
       include: {
@@ -101,65 +94,124 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        registrations: {
-          include: {
-            student: true,
-          },
-          orderBy: { createdAt: "asc" },
-        },
       },
       orderBy: { projectId: "asc" },
     });
 
-    // 3. Flatten list of enrolled students in this department's projects
+    // 3. Single-query indexed JOIN to fetch all registrations and students in this department
+    // Avoids D1's "too many SQL variables" parameter limit on large cohorts (>400 students)
+    interface RawStudentReg {
+      regId: string;
+      projectId: string;
+      status: string;
+      regCreatedAt: string;
+      studentId: string;
+      enrollmentNumber: string;
+      studentName: string;
+      studentDepartment: string;
+      programme: string | null;
+      semester: number;
+      batch: string;
+      studentEmail: string | null;
+      studentPhone: string | null;
+      internalMarks: number | null;
+      externalMarks: number | null;
+      attendancePercent: number | null;
+    }
+
+    const rawRegs: RawStudentReg[] = await prisma.$queryRaw`
+      SELECT 
+        r.id as regId,
+        r.projectId as projectId,
+        r.status as status,
+        r.createdAt as regCreatedAt,
+        s.id as studentId,
+        s.enrollmentNumber as enrollmentNumber,
+        s.name as studentName,
+        s.department as studentDepartment,
+        s.programme as programme,
+        s.semester as semester,
+        s.batch as batch,
+        s.email as studentEmail,
+        s.phone as studentPhone,
+        s.internalMarks as internalMarks,
+        s.externalMarks as externalMarks,
+        s.attendancePercent as attendancePercent
+      FROM Registration r
+      JOIN Student s ON r.studentId = s.id
+      JOIN Project p ON r.projectId = p.id
+      WHERE p.department = ${department}
+      ORDER BY s.name ASC
+    `;
+
+    // 4. Index registrations by project and compute student directory
+    const regsByProjectId = new Map<string, RawStudentReg[]>();
     const studentsMap = new Map<string, any>();
-    projects.forEach((proj) => {
-      proj.registrations.forEach((reg) => {
-        if (!studentsMap.has(reg.student.id)) {
-          studentsMap.set(reg.student.id, {
-            id: reg.student.id,
-            enrollmentNumber: reg.student.enrollmentNumber,
-            name: reg.student.name,
-            department: reg.student.department,
-            programme: reg.student.programme,
-            semester: reg.student.semester,
-            batch: reg.student.batch,
-            email: reg.student.email,
-            phone: reg.student.phone,
-            internalMarks: reg.student.internalMarks,
-            externalMarks: reg.student.externalMarks,
-            attendancePercent: reg.student.attendancePercent,
-            projectId: proj.projectId,
-            projectTitle: proj.title,
-            facultyName: proj.faculty.name,
-            facultyEmail: proj.faculty.email,
-            registeredAt: reg.createdAt.toISOString(),
-          });
-        }
-      });
-    });
+    const projectsMap = new Map(projects.map((p) => [p.id, p]));
+
+    for (const r of rawRegs) {
+      if (!regsByProjectId.has(r.projectId)) {
+        regsByProjectId.set(r.projectId, []);
+      }
+      regsByProjectId.get(r.projectId)!.push(r);
+
+      const proj = projectsMap.get(r.projectId);
+      if (!studentsMap.has(r.studentId)) {
+        studentsMap.set(r.studentId, {
+          id: r.studentId,
+          enrollmentNumber: r.enrollmentNumber,
+          name: r.studentName,
+          department: r.studentDepartment,
+          programme: r.programme,
+          semester: r.semester,
+          batch: r.batch,
+          email: r.studentEmail,
+          phone: r.studentPhone,
+          internalMarks: r.internalMarks,
+          externalMarks: r.externalMarks,
+          attendancePercent: r.attendancePercent,
+          projectId: proj?.projectId || "",
+          projectTitle: proj?.title || "",
+          facultyName: proj?.faculty.name || "",
+          facultyEmail: proj?.faculty.email || "",
+          registeredAt: typeof r.regCreatedAt === "string" ? r.regCreatedAt : new Date(r.regCreatedAt).toISOString(),
+        });
+      }
+    }
 
     const students = Array.from(studentsMap.values());
 
-    // 4. Compute Faculty Marks Submission Metrics
+    // 5. Index projects by faculty
+    const projectsByFacultyId = new Map<string, typeof projects>();
+    for (const p of projects) {
+      if (!projectsByFacultyId.has(p.facultyId)) {
+        projectsByFacultyId.set(p.facultyId, []);
+      }
+      projectsByFacultyId.get(p.facultyId)!.push(p);
+    }
+
+    // 6. Compute Faculty Marks Submission Metrics
     let facultyMarksSharedCount = 0;
     let facultyMarksPartialCount = 0;
     let facultyMarksPendingCount = 0;
 
     const formattedFaculty = facultyList.map((f) => {
+      const facProjects = projectsByFacultyId.get(f.id) || [];
       const facultyStudentsMap = new Map<string, any>();
-      f.projects.forEach((proj) => {
-        proj.registrations.forEach((reg) => {
-          if (!facultyStudentsMap.has(reg.student.id)) {
-            const internalMarks = reg.student.internalMarks ?? 0;
-            const externalMarks = reg.student.externalMarks ?? 0;
-            const attendancePercent = reg.student.attendancePercent ?? 100;
+
+      facProjects.forEach((proj) => {
+        const pRegs = regsByProjectId.get(proj.id) || [];
+        pRegs.forEach((r) => {
+          if (!facultyStudentsMap.has(r.studentId)) {
+            const internalMarks = r.internalMarks ?? 0;
+            const externalMarks = r.externalMarks ?? 0;
+            const attendancePercent = r.attendancePercent ?? 100;
             const marksShared = internalMarks > 0 || externalMarks > 0;
-            facultyStudentsMap.set(reg.student.id, {
-              studentId: reg.student.id,
-              enrollmentNumber: reg.student.enrollmentNumber,
-              name: reg.student.name,
-              programme: reg.student.programme || undefined,
+            facultyStudentsMap.set(r.studentId, {
+              studentId: r.studentId,
+              enrollmentNumber: r.enrollmentNumber,
+              name: r.studentName,
+              programme: r.programme || undefined,
               internalMarks,
               externalMarks,
               attendancePercent,
@@ -196,13 +248,13 @@ export async function GET(req: NextRequest) {
         email: f.email,
         phone: f.phone,
         isSpoc: f.isSpoc,
-        projectsCount: f.projects.length,
+        projectsCount: facProjects.length,
         studentsCount,
         marksStatus,
         marksSharedCount: sharedCount,
         marksPendingCount: pendingCount,
         studentsWithMarks,
-        projects: f.projects.map((p) => ({
+        projects: facProjects.map((p) => ({
           id: p.id,
           projectId: p.projectId,
           title: p.title,
@@ -211,7 +263,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 5. Compute KPIs
+    // 7. Compute KPIs
     const totalProjects = projects.length;
     const totalFaculty = facultyList.length;
     const totalStudents = students.length;
@@ -243,75 +295,81 @@ export async function GET(req: NextRequest) {
         facultyMarksPendingCount,
       },
       faculty: formattedFaculty,
-      projects: projects.map((p) => ({
-        id: p.id,
-        projectId: p.projectId,
-        title: p.title,
-        description: p.description,
-        theme: p.theme,
-        category: p.category,
-        semester: p.semester,
-        academicYear: p.academicYear,
-        submissionStatus: p.submissionStatus,
-        spocReviewNote: p.spocReviewNote,
-        reviewedAt: p.reviewedAt?.toISOString() || null,
-        // Research Manuscript & Publication (Optional)
-        hasCommunicatedManuscript: p.hasCommunicatedManuscript,
-        draftManuscriptUrl: p.draftManuscriptUrl,
-        draftManuscriptFileName: p.draftManuscriptFileName,
-        journalName: p.journalName,
-        avishkarAffiliationCommunicated: p.avishkarAffiliationCommunicated,
-        isManuscriptPublished: p.isManuscriptPublished,
-        publicationDoi: p.publicationDoi,
-        publishedManuscriptUrl: p.publishedManuscriptUrl,
-        publishedManuscriptFileName: p.publishedManuscriptFileName,
-        avishkarAffiliationPublished: p.avishkarAffiliationPublished,
-        manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
-        manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
-        manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
-        manuscriptAiPercent: p.manuscriptAiPercent,
-        manuscriptSubmittedAt: p.manuscriptSubmittedAt?.toISOString() || null,
-        faculty: p.faculty,
-        studentsCount: p.registrations.length,
-        artifacts: p.artifacts.map((a) => ({
-          id: a.id,
-          type: a.type,
-          title: a.title,
-          fileName: a.fileName,
-          fileUrl: a.fileUrl,
-          fileSize: a.fileSize,
-          mimeType: a.mimeType,
-          semester: a.semester,
-          academicYear: a.academicYear,
-          similarityPercent: a.similarityPercent,
-          aiPercent: a.aiPercent,
-          similarityChecked: a.similarityChecked,
-          aiChecked: a.aiChecked,
-          plagiarismReportFileName: a.plagiarismReportFileName,
-          plagiarismReportUrl: a.plagiarismReportUrl,
-          selfDeclaration: a.selfDeclaration,
-          status: a.status,
-          spocNote: a.spocNote,
-          submittedAt: a.submittedAt.toISOString(),
-          reviewedAt: a.reviewedAt?.toISOString() || null,
-          reviewedBy: a.reviewedBy?.name || null,
-        })),
-        students: p.registrations.map((r) => ({
-          id: r.student.id,
-          enrollment: r.student.enrollmentNumber,
-          name: r.student.name,
-          department: r.student.department,
-          programme: r.student.programme,
-          semester: r.student.semester,
-          batch: r.student.batch,
-        })),
-      })),
+      projects: projects.map((p) => {
+        const pRegs = regsByProjectId.get(p.id) || [];
+        return {
+          id: p.id,
+          projectId: p.projectId,
+          title: p.title,
+          description: p.description,
+          theme: p.theme,
+          category: p.category,
+          semester: p.semester,
+          academicYear: p.academicYear,
+          submissionStatus: p.submissionStatus,
+          spocReviewNote: p.spocReviewNote,
+          reviewedAt: p.reviewedAt?.toISOString() || null,
+          hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
+          hasCommunicatedManuscript: p.hasCommunicatedManuscript,
+          draftManuscriptUrl: p.draftManuscriptUrl,
+          draftManuscriptFileName: p.draftManuscriptFileName,
+          journalName: p.journalName,
+          avishkarAffiliationCommunicated: p.avishkarAffiliationCommunicated,
+          isManuscriptPublished: p.isManuscriptPublished,
+          publicationDoi: p.publicationDoi,
+          publishedManuscriptUrl: p.publishedManuscriptUrl,
+          publishedManuscriptFileName: p.publishedManuscriptFileName,
+          avishkarAffiliationPublished: p.avishkarAffiliationPublished,
+          manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
+          manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
+          manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
+          manuscriptAiPercent: p.manuscriptAiPercent,
+          manuscriptSubmittedAt: p.manuscriptSubmittedAt?.toISOString() || null,
+          faculty: p.faculty,
+          studentsCount: pRegs.length,
+          artifacts: p.artifacts.map((a) => ({
+            id: a.id,
+            type: a.type,
+            title: a.title,
+            fileName: a.fileName,
+            fileUrl: a.fileUrl,
+            fileSize: a.fileSize,
+            mimeType: a.mimeType,
+            semester: a.semester,
+            academicYear: a.academicYear,
+            similarityPercent: a.similarityPercent,
+            aiPercent: a.aiPercent,
+            similarityChecked: a.similarityChecked,
+            aiChecked: a.aiChecked,
+            plagiarismReportFileName: a.plagiarismReportFileName,
+            plagiarismReportUrl: a.plagiarismReportUrl,
+            selfDeclaration: a.selfDeclaration,
+            status: a.status,
+            spocNote: a.spocNote,
+            submittedAt: a.submittedAt.toISOString(),
+            reviewedAt: a.reviewedAt?.toISOString() || null,
+            reviewedBy: a.reviewedBy?.name || null,
+          })),
+          students: pRegs.map((r) => ({
+            id: r.studentId,
+            enrollment: r.enrollmentNumber,
+            name: r.studentName,
+            department: r.studentDepartment,
+            programme: r.programme,
+            semester: r.semester,
+            batch: r.batch,
+            internalMarks: r.internalMarks,
+            externalMarks: r.externalMarks,
+            attendancePercent: r.attendancePercent,
+          })),
+        };
+      }),
       students,
     });
   } catch (error: any) {
     console.error("SPOC department API error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to load SPOC department data." },
+      { error: cleanErrorMessage(error, "Failed to load SPOC department data.") },
       { status: 500 }
     );
   }
@@ -320,8 +378,30 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || (session.role !== "SPOC" && session.role !== "ADMIN")) {
+    if (!session || (session.role !== "SPOC" && session.role !== "ADMIN" && session.role !== "FACULTY")) {
       return NextResponse.json({ error: "Unauthorized. SPOC or Admin access required." }, { status: 401 });
+    }
+
+    let authorizedDepartment: string | null = null;
+    if (session.role === "ADMIN") {
+      authorizedDepartment = "*";
+    } else if (session.role === "SPOC") {
+      const spoc = await prisma.spoc.findUnique({ where: { id: session.id } });
+      if (spoc) {
+        authorizedDepartment = spoc.department;
+      } else {
+        const faculty = await prisma.faculty.findUnique({ where: { id: session.id } });
+        if (faculty?.isSpoc) authorizedDepartment = faculty.spocDepartment || faculty.department;
+      }
+    } else if (session.role === "FACULTY") {
+      const faculty = await prisma.faculty.findUnique({ where: { id: session.id } });
+      if (faculty?.isSpoc && faculty.spocDepartment) {
+        authorizedDepartment = faculty.spocDepartment;
+      }
+    }
+
+    if (!authorizedDepartment) {
+      return NextResponse.json({ error: "Access forbidden. SPOC authorization not found." }, { status: 403 });
     }
 
     const body = await req.json();
@@ -351,44 +431,116 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "No student update data provided." }, { status: 400 });
       }
 
-      let updatedCount = 0;
+      // 1. Validate marks bounds strictly (no silent clamping, no type coercion bugs)
       for (const item of recordsToUpdate) {
-        const updateData: any = {};
-        if (item.attendancePercent !== undefined && item.attendancePercent !== null && !isNaN(Number(item.attendancePercent))) {
-          updateData.attendancePercent = Math.min(100, Math.max(0, Number(item.attendancePercent)));
+        if (item.internalMarks !== undefined && item.internalMarks !== null) {
+          const val = Number(item.internalMarks);
+          if (!Number.isFinite(val) || val < 0 || val > 50) {
+            return NextResponse.json(
+              { error: `Internal marks must be a valid number between 0 and 50. Received: ${item.internalMarks}` },
+              { status: 400 }
+            );
+          }
         }
-        if (item.internalMarks !== undefined && item.internalMarks !== null && !isNaN(Number(item.internalMarks))) {
-          updateData.internalMarks = Math.max(0, Number(item.internalMarks));
+        if (item.externalMarks !== undefined && item.externalMarks !== null) {
+          const val = Number(item.externalMarks);
+          if (!Number.isFinite(val) || val < 0 || val > 50) {
+            return NextResponse.json(
+              { error: `External marks must be a valid number between 0 and 50. Received: ${item.externalMarks}` },
+              { status: 400 }
+            );
+          }
         }
-        if (item.externalMarks !== undefined && item.externalMarks !== null && !isNaN(Number(item.externalMarks))) {
-          updateData.externalMarks = Math.max(0, Number(item.externalMarks));
-        }
-
-        if (Object.keys(updateData).length === 0) continue;
-
-        if (item.studentId) {
-          await prisma.student.update({
-            where: { id: item.studentId },
-            data: updateData,
-          });
-          updatedCount++;
-        } else if (item.enrollmentNumber) {
-          const res = await prisma.student.updateMany({
-            where: { enrollmentNumber: String(item.enrollmentNumber).trim() },
-            data: updateData,
-          });
-          if (res.count > 0) updatedCount += res.count;
+        if (item.attendancePercent !== undefined && item.attendancePercent !== null) {
+          const val = Number(item.attendancePercent);
+          if (!Number.isFinite(val) || val < 0 || val > 100) {
+            return NextResponse.json(
+              { error: `Attendance percentage must be between 0 and 100. Received: ${item.attendancePercent}` },
+              { status: 400 }
+            );
+          }
         }
       }
 
-      await prisma.auditLog.create({
-        data: {
-          actor: session.name,
-          actorRole: session.role,
-          action: "SPOC_STUDENT_MARKS_UPLOADED",
-          metadata: JSON.stringify({ count: updatedCount }),
+      // 2. Fetch scoped students in authorized department
+      const targetStudentIds = recordsToUpdate.map((r: any) => r.studentId).filter(Boolean) as string[];
+      const targetEnrollments = recordsToUpdate.map((r: any) => r.enrollmentNumber).filter(Boolean).map((e: any) => String(e).trim());
+
+      const allowedStudents = await prisma.student.findMany({
+        where: {
+          OR: [
+            ...(targetStudentIds.length > 0 ? [{ id: { in: targetStudentIds } }] : []),
+            ...(targetEnrollments.length > 0 ? [{ enrollmentNumber: { in: targetEnrollments } }] : []),
+          ],
+          ...(authorizedDepartment !== "*"
+            ? {
+                AND: [
+                  {
+                    OR: [
+                      { department: authorizedDepartment },
+                      { registration: { project: { department: authorizedDepartment } } },
+                    ],
+                  },
+                ],
+              }
+            : {}),
         },
+        select: { id: true, enrollmentNumber: true },
       });
+
+      const allowedIdSet = new Set(allowedStudents.map((s) => s.id));
+      const allowedEnrollMap = new Map(allowedStudents.map((s) => [s.enrollmentNumber, s.id]));
+
+      const updateOperations: any[] = [];
+      for (const item of recordsToUpdate) {
+        let targetId: string | null = null;
+        if (item.studentId && allowedIdSet.has(item.studentId)) {
+          targetId = item.studentId;
+        } else if (item.enrollmentNumber) {
+          const cleanEnroll = String(item.enrollmentNumber).trim();
+          if (allowedEnrollMap.has(cleanEnroll)) {
+            targetId = allowedEnrollMap.get(cleanEnroll)!;
+          }
+        }
+
+        if (!targetId) continue; // Out of scope
+
+        const updateData: any = {};
+        if (item.attendancePercent !== undefined && item.attendancePercent !== null) {
+          updateData.attendancePercent = Number(item.attendancePercent);
+        }
+        if (item.internalMarks !== undefined && item.internalMarks !== null) {
+          updateData.internalMarks = Number(item.internalMarks);
+        }
+        if (item.externalMarks !== undefined && item.externalMarks !== null) {
+          updateData.externalMarks = Number(item.externalMarks);
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          updateOperations.push(
+            prisma.student.update({
+              where: { id: targetId },
+              data: updateData,
+            })
+          );
+        }
+      }
+
+      if (updateOperations.length > 0) {
+        // Execute all updates and the audit log in a single atomic transaction
+        await prisma.$transaction([
+          ...updateOperations,
+          prisma.auditLog.create({
+            data: {
+              actor: session.name,
+              actorRole: session.role,
+              action: "SPOC_STUDENT_MARKS_UPLOADED",
+              metadata: JSON.stringify({ count: updateOperations.length, department: authorizedDepartment }),
+            },
+          }),
+        ]);
+      }
+      const updatedCount = updateOperations.length;
 
       return NextResponse.json({
         success: true,
@@ -401,7 +553,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("SPOC marks update error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to update student assessments." },
+      { error: cleanErrorMessage(error, "Failed to update student assessments.") },
       { status: 500 }
     );
   }

@@ -1,10 +1,10 @@
-import * as XLSX from "xlsx";
-
-export function exportToCsv(data: Record<string, any>[], filename: string) {
+export async function exportToCsv(data: Record<string, any>[], filename: string) {
   if (!data || data.length === 0) return;
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(data);
   const csv = XLSX.utils.sheet_to_csv(ws);
+  if (typeof document === "undefined") return csv;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -14,10 +14,12 @@ export function exportToCsv(data: Record<string, any>[], filename: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return csv;
 }
 
-export function exportToXlsx(data: Record<string, any>[], filename: string, sheetName = "Data") {
+export async function exportToXlsx(data: Record<string, any>[], filename: string, sheetName = "Data") {
   if (!data || data.length === 0) return;
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(data);
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
@@ -27,6 +29,7 @@ export function exportToXlsx(data: Record<string, any>[], filename: string, shee
 export function exportToJson(data: Record<string, any>[], filename: string) {
   if (!data || data.length === 0) return;
   const jsonStr = JSON.stringify(data, null, 2);
+  if (typeof document === "undefined") return jsonStr;
   const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -36,20 +39,30 @@ export function exportToJson(data: Record<string, any>[], filename: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return jsonStr;
 }
 
 export function exportToPdf(data: Record<string, any>[], title: string) {
   if (!data || data.length === 0) return;
+  if (typeof window === "undefined") return;
   const headers = Object.keys(data[0]);
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) return;
 
+  const escapeHtml = (val: any) =>
+    String(val ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>${title}</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     @page { size: landscape; margin: 12mm; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 15px; font-size: 11px; }
@@ -69,17 +82,17 @@ export function exportToPdf(data: Record<string, any>[], title: string) {
 <body>
   <div class="header">
     <h1 class="title">G.D. GOENKA UNIVERSITY · IDP PORTAL</h1>
-    <div class="meta">${title} · Generated on ${new Date().toLocaleString()} · Total Records: ${data.length}</div>
+    <div class="meta">${escapeHtml(title)} · Generated on ${new Date().toLocaleString()} · Total Records: ${data.length}</div>
   </div>
   <table>
     <thead>
-      <tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>
+      <tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr>
     </thead>
     <tbody>
       ${data
         .map(
           (row) =>
-            `<tr>${headers.map((h) => `<td>${row[h] !== undefined && row[h] !== null ? row[h] : ""}</td>`).join("")}</tr>`
+            `<tr>${headers.map((h) => `<td>${escapeHtml(row[h] !== undefined && row[h] !== null ? row[h] : "")}</td>`).join("")}</tr>`
         )
         .join("")}
     </tbody>
@@ -133,8 +146,13 @@ export async function downloadFullDatabaseExport(academicYear?: string): Promise
 
   const res = await fetch(`/api/admin/data-management?${params.toString()}`);
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Failed to download full database export.");
+    let errMsg = "Failed to download full database export.";
+    try {
+      const text = await res.text();
+      const err = JSON.parse(text);
+      if (err.error) errMsg = err.error;
+    } catch {}
+    throw new Error(errMsg);
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AlertCircle, Lock, Mail, Users, ArrowLeft } from "lucide-react";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 export default function FacultyLoginPage() {
   const router = useRouter();
@@ -29,14 +30,14 @@ export default function FacultyLoginPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Invalid faculty credentials.");
+        setError(cleanErrorMessage(data.error, "Invalid faculty credentials."));
         setLoading(false);
         return;
       }
 
       router.push("/faculty/portal");
     } catch (err: any) {
-      setError("Network error. Please try again.");
+      setError(cleanErrorMessage(err, "Network error. Please try again."));
       setLoading(false);
     }
   };
@@ -44,8 +45,8 @@ export default function FacultyLoginPage() {
   return (
     <>
       <Header role="Faculty" />
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-12 sm:py-16 flex flex-col justify-center">
-        <div className="bg-white rounded-3xl p-8 sm:p-11 border border-slate-200/90 shadow-elevated relative overflow-hidden">
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-8 sm:py-16 flex flex-col justify-center">
+        <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-11 border border-slate-200/90 shadow-elevated relative overflow-hidden">
           <div className="flex items-center justify-between mb-5">
             <Link
               href="/"

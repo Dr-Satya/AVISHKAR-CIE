@@ -36,6 +36,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Security check: Check if email prefix enrollment matches requested enrollment
+    const emailPrefixDigits = session.email.split("@")[0].match(/^\d+/);
+    if (emailPrefixDigits && emailPrefixDigits[0] !== cleanEnrollment) {
+      return NextResponse.json(
+        {
+          error: `Account Mismatch: Your university account (${session.email}) has enrollment ${emailPrefixDigits[0]}, but you entered enrollment ${cleanEnrollment}. You cannot claim another student's account.`,
+        },
+        { status: 403 }
+      );
+    }
+
     // Security check: Check if this enrollment is already linked to another email
     if (student.email && student.email !== session.email && student.identities.length > 0) {
       const isLinkedToOther = student.identities.some((id) => id.email !== session.email);
@@ -73,6 +84,7 @@ export async function POST(req: NextRequest) {
       email: session.email,
       name: student.name,
       enrollmentNumber: student.enrollmentNumber,
+      department: student.department,
     });
 
     const response = NextResponse.json({
@@ -91,8 +103,9 @@ export async function POST(req: NextRequest) {
     setSessionCookie(response, permanentToken);
     return response;
   } catch (error: any) {
+    console.error("Enrollment verification error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to verify enrollment." },
+      { error: "Enrollment verification failed. Please check your enrollment number and try again." },
       { status: 500 }
     );
   }

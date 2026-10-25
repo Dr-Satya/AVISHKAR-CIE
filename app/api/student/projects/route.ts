@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { resolveProjectLimits, normalizeDept } from "@/services/registration.service";
+import {
+  resolveProjectLimits,
+  normalizeDept,
+  getCachedProjectQuery,
+  setCachedProjectQuery,
+  getCachedGlobalConfig,
+} from "@/services/registration.service";
 
 export const dynamic = "force-dynamic";
-
-const projectQueryCache = new Map<string, { data: any[]; time: number }>();
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -16,30 +20,35 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category");
   const theme = searchParams.get("theme");
+  const deptParam = searchParams.get("dept");
 
   if (!category || !theme) {
     return NextResponse.json({ error: "Category and theme are required." }, { status: 400 });
   }
 
-  const student = await prisma.student.findUnique({
-    where: { id: session.id },
-  });
-
-  if (!student) {
-    return NextResponse.json({ error: "Student not found." }, { status: 404 });
+  // Verified session department, fallback to DB query if missing from JWT
+  let studentDepartment = session.department;
+  if (!studentDepartment) {
+    const student = await prisma.student.findUnique({
+      where: { id: session.id },
+      select: { department: true },
+    });
+    if (!student) {
+      return NextResponse.json({ error: "Student not found." }, { status: 404 });
+    }
+    studentDepartment = student.department;
   }
 
-  const studentDeptNorm = normalizeDept(student.department);
+  const studentDeptNorm = normalizeDept(studentDepartment);
 
-  const config = await prisma.globalConfig.findUnique({ where: { id: "default" } });
+  const config = await getCachedGlobalConfig();
   const activeYear = config?.activeAcademicYear || "2025-2026";
 
   // Micro-cache projects query for 3 seconds per year+category+theme to absorb heavy traffic bursts
   const cacheKey = `${activeYear}:${category}:${theme}`;
-  let projects = projectQueryCache.get(cacheKey)?.data;
-  const cachedAt = projectQueryCache.get(cacheKey)?.time || 0;
+  let projects = getCachedProjectQuery(cacheKey);
 
-  if (!projects || Date.now() - cachedAt > 3000) {
+  if (!projects) {
     projects = await prisma.project.findMany({
       where: {
         category: category,
@@ -63,7 +72,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    projectQueryCache.set(cacheKey, { data: projects, time: Date.now() });
+    setCachedProjectQuery(cacheKey, projects);
   }
 
   const enrichedProjects = await Promise.all(
@@ -80,7 +89,7 @@ export async function GET(req: NextRequest) {
       const isSameDept = studentDeptNorm === normalizeDept(p.department);
 
       const sameDeptCount = p.registrations.filter(
-        (r: any) => normalizeDept(r.student.department) === normalizeDept(p.department)
+        (r: any) => normalizeDept(r.student?.department) === normalizeDept(p.department)
       ).length;
       const otherDeptCount = totalSeatsFilled - sameDeptCount;
 
@@ -121,5 +130,12 @@ export async function GET(req: NextRequest) {
     })
   );
 
-  return NextResponse.json({ projects: enrichedProjects });
+  return NextResponse.json(
+    { projects: enrichedProjects },
+    {
+      headers: {
+        "Cache-Control": "private, no-cache, no-store, must-revalidate",
+      },
+    }
+  );
 }

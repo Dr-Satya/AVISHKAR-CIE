@@ -39,6 +39,7 @@ import {
   exportToJson,
   exportToPdf,
 } from "@/lib/export";
+import { cleanErrorMessage } from "@/lib/error-utils";
 import { PaginationBar } from "@/components/common/PaginationBar";
 
 interface DataManagementModalProps {
@@ -49,7 +50,14 @@ interface DataManagementModalProps {
 }
 
 type TabType = "EXPORT" | "PURGE" | "EXPORT_AND_PURGE";
-type PurgeScope = "STUDENTS" | "STUDENTS_AND_UPLOADS" | "REGISTRATIONS" | "PROJECTS" | "FACULTY" | "ALL";
+type PurgeScope =
+  | "STUDENTS"
+  | "STUDENTS_AND_UPLOADS"
+  | "STUDENTS_PROJECTS_UPLOADS"
+  | "REGISTRATIONS"
+  | "PROJECTS"
+  | "FACULTY"
+  | "ALL";
 
 interface Snapshot {
   students: number;
@@ -116,7 +124,7 @@ export function DataManagementModal({
       setSuccessMessage("Full database export downloaded and archived to Cloudflare R2 successfully.");
       await fetchSnapshot();
     } catch (err: any) {
-      setError(err.message || "Export failed.");
+      setError(cleanErrorMessage(err, "Export failed."));
     } finally {
       setProcessing(false);
     }
@@ -144,7 +152,7 @@ export function DataManagementModal({
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Purge failed.");
+        throw new Error(cleanErrorMessage(data.error, "Purge failed."));
       }
 
       setSuccessMessage(`Purge completed for scope: ${scope}. Deleted records: ${JSON.stringify(data.deleted)}`);
@@ -152,7 +160,7 @@ export function DataManagementModal({
       await fetchSnapshot();
       if (onDataChanged) onDataChanged();
     } catch (err: any) {
-      setError(err.message || "Failed to purge data.");
+      setError(cleanErrorMessage(err, "Failed to purge data."));
     } finally {
       setProcessing(false);
     }
@@ -184,7 +192,7 @@ export function DataManagementModal({
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Export and purge failed.");
+        throw new Error(cleanErrorMessage(data.error, "Export and purge failed."));
       }
 
       setSuccessMessage(
@@ -194,7 +202,7 @@ export function DataManagementModal({
       await fetchSnapshot();
       if (onDataChanged) onDataChanged();
     } catch (err: any) {
-      setError(err.message || "Atomic export and purge failed.");
+      setError(cleanErrorMessage(err, "Atomic export and purge failed."));
     } finally {
       setProcessing(false);
     }
@@ -267,11 +275,11 @@ export function DataManagementModal({
         )}
 
         {/* Action Tabs */}
-        <div className="flex border-b border-slate-200 mb-5">
+        <div className="flex border-b border-slate-200 mb-5 overflow-x-auto scrollbar-none whitespace-nowrap">
           <button
             type="button"
             onClick={() => setActiveTab("EXPORT")}
-            className={`flex-1 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeTab === "EXPORT"
                 ? "border-[#c59b27] text-[#0a192f]"
                 : "border-transparent text-slate-400 hover:text-slate-600"
@@ -283,7 +291,7 @@ export function DataManagementModal({
           <button
             type="button"
             onClick={() => setActiveTab("EXPORT_AND_PURGE")}
-            className={`flex-1 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeTab === "EXPORT_AND_PURGE"
                 ? "border-amber-600 text-amber-900"
                 : "border-transparent text-slate-400 hover:text-slate-600"
@@ -295,7 +303,7 @@ export function DataManagementModal({
           <button
             type="button"
             onClick={() => setActiveTab("PURGE")}
-            className={`flex-1 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeTab === "PURGE"
                 ? "border-red-600 text-red-700"
                 : "border-transparent text-slate-400 hover:text-slate-600"
@@ -391,10 +399,11 @@ export function DataManagementModal({
                 onChange={(e) => setScope(e.target.value as PurgeScope)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-amber-600"
               >
-                <option value="STUDENTS_AND_UPLOADS">Students, Allocations &amp; All Uploaded Artifacts (Recommended Safe Reset)</option>
+                <option value="STUDENTS_PROJECTS_UPLOADS">Students, Projects, Allocations &amp; Uploads (Clean Slate — Preserves Faculty Logins)</option>
+                <option value="STUDENTS_AND_UPLOADS">Students, Allocations &amp; All Uploaded Artifacts (Preserves Project Proposals)</option>
                 <option value="STUDENTS">Students &amp; Allocations Only (Preserves Uploads, Projects &amp; Faculty)</option>
                 <option value="REGISTRATIONS">Registrations Only (Resets Project Allocations)</option>
-                <option value="PROJECTS">Projects &amp; Submissions (Preserves Students &amp; Faculty)</option>
+                <option value="PROJECTS">Projects &amp; Submissions Only (Preserves Students &amp; Faculty)</option>
                 <option value="FACULTY">Faculty &amp; Assigned Projects</option>
                 <option value="ALL">ALL Cohort Data (Complete Database Wipe)</option>
               </select>
@@ -483,10 +492,11 @@ export function DataManagementModal({
                 onChange={(e) => setScope(e.target.value as PurgeScope)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-red-600"
               >
+                <option value="STUDENTS_PROJECTS_UPLOADS">Students, Projects, Allocations &amp; Uploads (Preserves Faculty)</option>
                 <option value="STUDENTS_AND_UPLOADS">Students, Allocations &amp; Uploaded Artifacts</option>
                 <option value="STUDENTS">Students &amp; Allocations Only</option>
                 <option value="REGISTRATIONS">Registrations Only</option>
-                <option value="PROJECTS">Projects &amp; Submissions</option>
+                <option value="PROJECTS">Projects &amp; Submissions Only</option>
                 <option value="FACULTY">Faculty &amp; Projects</option>
                 <option value="ALL">ALL Data (Full Reset)</option>
               </select>
@@ -602,9 +612,10 @@ export function DatabaseDashboardCard({
   const [refreshing, setRefreshing] = useState(false);
   const [exportingOneClick, setExportingOneClick] = useState(false);
 
-  // Safe Wipe (Export First -> Delete Students & Uploads)
+  // Safe Wipe (Export First -> Delete Selected Scope)
   const [showSafeWipeModal, setShowSafeWipeModal] = useState(false);
   const [wipeCohort, setWipeCohort] = useState("all");
+  const [wipeScope, setWipeScope] = useState<PurgeScope>("STUDENTS_PROJECTS_UPLOADS");
   const [wipeConfirmInput, setWipeConfirmInput] = useState("");
   const [wiping, setWiping] = useState(false);
   const [wipeError, setWipeError] = useState<string | null>(null);
@@ -628,21 +639,22 @@ export function DatabaseDashboardCard({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(25);
 
-  // Fetch full dataset
-  const fetchDatabaseMaster = async (isRefresh = false) => {
+  // Fetch dataset per tab (on-demand to prevent OOM/timeouts on edge workers)
+  const fetchDatabaseMaster = async (isRefresh = false, tabToFetch?: SubTab) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const res = await fetch("/api/admin/data-management?action=DATABASE_MASTER");
+      const targetTab = tabToFetch || activeTab;
+      const res = await fetch(`/api/admin/data-management?action=DATABASE_MASTER&tab=${targetTab}`);
       if (res.ok) {
         const json = await res.json();
         if (json.data) {
-          setStudents(json.data.students || []);
-          setFaculty(json.data.faculty || []);
-          setRegistrations(json.data.registrations || []);
-          setProjects(json.data.projects || []);
-          setSnapshot(json.data.snapshot || null);
+          if (json.data.students?.length) setStudents(json.data.students);
+          if (json.data.faculty?.length) setFaculty(json.data.faculty);
+          if (json.data.registrations?.length) setRegistrations(json.data.registrations);
+          if (json.data.projects?.length) setProjects(json.data.projects);
+          if (json.data.snapshot) setSnapshot(json.data.snapshot);
         }
       }
     } catch (err) {
@@ -654,7 +666,7 @@ export function DatabaseDashboardCard({
   };
 
   useEffect(() => {
-    fetchDatabaseMaster();
+    fetchDatabaseMaster(false, "MAPPINGS");
   }, []);
 
   // Clear selections & reset page when switching tabs
@@ -668,6 +680,15 @@ export function DatabaseDashboardCard({
     setSortColumn("default");
     setSortOrder("asc");
     setCurrentPage(1);
+
+    if (
+      (newTab === "MAPPINGS" && registrations.length === 0) ||
+      (newTab === "STUDENTS" && students.length === 0) ||
+      (newTab === "FACULTY" && faculty.length === 0) ||
+      (newTab === "PROJECTS" && projects.length === 0)
+    ) {
+      fetchDatabaseMaster(false, newTab);
+    }
   };
 
   // Distinct schools across all tables
@@ -676,8 +697,12 @@ export function DatabaseDashboardCard({
     students.forEach((s) => s.department && set.add(s.department));
     faculty.forEach((f) => f.department && set.add(f.department));
     projects.forEach((p) => p.department && set.add(p.department));
+    registrations.forEach((r) => {
+      if (r.student?.department) set.add(r.student.department);
+      if (r.project?.department) set.add(r.project.department);
+    });
     return Array.from(set).sort();
-  }, [students, faculty, projects]);
+  }, [students, faculty, projects, registrations]);
 
   // 1-Click Export of the entire database
   const handleExportAllOneClick = async () => {
@@ -685,7 +710,7 @@ export function DatabaseDashboardCard({
       setExportingOneClick(true);
       await downloadFullDatabaseExport();
     } catch (err: any) {
-      alert("Failed to export database: " + err.message);
+      alert(cleanErrorMessage(err, "Failed to export database."));
     } finally {
       setExportingOneClick(false);
     }
@@ -707,37 +732,56 @@ export function DatabaseDashboardCard({
       // Step 1: Trigger full database export download to browser
       await downloadFullDatabaseExport(wipeCohort !== "all" ? wipeCohort : undefined);
 
-      // Step 2: Request backend atomic wipe of students and uploads
+      // Step 2: Request backend purge with selected scope
       const res = await fetch("/api/admin/data-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "EXPORT_AND_PURGE",
-          scope: "STUDENTS_AND_UPLOADS",
+          action: "PURGE",
+          scope: wipeScope,
           academicYear: wipeCohort !== "all" ? wipeCohort : undefined,
           confirmCode: "WIPE_AND_EXPORT",
         }),
       });
 
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || "Wipe operation failed.");
+      let json: any = {};
+      const text = await res.text();
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(
+          res.ok
+            ? "Invalid server response."
+            : `Server error (${res.status}): ${text.slice(0, 120) || "Operation failed."}`
+        );
       }
 
-      const deletedInfo = json.purge?.deleted || {};
+      if (!res.ok) {
+        throw new Error(cleanErrorMessage(json.error, "Wipe operation failed."));
+      }
+
+      const deletedInfo = json.deleted || json.purge?.deleted || {};
       const studentCount = deletedInfo.students ?? 0;
+      const projectCount = deletedInfo.projects ?? 0;
       const regCount = deletedInfo.registrations ?? 0;
       const artCount = deletedInfo.artifacts ?? 0;
 
+      const summaryParts = [];
+      if (studentCount > 0) summaryParts.push(`${studentCount} students`);
+      if (projectCount > 0) summaryParts.push(`${projectCount} projects`);
+      if (regCount > 0) summaryParts.push(`${regCount} allocations`);
+      if (artCount > 0) summaryParts.push(`${artCount} uploaded documents`);
+      const details = summaryParts.length > 0 ? summaryParts.join(", ") : "0 records (already clean)";
+
       setWipeSuccess(
-        `Full database export was downloaded to your machine! Permanently deleted ${studentCount} students, ${regCount} allocations, and ${artCount} uploaded documents. Faculty accounts and project catalog remain intact.`
+        `Full database export was downloaded to your machine! Permanently deleted ${details}. Faculty accounts remain intact.`
       );
       setWipeConfirmInput("");
       setShowSafeWipeModal(false);
       await fetchDatabaseMaster(true);
       if (onDataChanged) onDataChanged();
     } catch (err: any) {
-      setWipeError(err.message || "Failed to complete export and wipe.");
+      setWipeError(cleanErrorMessage(err, "Failed to complete export and wipe."));
     } finally {
       setWiping(false);
     }
@@ -1322,10 +1366,10 @@ export function DatabaseDashboardCard({
               setShowSafeWipeModal(true);
             }}
             className="tactile-btn px-3.5 py-2.5 rounded-2xl border border-rose-300 bg-rose-50/80 text-rose-900 hover:bg-rose-100 text-xs font-bold flex items-center gap-1.5 shadow-subtle transition-all"
-            title="Export complete database backup first, then permanently wipe all students, allocations, and uploaded documents"
+            title="Export complete database backup first, then safely wipe student records, projects, and/or uploaded files"
           >
             <Trash2 className="w-4 h-4 text-rose-600" />
-            <span>Wipe Students &amp; Uploads (Export First)</span>
+            <span>Safe Wipe &amp; Clean Slate (Export First)</span>
           </button>
 
           <button
@@ -1760,7 +1804,7 @@ export function DatabaseDashboardCard({
           <div className="overflow-x-auto max-h-[640px] overflow-y-auto">
             {/* ── TAB 1: ALL MAPPINGS TABLE ── */}
             {activeTab === "MAPPINGS" && (
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
                 <thead className="sticky top-0 z-10 bg-[#0a192f] text-white">
                   <tr>
                     <th className="py-3 px-3 w-10 text-center">
@@ -1965,7 +2009,7 @@ export function DatabaseDashboardCard({
 
             {/* ── TAB 2: STUDENTS MASTER TABLE ── */}
             {activeTab === "STUDENTS" && (
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
                 <thead className="sticky top-0 z-10 bg-[#0a192f] text-white">
                   <tr>
                     <th className="py-3 px-3 w-10 text-center">
@@ -2022,14 +2066,14 @@ export function DatabaseDashboardCard({
                       onClick={() => handleSort("internals")}
                       className="py-3 px-2 font-semibold text-center cursor-pointer group hover:bg-[#162a45]"
                     >
-                      <span>INT (40)</span>
+                      <span>INT (50)</span>
                       {renderSortIndicator("internals")}
                     </th>
                     <th
                       onClick={() => handleSort("externals")}
                       className="py-3 px-2 font-semibold text-center cursor-pointer group hover:bg-[#162a45]"
                     >
-                      <span>EXT (60)</span>
+                      <span>EXT (50)</span>
                       {renderSortIndicator("externals")}
                     </th>
                     <th
@@ -2199,7 +2243,7 @@ export function DatabaseDashboardCard({
 
             {/* ── TAB 3: FACULTY MASTER & CREDENTIALS TABLE ── */}
             {activeTab === "FACULTY" && (
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
                 <thead className="sticky top-0 z-10 bg-[#0a192f] text-white">
                   <tr>
                     <th className="py-3 px-3 w-10 text-center">
@@ -2386,7 +2430,7 @@ export function DatabaseDashboardCard({
 
             {/* ── TAB 4: PROJECTS MASTER TABLE ── */}
             {activeTab === "PROJECTS" && (
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
                 <thead className="sticky top-0 z-10 bg-[#0a192f] text-white">
                   <tr>
                     <th className="py-3 px-3 w-10 text-center">
@@ -2606,32 +2650,66 @@ export function DatabaseDashboardCard({
               </p>
             </div>
 
+            {/* Scope Selector */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Data Scope to Wipe
+              </label>
+              <select
+                value={wipeScope}
+                onChange={(e) => setWipeScope(e.target.value as PurgeScope)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                <option value="STUDENTS_PROJECTS_UPLOADS">
+                  Students + Projects + Uploads (Clean Slate — Preserves Faculty Logins)
+                </option>
+                <option value="PROJECTS">
+                  Projects &amp; Submissions Only (Preserves Students &amp; Faculty)
+                </option>
+                <option value="STUDENTS_AND_UPLOADS">
+                  Students &amp; Uploads Only (Preserves Project Proposals)
+                </option>
+                <option value="ALL">
+                  Complete University Purge (Deletes Everything incl. Faculty)
+                </option>
+              </select>
+            </div>
+
             {/* Records Impact Preview */}
             <div className="space-y-2">
               <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
                 Records Scheduled for Removal
               </span>
-              <div className="grid grid-cols-3 gap-2.5 text-center">
-                <div className="bg-rose-50/70 p-3 rounded-2xl border border-rose-200/80">
-                  <div className="text-xl font-black text-rose-900">
-                    {snapshot?.students ?? students.length}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                <div className={`p-2.5 rounded-2xl border ${wipeScope !== "PROJECTS" ? "bg-rose-50/70 border-rose-200/80" : "bg-slate-50 border-slate-200 opacity-50"}`}>
+                  <div className={`text-lg font-black ${wipeScope !== "PROJECTS" ? "text-rose-900" : "text-slate-400"}`}>
+                    {wipeScope !== "PROJECTS" ? (snapshot?.students ?? students.length) : "—"}
                   </div>
-                  <div className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mt-0.5">
+                  <div className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${wipeScope !== "PROJECTS" ? "text-rose-700" : "text-slate-500"}`}>
                     Students
                   </div>
                 </div>
 
-                <div className="bg-rose-50/70 p-3 rounded-2xl border border-rose-200/80">
-                  <div className="text-xl font-black text-rose-900">
-                    {snapshot?.registrations ?? registrations.length}
+                <div className={`p-2.5 rounded-2xl border ${wipeScope !== "PROJECTS" ? "bg-rose-50/70 border-rose-200/80" : "bg-slate-50 border-slate-200 opacity-50"}`}>
+                  <div className={`text-lg font-black ${wipeScope !== "PROJECTS" ? "text-rose-900" : "text-slate-400"}`}>
+                    {wipeScope !== "PROJECTS" ? (snapshot?.registrations ?? registrations.length) : "—"}
                   </div>
-                  <div className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mt-0.5">
+                  <div className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${wipeScope !== "PROJECTS" ? "text-rose-700" : "text-slate-500"}`}>
                     Allocations
                   </div>
                 </div>
 
-                <div className="bg-rose-50/70 p-3 rounded-2xl border border-rose-200/80">
-                  <div className="text-xl font-black text-rose-900">
+                <div className={`p-2.5 rounded-2xl border ${wipeScope !== "STUDENTS_AND_UPLOADS" ? "bg-rose-50/70 border-rose-200/80" : "bg-slate-50 border-slate-200 opacity-50"}`}>
+                  <div className={`text-lg font-black ${wipeScope !== "STUDENTS_AND_UPLOADS" ? "text-rose-900" : "text-slate-400"}`}>
+                    {wipeScope !== "STUDENTS_AND_UPLOADS" ? (snapshot?.projects ?? projects.length) : "—"}
+                  </div>
+                  <div className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${wipeScope !== "STUDENTS_AND_UPLOADS" ? "text-rose-700" : "text-slate-500"}`}>
+                    Projects
+                  </div>
+                </div>
+
+                <div className="bg-rose-50/70 p-2.5 rounded-2xl border border-rose-200/80">
+                  <div className="text-lg font-black text-rose-900">
                     {snapshot?.artifacts ?? 0}
                   </div>
                   <div className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mt-0.5">
@@ -2640,13 +2718,21 @@ export function DatabaseDashboardCard({
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-600 text-xs flex items-center justify-between">
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-slate-600 text-xs flex items-center justify-between">
                 <span>Faculty Accounts &amp; Logins:</span>
-                <strong className="text-emerald-700">Preserved ({faculty.length} Faculty)</strong>
+                {wipeScope === "ALL" ? (
+                  <strong className="text-rose-700">Deleting ({faculty.length} Faculty)</strong>
+                ) : (
+                  <strong className="text-emerald-700">Preserved ({faculty.length} Faculty)</strong>
+                )}
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-600 text-xs flex items-center justify-between">
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-slate-600 text-xs flex items-center justify-between">
                 <span>Project Master Catalog:</span>
-                <strong className="text-emerald-700">Preserved ({projects.length} Projects reset)</strong>
+                {wipeScope === "STUDENTS_AND_UPLOADS" ? (
+                  <strong className="text-emerald-700">Preserved ({projects.length} Projects reset)</strong>
+                ) : (
+                  <strong className="text-rose-700">Deleting ({projects.length} Projects)</strong>
+                )}
               </div>
             </div>
 
@@ -2713,7 +2799,15 @@ export function DatabaseDashboardCard({
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>Download Backup &amp; Delete Students + Uploads</span>
+                    <span>
+                      {wipeScope === "STUDENTS_PROJECTS_UPLOADS"
+                        ? "Download Backup & Wipe Students, Projects + Uploads"
+                        : wipeScope === "PROJECTS"
+                        ? "Download Backup & Delete Projects Only"
+                        : wipeScope === "ALL"
+                        ? "Download Backup & Purge Entire Database"
+                        : "Download Backup & Delete Students + Uploads"}
+                    </span>
                   </>
                 )}
               </button>

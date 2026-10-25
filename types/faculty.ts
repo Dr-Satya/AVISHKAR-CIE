@@ -66,6 +66,7 @@ export interface AssignedProject {
   spocReviewNote?: string;
   reviewedAt?: string;
   // Research Manuscript & Publication (Optional)
+  hasDraftManuscript?: boolean;
   hasCommunicatedManuscript?: boolean;
   draftManuscriptUrl?: string | null;
   draftManuscriptFileName?: string | null;

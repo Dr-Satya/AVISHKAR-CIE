@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Edit2, Trash2, Shield, ShieldCheck, KeyRound, UserCheck } from "lucide-react";
+import { Plus, Edit2, Trash2, Shield, ShieldCheck, KeyRound, UserCheck, ArrowRightLeft } from "lucide-react";
 import { FacultyRecord, SystemAdminRecord } from "@/types/admin";
 
 interface FacultyAccessCardProps {
@@ -10,6 +10,7 @@ interface FacultyAccessCardProps {
   onDeleteClick: (f: FacultyRecord) => void;
   onToggleAdmin: (id: string, currentIsAdmin: boolean) => void;
   onResetPasscodeClick: (f: FacultyRecord) => void;
+  onReplaceClick?: (f: FacultyRecord) => void;
   onAddAdminClick?: () => void;
   onDeleteAdminClick?: (adminId: string, adminName: string) => void;
 }
@@ -22,6 +23,7 @@ export function FacultyAccessCard({
   onDeleteClick,
   onToggleAdmin,
   onResetPasscodeClick,
+  onReplaceClick,
   onAddAdminClick,
   onDeleteAdminClick,
 }: FacultyAccessCardProps) {
@@ -180,6 +182,16 @@ export function FacultyAccessCard({
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
+                      {onReplaceClick && (
+                        <button
+                          type="button"
+                          onClick={() => onReplaceClick(f)}
+                          className="p-1 rounded text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors"
+                          title="Replace Faculty / Transfer Projects to Another Faculty"
+                        >
+                          <ArrowRightLeft className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onDeleteClick(f)}

@@ -8,6 +8,7 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 interface YearRolloverModalProps {
   isOpen: boolean;
@@ -59,14 +60,14 @@ export function YearRolloverModal({
       });
       const data = await res.json();
       if (!res.ok) {
-        setYearSwitchError(data.error || "Rollover failed.");
+        setYearSwitchError(cleanErrorMessage(data.error, "Rollover failed."));
         setYearSwitchLoading(false);
         return;
       }
       handleClose();
       await onSuccess(data.message);
     } catch (err: any) {
-      setYearSwitchError(err.message || "Failed to switch academic year.");
+      setYearSwitchError(cleanErrorMessage(err, "Failed to switch academic year."));
     } finally {
       setYearSwitchLoading(false);
     }

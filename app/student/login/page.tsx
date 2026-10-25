@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AlertCircle, CheckCircle2, ShieldAlert, ArrowLeft, FileText, Smartphone, Lock, X, ShieldCheck } from "lucide-react";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 export default function StudentLoginPage() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function StudentLoginPage() {
 
   const handleStudentSignIn = async (inputToSubmit: string) => {
     if (!termsAccepted) {
-      setError("Please review and accept the Terms & Conditions and SMS Verification Policy to proceed.");
+      setError("Please review and accept the Terms & Conditions and Mobile Number Declaration Policy to proceed.");
       return;
     }
 
@@ -41,7 +42,7 @@ export default function StudentLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Authentication failed. Please verify your enrollment number.");
+        setError(cleanErrorMessage(data.error, "Authentication failed. Please verify your enrollment number."));
         setLoading(false);
         return;
       }
@@ -49,7 +50,7 @@ export default function StudentLoginPage() {
       // Directly authenticated to student's verified account
       router.push("/student/portal");
     } catch (err: any) {
-      setError("Network error. Please try again.");
+      setError(cleanErrorMessage(err, "Network error. Please try again."));
       setLoading(false);
     }
   };
@@ -57,8 +58,8 @@ export default function StudentLoginPage() {
   return (
     <>
       <Header role="Student" />
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-12 sm:py-16 flex flex-col justify-center">
-        <div className="bg-white rounded-3xl p-8 sm:p-11 border border-slate-200/90 shadow-elevated relative overflow-hidden">
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-8 sm:py-16 flex flex-col justify-center">
+        <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-11 border border-slate-200/90 shadow-elevated relative overflow-hidden">
           <div className="flex items-center justify-between mb-5">
             <Link
               href="/"
@@ -119,7 +120,7 @@ export default function StudentLoginPage() {
                 />
               </div>
 
-              {/* Terms & Conditions and SMS Verification Consent */}
+              {/* Terms & Conditions and Mobile Number Declaration */}
               <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-2">
                 <div className="flex items-start gap-2.5">
                   <input
@@ -141,11 +142,11 @@ export default function StudentLoginPage() {
                     >
                       Terms & Conditions
                     </button>{" "}
-                    and consent to university data usage and SMS verification.
+                    and declare accuracy of personal contact details and academic records.
                   </label>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed pl-6.5">
-                  Your university records (email, enrollment number, academic data) and registered mobile phone are used for authentication and OTP delivery.
+                  Your university records (email, enrollment number, academic data) and confirmed mobile number are used for official IDP coordination and notifications.
                 </p>
               </div>
 
@@ -191,7 +192,7 @@ export default function StudentLoginPage() {
               onClick={() => setShowTermsModal(true)}
               className="text-xs text-slate-500 hover:text-[#0a192f] underline decoration-slate-300"
             >
-              Privacy & SMS Policy
+              Privacy & Institutional Policy
             </button>
           </div>
         </div>
@@ -231,7 +232,7 @@ export default function StudentLoginPage() {
               <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/70 flex items-start gap-2.5">
                 <ShieldCheck className="w-4 h-4 text-amber-800 flex-shrink-0 mt-0.5" />
                 <p className="text-amber-900 text-[11px] leading-relaxed">
-                  By accessing the Interdisciplinary Project (IDP) Portal, you acknowledge and agree to the institutional data management and SMS identity verification terms outlined below.
+                  By accessing the Interdisciplinary Project (IDP) Portal, you acknowledge and agree to the institutional data management and contact declaration terms outlined below.
                 </p>
               </div>
 
@@ -254,15 +255,15 @@ export default function StudentLoginPage() {
               <div>
                 <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5 mb-1.5">
                   <Smartphone className="w-3.5 h-3.5 text-[#0a192f]" />
-                  2. SMS Verification & Communications
+                  2. Contact Verification & Student Declaration
                 </h3>
                 <p className="mb-2">
-                  To safeguard student identity and project allocations, the portal uses SMS verification:
+                  To safeguard student communications and ensure valid mentor coordination:
                 </p>
                 <ul className="list-disc pl-5 space-y-1 text-slate-600">
-                  <li><strong>Two-Factor OTP:</strong> A 6-digit one-time password (OTP) is dispatched via SMS to your registered mobile number during first-time enrollment binding and security re-verification.</li>
-                  <li><strong>Administrative Notices:</strong> University administrators and faculty mentors may broadcast urgent deadline alerts, jury schedules, and project milestone notices via official SMS broadcasts.</li>
-                  <li><strong>Carrier Charges:</strong> Standard carrier messaging rates may apply depending on your service plan.</li>
+                  <li><strong>Personal Mobile Declaration:</strong> Students must enter and confirm their active 10-digit mobile number twice upon first sign-in and declare that the number is accurate.</li>
+                  <li><strong>Project Coordination:</strong> Your verified phone number is shared with your allotted faculty mentor for official jury schedules, milestone reviews, and project meetings.</li>
+                  <li><strong>Institutional Notices:</strong> Official notifications and project updates will be communicated through your registered university contacts.</li>
                 </ul>
               </div>
 
@@ -280,9 +281,9 @@ export default function StudentLoginPage() {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between">
+            <div className="px-5 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-[11px] text-slate-400">Effective for Academic Year 2026</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto justify-end">
                 <button
                   type="button"
                   onClick={() => setShowTermsModal(false)}

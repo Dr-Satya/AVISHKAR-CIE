@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   FileText,
   FileCheck,
+  Send,
 } from "lucide-react";
 import { AssignedProject } from "@/types/faculty";
 
@@ -30,7 +31,13 @@ export function ManuscriptModal({
   project,
   onSuccess,
 }: ManuscriptModalProps) {
-  // Option 1: Communicated
+  // Option 1: Manuscript in Draft
+  const [hasDraft, setHasDraft] = useState<boolean>(
+    project.hasDraftManuscript || Boolean(project.draftManuscriptUrl) || false
+  );
+  const [draftFile, setDraftFile] = useState<File | null>(null);
+
+  // Option 2: Communicated
   const [hasCommunicated, setHasCommunicated] = useState<boolean>(
     project.hasCommunicatedManuscript || false
   );
@@ -40,7 +47,6 @@ export function ManuscriptModal({
   const [affiliationCommunicated, setAffiliationCommunicated] = useState<boolean>(
     project.avishkarAffiliationCommunicated || false
   );
-  const [draftFile, setDraftFile] = useState<File | null>(null);
 
   // Plagiarism & AI for manuscript (First 3-5 pages only)
   const [plagiarismFile, setPlagiarismFile] = useState<File | null>(null);
@@ -55,7 +61,7 @@ export function ManuscriptModal({
       : "10.0"
   );
 
-  // Option 2: Published
+  // Option 3: Published
   const [isPublished, setIsPublished] = useState<boolean>(
     project.isManuscriptPublished || false
   );
@@ -120,6 +126,12 @@ export function ManuscriptModal({
     e.preventDefault();
     setError(null);
 
+    // Validation if draft is selected
+    if (hasDraft && !draftFile && !project.draftManuscriptUrl) {
+      setError("Please select and upload your draft manuscript file.");
+      return;
+    }
+
     // Validation if communicated is selected
     if (hasCommunicated) {
       if (!journalName.trim()) {
@@ -163,15 +175,19 @@ export function ManuscriptModal({
     try {
       const formData = new FormData();
       formData.append("projectId", project.id);
+      formData.append("hasDraftManuscript", hasDraft ? "true" : "false");
       formData.append("hasCommunicatedManuscript", hasCommunicated ? "true" : "false");
       formData.append("isManuscriptPublished", isPublished ? "true" : "false");
+
+      if (hasDraft || hasCommunicated) {
+        if (draftFile) formData.append("draftFile", draftFile);
+      }
 
       if (hasCommunicated) {
         formData.append("journalName", journalName.trim());
         formData.append("avishkarAffiliationCommunicated", affiliationCommunicated ? "true" : "false");
         formData.append("manuscriptSimilarityPercent", similarityPercent);
         formData.append("manuscriptAiPercent", aiPercent);
-        if (draftFile) formData.append("draftFile", draftFile);
         if (plagiarismFile) formData.append("plagiarismFile", plagiarismFile);
       }
 
@@ -206,8 +222,8 @@ export function ManuscriptModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-8 shadow-2xl border border-slate-200 space-y-5 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
         <div className="flex items-start justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
@@ -216,8 +232,8 @@ export function ManuscriptModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
-                  Optional Academic Milestone
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 border border-blue-200">
+                  Compulsory Academic Milestone
                 </span>
                 <span className="text-xs font-mono font-bold text-slate-500">
                   {project.projectId}
@@ -238,7 +254,7 @@ export function ManuscriptModal({
 
         {/* Info Banner */}
         <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 leading-relaxed">
-          <span className="font-bold text-[#0a192f]">Notice for Faculty Mentors:</span> This section is <strong>optional</strong>. If you or your student team have submitted a draft manuscript to a peer-reviewed journal or had a paper published, please record the details below to enable CIE publication indexing.
+          <span className="font-bold text-[#0a192f]">Notice for Faculty Mentors:</span> This section is <strong>compulsory</strong>. If you or your student team have prepared a draft manuscript, submitted it to a peer-reviewed journal, or had a paper published, please record the details below. If not submitted, you still need to fill this form with the &ldquo;Not Submitted&rdquo; option to enable CIE publication indexing.
         </div>
 
         {error && (
@@ -256,13 +272,88 @@ export function ManuscriptModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* SECTION 1: COMMUNICATED MANUSCRIPT */}
+          {/* SECTION 1: MANUSCRIPT IN DRAFT */}
           <div className="p-5 rounded-2xl border border-slate-200/90 bg-slate-50/50 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-3">
               <div>
                 <h4 className="text-xs font-black uppercase tracking-wider text-[#0a192f] flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-600" />
-                  <span>1. Manuscript Communication (Under Review)</span>
+                  <FileText className="w-4 h-4 text-amber-600" />
+                  <span>1. Manuscript in Draft</span>
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Are you currently preparing or have you completed a draft manuscript?
+                </p>
+              </div>
+
+              {/* Yes / No Toggle */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-xs self-start sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => setHasDraft(true)}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                    hasDraft
+                      ? "bg-[#0a192f] text-[#c59b27] shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHasDraft(false)}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                    !hasDraft
+                      ? "bg-slate-200 text-slate-800"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Not Submitted
+                </button>
+              </div>
+            </div>
+
+            {hasDraft && (
+              <div className="space-y-4 pt-1 animate-in fade-in duration-150">
+                {/* Draft Manuscript Upload */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                    <span>Upload Draft Manuscript (.pdf, .doc, .docx)</span>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                      Capped at 10 MB Max
+                    </span>
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleDraftChange}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300"
+                  />
+                  {project.draftManuscriptUrl && !draftFile && (
+                    <div className="mt-1 flex items-center gap-1.5 text-[11px] text-blue-700">
+                      <FileCheck className="w-3.5 h-3.5" />
+                      <span>Existing draft attached:</span>
+                      <a
+                        href={project.draftManuscriptUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline font-mono truncate max-w-xs"
+                      >
+                        {project.draftManuscriptFileName || "View Draft"}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 2: COMMUNICATED MANUSCRIPT */}
+          <div className="p-5 rounded-2xl border border-slate-200/90 bg-slate-50/50 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-3">
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-[#0a192f] flex items-center gap-2">
+                  <Send className="w-4 h-4 text-blue-600" />
+                  <span>2. Manuscript Communicated (Under Review)</span>
                 </h4>
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   Have you communicated your manuscript to a scientific journal?
@@ -291,47 +382,17 @@ export function ManuscriptModal({
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  No / Skip
+                  Not Submitted
                 </button>
               </div>
             </div>
 
             {hasCommunicated && (
               <div className="space-y-4 pt-1 animate-in fade-in duration-150">
-                {/* 1. Draft Manuscript Upload */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
-                    <span>1. Upload Draft Manuscript</span>
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                      Capped at 10 MB Max
-                    </span>
-                  </label>
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    onChange={handleDraftChange}
-                    className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300"
-                  />
-                  {project.draftManuscriptUrl && !draftFile && (
-                    <div className="mt-1 flex items-center gap-1.5 text-[11px] text-blue-700">
-                      <FileCheck className="w-3.5 h-3.5" />
-                      <span>Existing file attached:</span>
-                      <a
-                        href={project.draftManuscriptUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline font-mono truncate max-w-xs"
-                      >
-                        {project.draftManuscriptFileName || "View Draft"}
-                      </a>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. Journal Name */}
+                {/* 1. Journal Name */}
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-1">
-                    2. Journal Name where you have submitted <span className="text-red-500">*</span>
+                    1. Journal Name where you have submitted <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -343,7 +404,7 @@ export function ManuscriptModal({
                   />
                 </div>
 
-                {/* 3. Avishkar Affiliation Confirmation */}
+                {/* 2. Avishkar Affiliation Confirmation */}
                 <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80">
                   <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
@@ -355,7 +416,7 @@ export function ManuscriptModal({
                     />
                     <div className="text-xs text-slate-800">
                       <span className="font-bold text-slate-900">
-                        3. Confirmation on Avishkar Affiliation in Paper <span className="text-red-500">*</span>
+                        2. Confirmation on Avishkar Affiliation in Paper <span className="text-red-500">*</span>
                       </span>
                       <p className="text-[11px] text-amber-900 mt-0.5">
                         &ldquo;I confirm that <strong>Avishkar Centre for Innovation and Entrepreneurship, G D Goenka University</strong> has been explicitly included in the author affiliations in the submitted draft.&rdquo;
@@ -364,11 +425,11 @@ export function ManuscriptModal({
                   </label>
                 </div>
 
-                {/* 4. Similarity & AI Check (First 3-5 pages only) */}
+                {/* 3. Similarity & AI Check (First 3-5 pages only) */}
                 <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-3">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-[#0a192f]">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Plagiarism &amp; AI Integrity Verification (Summary Pages Only)</span>
+                    <span>3. Plagiarism &amp; AI Integrity Verification (Summary Pages Only)</span>
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-900 leading-snug">
@@ -439,13 +500,13 @@ export function ManuscriptModal({
             )}
           </div>
 
-          {/* SECTION 2: PUBLISHED MANUSCRIPT */}
+          {/* SECTION 3: PUBLISHED MANUSCRIPT */}
           <div className="p-5 rounded-2xl border border-slate-200/90 bg-slate-50/50 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-3">
               <div>
                 <h4 className="text-xs font-black uppercase tracking-wider text-[#0a192f] flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-emerald-600" />
-                  <span>2. Manuscript Publication (Published / In-Print)</span>
+                  <span>3. Manuscript Publication (Published / In-Print)</span>
                 </h4>
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   Has your manuscript been accepted and officially published?
@@ -474,7 +535,7 @@ export function ManuscriptModal({
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  No / Skip
+                  Not Submitted
                 </button>
               </div>
             </div>
@@ -562,19 +623,19 @@ export function ManuscriptModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700"
+              className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-center"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 text-xs font-bold rounded-xl bg-[#0a192f] hover:bg-[#112240] text-[#c59b27] border border-[#c59b27]/40 shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+              className="px-6 py-2.5 sm:py-2 text-xs font-bold rounded-xl bg-[#0a192f] hover:bg-[#112240] text-[#c59b27] border border-[#c59b27]/40 shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {loading ? (
                 <>

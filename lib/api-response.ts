@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { cleanErrorMessage } from "./error-utils";
+
+export { cleanErrorMessage };
 
 export interface ApiSuccessResponse<T = any> {
   success: true;
@@ -107,20 +110,14 @@ export function handleApiError(err: unknown, defaultMessage = "An unexpected err
 
   // 3. Generic Error instance
   if (err instanceof Error) {
-    const msg = err.message || defaultMessage;
+    const sanitized = cleanErrorMessage(err.message, defaultMessage);
 
     // Detect authentication / JWT errors
-    if (msg.includes("jwt") || msg.includes("JWT") || msg.includes("token")) {
+    if (sanitized.toLowerCase().includes("jwt") || sanitized.toLowerCase().includes("token")) {
       return apiError("Session expired or invalid. Please log in again.", 401, "UNAUTHORIZED");
     }
 
-    // Detect Cloudflare / Network limits
-    if (msg.includes("10MB") || msg.includes("exceeds")) {
-      return apiError(msg, 413, "PAYLOAD_TOO_LARGE");
-    }
-
-    // Return known business logic errors directly
-    return apiError(msg, 400, "BAD_REQUEST");
+    return apiError(sanitized, 400, "BAD_REQUEST");
   }
 
   // 4. Fallback unknown error

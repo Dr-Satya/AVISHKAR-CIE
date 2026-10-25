@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { CheckCircle2, AlertCircle, Loader2, FileUp, X } from "lucide-react";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 interface BulkImportModalProps {
   isOpen: boolean;
@@ -51,7 +52,7 @@ export function BulkImportModal({
       });
       const data = await res.json();
       if (!res.ok) {
-        setImportError(data.error || "Import failed.");
+        setImportError(cleanErrorMessage(data.error, "Import failed."));
         setImportLoading(false);
         return;
       }
@@ -59,7 +60,7 @@ export function BulkImportModal({
       setImportFile(null);
       await onSuccess();
     } catch (err: any) {
-      setImportError(err.message || "Import encountered an error.");
+      setImportError(cleanErrorMessage(err, "Import encountered an error."));
     } finally {
       setImportLoading(false);
     }
@@ -95,29 +96,37 @@ export function BulkImportModal({
         )}
 
         {importResult && (
-          <div className="mt-4 p-4 bg-emerald-50 text-emerald-900 text-xs rounded-xl border border-emerald-200 space-y-2">
+          <div className="mt-4 p-4 bg-emerald-50 text-emerald-900 text-xs rounded-xl border border-emerald-200 space-y-2.5">
             <div className="flex items-center gap-2 font-bold text-emerald-800">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Spreadsheet Processed Successfully</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 pt-1 font-mono">
-              <div className="bg-white p-2 rounded border border-emerald-200 text-center">
-                <div className="text-[10px] text-slate-500">TOTAL</div>
-                <div className="text-sm font-bold text-slate-800">{importResult.total}</div>
+            <div className="grid grid-cols-4 gap-2 pt-1 font-mono">
+              <div className="bg-white p-2 rounded-lg border border-emerald-200 text-center">
+                <div className="text-[10px] text-slate-500 font-sans font-semibold">TOTAL</div>
+                <div className="text-sm font-bold text-slate-800">{importResult.totalRows ?? importResult.total ?? 0}</div>
               </div>
-              <div className="bg-white p-2 rounded border border-emerald-200 text-center">
-                <div className="text-[10px] text-emerald-600">INSERTED</div>
-                <div className="text-sm font-bold text-emerald-700">{importResult.inserted}</div>
+              <div className="bg-white p-2 rounded-lg border border-emerald-200 text-center">
+                <div className="text-[10px] text-emerald-600 font-sans font-semibold">INSERTED</div>
+                <div className="text-sm font-bold text-emerald-700">{importResult.inserted ?? 0}</div>
               </div>
-              <div className="bg-white p-2 rounded border border-emerald-200 text-center">
-                <div className="text-[10px] text-amber-600">SKIPPED</div>
-                <div className="text-sm font-bold text-amber-700">{importResult.skipped}</div>
+              <div className="bg-white p-2 rounded-lg border border-emerald-200 text-center">
+                <div className="text-[10px] text-blue-600 font-sans font-semibold">UPDATED</div>
+                <div className="text-sm font-bold text-blue-700">{importResult.updated ?? 0}</div>
+              </div>
+              <div className="bg-white p-2 rounded-lg border border-emerald-200 text-center">
+                <div className="text-[10px] text-amber-600 font-sans font-semibold">SKIPPED</div>
+                <div className="text-sm font-bold text-amber-700">{importResult.skipped ?? 0}</div>
               </div>
             </div>
             {importResult.errors && importResult.errors.length > 0 && (
-              <div className="mt-2 text-[11px] text-amber-800 font-sans">
-                Notice: {importResult.errors.slice(0, 3).join(", ")}
-                {importResult.errors.length > 3 ? "..." : ""}
+              <div className="mt-2 text-[11px] text-amber-900 font-sans bg-amber-100/70 p-2.5 rounded-lg border border-amber-300 max-h-28 overflow-y-auto">
+                <div className="font-bold mb-1">Warnings / Row Notices ({importResult.errors.length}):</div>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {importResult.errors.map((err: string, idx: number) => (
+                    <li key={idx} className="truncate">{err}</li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

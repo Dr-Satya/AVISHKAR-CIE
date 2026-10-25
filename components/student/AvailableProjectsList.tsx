@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, Loader2, Mail, Phone, User } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Phone, RefreshCw, User } from "lucide-react";
 import { ProjectCardData } from "@/types/student";
 
 interface AvailableProjectsListProps {
@@ -12,6 +12,7 @@ interface AvailableProjectsListProps {
   registeringId: string | null;
   onRegister: (projectId: string) => void;
   onBack: () => void;
+  onRefresh?: () => void;
 }
 
 export function AvailableProjectsList({
@@ -22,18 +23,32 @@ export function AvailableProjectsList({
   registeringId,
   onRegister,
   onBack,
+  onRefresh,
 }: AvailableProjectsListProps) {
   return (
     <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm animate-in fade-in duration-200">
       <div className="flex items-center justify-between mb-4">
         <div className="w-10 h-1 bg-[#cda34f] rounded-full" />
-        <button
-          onClick={onBack}
-          className="text-xs font-semibold text-slate-600 hover:text-[#0d2137] flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Themes</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={loadingProjects}
+              className="text-xs font-semibold text-slate-600 hover:text-[#0d2137] flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              title="Refresh seat availability"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingProjects ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh Seats</span>
+            </button>
+          )}
+          <button
+            onClick={onBack}
+            className="text-xs font-semibold text-slate-600 hover:text-[#0d2137] flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Themes</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-1.5">

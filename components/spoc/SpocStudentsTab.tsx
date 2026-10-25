@@ -13,7 +13,6 @@ import {
   RefreshCw,
   HelpCircle,
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import { StudentRecord } from "@/types/spoc";
 import { exportToXlsx, exportToCsv } from "@/lib/export";
 
@@ -63,8 +62,8 @@ export function SpocStudentsTab({
       "Student Name": std.name,
       "Programme": std.programme || "N/A",
       "Attendance (%)": std.attendancePercent ?? 85,
-      "Internal Marks (/40)": std.internalMarks ?? 32,
-      "External Marks (/60)": std.externalMarks ?? 48,
+      "Internal Marks (/50)": std.internalMarks ?? 40,
+      "External Marks (/50)": std.externalMarks ?? 40,
     }));
 
     const filename = `${department.replace(/[^a-zA-Z0-9]/g, "_")}_Marks_Attendance_Template`;
@@ -76,12 +75,13 @@ export function SpocStudentsTab({
   };
 
   // Handle spreadsheet file upload & parsing
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadFileName(file.name);
     setStatusMessage(null);
+    const XLSX = await import("xlsx");
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -117,14 +117,20 @@ export function SpocStudentsTab({
             r["attendance"];
 
           const intRaw =
+            r["Internal Marks (/50)"] ??
+            r["Internal (/50)"] ??
             r["Internal Marks (/40)"] ??
+            r["Internal (/40)"] ??
             r["Internal Marks"] ??
             r["Internals"] ??
             r["Internal"] ??
             r["internalMarks"];
 
           const extRaw =
+            r["External Marks (/50)"] ??
+            r["External (/50)"] ??
             r["External Marks (/60)"] ??
+            r["External (/60)"] ??
             r["External Marks"] ??
             r["Externals"] ??
             r["External"] ??
@@ -222,8 +228,8 @@ export function SpocStudentsTab({
   const handleOpenEdit = (std: StudentRecord) => {
     setEditingStudent(std);
     setEditAttendance(std.attendancePercent !== null && std.attendancePercent !== undefined ? String(std.attendancePercent) : "85");
-    setEditInternals(std.internalMarks !== null && std.internalMarks !== undefined ? String(std.internalMarks) : "32");
-    setEditExternals(std.externalMarks !== null && std.externalMarks !== undefined ? String(std.externalMarks) : "48");
+    setEditInternals(std.internalMarks !== null && std.internalMarks !== undefined ? String(std.internalMarks) : "40");
+    setEditExternals(std.externalMarks !== null && std.externalMarks !== undefined ? String(std.externalMarks) : "40");
     setStatusMessage(null);
   };
 
@@ -324,15 +330,15 @@ export function SpocStudentsTab({
 
       {/* Main Students Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[800px]">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
               <th className="py-3 px-3">Enrollment No.</th>
               <th className="py-3 px-3">Student Name</th>
               <th className="py-3 px-3">Branch / Programme</th>
               <th className="py-3 px-2 text-center">Attendance (%)</th>
-              <th className="py-3 px-2 text-center">Internals (/40)</th>
-              <th className="py-3 px-2 text-center">Externals (/60)</th>
+              <th className="py-3 px-2 text-center">Internals (/50)</th>
+              <th className="py-3 px-2 text-center">Externals (/50)</th>
               <th className="py-3 px-3">Project ID & Title</th>
               <th className="py-3 px-3">Faculty Mentor</th>
               <th className="py-3 px-3 text-right">Actions</th>
@@ -642,12 +648,12 @@ export function SpocStudentsTab({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Internal Marks (out of 40)
+                  Internal Marks (out of 50)
                 </label>
                 <input
                   type="number"
                   min="0"
-                  max="40"
+                  max="50"
                   value={editInternals}
                   onChange={(e) => setEditInternals(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
@@ -656,12 +662,12 @@ export function SpocStudentsTab({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  External Marks (out of 60)
+                  External Marks (out of 50)
                 </label>
                 <input
                   type="number"
                   min="0"
-                  max="60"
+                  max="50"
                   value={editExternals}
                   onChange={(e) => setEditExternals(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#0d2137]"

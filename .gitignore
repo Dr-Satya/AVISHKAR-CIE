@@ -8,6 +8,7 @@ node_modules/
 .env*.local
 .env.production
 .env.development
+ACCOUNTS.md
 *.pem
 *.key
 *.cert
@@ -44,6 +45,8 @@ Thumbs.db
 
 # Raw Data & Assets
 idpportal/
+backups/
+*.sql
 *.xlsx
 *.csv
 Screenshot*.png

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
@@ -26,6 +26,14 @@ import { SpocFacultyDirectoryTab } from "@/components/spoc/SpocFacultyDirectoryT
 import { SpocStudentsTab } from "@/components/spoc/SpocStudentsTab";
 import { SpocExportsTab } from "@/components/spoc/SpocExportsTab";
 import { SpocReviewModal } from "@/components/spoc/SpocReviewModal";
+import { ZipDownloadProgressModal } from "@/components/common/ZipDownloadProgressModal";
+import {
+  downloadSingleProjectZip,
+  downloadMultipleProjectsZip,
+  ProgressInfo,
+  ProjectExportData,
+} from "@/lib/zip-export";
+import { cleanErrorMessage } from "@/lib/error-utils";
 
 export default function SpocPortalPage() {
   const router = useRouter();
@@ -100,8 +108,8 @@ export default function SpocPortalPage() {
         `/api/spoc/department?department=${encodeURIComponent(deptToFetch)}`
       );
       if (!res.ok) {
-        const errData = await res.json();
-        setError(errData.error || "Failed to load SPOC department data.");
+        const errData = await res.json().catch(() => ({}));
+        setError(cleanErrorMessage(errData.error, "Failed to load SPOC department data."));
         setLoading(false);
         return;
       }
@@ -122,7 +130,7 @@ export default function SpocPortalPage() {
         }
       }
     } catch (err: any) {
-      setError("Network error fetching SPOC dashboard.");
+      setError(cleanErrorMessage(err, "Network error fetching SPOC dashboard. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -133,6 +141,9 @@ export default function SpocPortalPage() {
 
     // SSE connection for live updates
     const eventSource = new EventSource("/api/events");
+    eventSource.onerror = () => {
+      // EventSource automatically handles reconnection
+    };
     eventSource.addEventListener("artifact.submitted", () => {
       fetchSpocData(department);
     });
@@ -140,6 +151,9 @@ export default function SpocPortalPage() {
       fetchSpocData(department);
     });
     eventSource.addEventListener("submission.created", () => {
+      fetchSpocData(department);
+    });
+    eventSource.addEventListener("project.updated", () => {
       fetchSpocData(department);
     });
 
@@ -181,19 +195,32 @@ export default function SpocPortalPage() {
         alert("No student data available to export.");
         return;
       }
-      const rows = studentList.map((s, idx) => ({
-        "Sr. No": idx + 1,
-        "Enrollment Number": s.enrollmentNumber,
-        "Student Name": s.name,
-        Department: s.department,
-        Programme: s.programme || "N/A",
-        Semester: s.semester,
-        Batch: s.batch,
-        "Project ID": s.projectId,
-        "Project Title": s.projectTitle,
-        "Faculty Mentor": s.facultyName,
-        "Registration Date": s.registeredAt.split("T")[0],
-      }));
+      const rows = studentList.map((s, idx) => {
+        const hasInt = s.internalMarks !== null && s.internalMarks !== undefined;
+        const hasExt = s.externalMarks !== null && s.externalMarks !== undefined;
+        const isSubmitted = hasInt || hasExt;
+        const intMarks = s.internalMarks ?? 0;
+        const extMarks = s.externalMarks ?? 0;
+        const totMarks = intMarks + extMarks;
+        return {
+          "Sr. No": idx + 1,
+          "Enrollment Number": s.enrollmentNumber,
+          "Student Name": s.name,
+          Department: s.department,
+          Programme: s.programme || "N/A",
+          Semester: s.semester,
+          Batch: s.batch,
+          "Project ID": s.projectId,
+          "Project Title": s.projectTitle,
+          "Faculty Mentor": s.facultyName,
+          "Attendance (%)": s.attendancePercent !== undefined && s.attendancePercent !== null ? `${s.attendancePercent}%` : "N/A",
+          "Internal Marks (/50)": hasInt ? intMarks : "Pending",
+          "External Marks (/50)": hasExt ? extMarks : "Pending",
+          "Total Marks (/100)": isSubmitted ? totMarks : "Pending",
+          "Marks Status": isSubmitted ? "Submitted" : "Pending",
+          "Registration Date": s.registeredAt.split("T")[0],
+        };
+      });
       const title = `SPOC_${safeDept}_Students`;
       if (format === "csv") exportToCsv(rows, title);
       else if (format === "xlsx") exportToXlsx(rows, title, "Students");
@@ -249,6 +276,10 @@ export default function SpocPortalPage() {
           "Uploaded Artifacts": p.artifacts.length,
           "Report Similarity %": report?.similarityPercent ?? "N/A",
           "Report AI %": report?.aiPercent ?? "N/A",
+          "Manuscript in Draft": (p.draftManuscriptUrl || p.hasDraftManuscript) ? "Yes" : "No",
+          "Manuscript Communicated": p.hasCommunicatedManuscript ? `Yes (${p.journalName || "N/A"})` : "No",
+          "Manuscript Published": p.isManuscriptPublished ? `Published (DOI: ${p.publicationDoi || "Recorded"})` : "No",
+          "Manuscript Similarity %": p.manuscriptSimilarityPercent ?? "N/A",
         };
       });
       const title = `SPOC_${safeDept}_Projects`;
@@ -256,6 +287,136 @@ export default function SpocPortalPage() {
       else if (format === "xlsx") exportToXlsx(rows, title, "Projects");
       else if (format === "pdf")
         exportToPdf(rows, `Department Projects & Artifact Review · ${department}`);
+    }
+  };
+
+  // Submissions ZIP Export States
+  const [zipModalOpen, setZipModalOpen] = useState(false);
+  const [zipProgress, setZipProgress] = useState<ProgressInfo | null>(null);
+  const [zipArchiveTitle, setZipArchiveTitle] = useState("");
+  const [zipError, setZipError] = useState<string | null>(null);
+  const [zipComplete, setZipComplete] = useState(false);
+  const zipAbortRef = useRef<AbortController | null>(null);
+
+  const handleCancelZip = () => {
+    if (zipAbortRef.current) {
+      zipAbortRef.current.abort();
+      zipAbortRef.current = null;
+    }
+    setZipModalOpen(false);
+    setZipProgress(null);
+  };
+
+  const handleDownloadSingleProjectZip = async (project: ProjectData) => {
+    try {
+      setZipError(null);
+      setZipComplete(false);
+      setZipArchiveTitle(`${project.projectId} - ${project.title}`);
+      setZipProgress({ current: 0, total: 1, percent: 0, message: "Preparing project files..." });
+      setZipModalOpen(true);
+
+      const controller = new AbortController();
+      zipAbortRef.current = controller;
+
+      await downloadSingleProjectZip(project as ProjectExportData, {
+        onProgress: (p) => setZipProgress(p),
+        signal: controller.signal,
+      });
+
+      setZipComplete(true);
+    } catch (err: any) {
+      if (err.message?.includes("cancelled")) {
+        setZipModalOpen(false);
+      } else {
+        setZipError(cleanErrorMessage(err, "Failed to download project files."));
+      }
+    } finally {
+      zipAbortRef.current = null;
+    }
+  };
+
+  const handleDownloadDepartmentZip = async (sem?: "ALL" | 1 | 2) => {
+    try {
+      let filtered = projects;
+      if (sem === 1) {
+        filtered = projects.filter((p) =>
+          p.artifacts.some((a) => (a.semester || p.semester || 3) === (p.semester || 3))
+        );
+      } else if (sem === 2) {
+        filtered = projects.filter((p) =>
+          p.artifacts.some((a) => a.semester === ((p.semester || 3) + 1))
+        );
+      }
+
+      if (filtered.length === 0) {
+        alert("No projects with submitted files found for the selected semester.");
+        return;
+      }
+
+      setZipError(null);
+      setZipComplete(false);
+      const safeDept = department.replace(/[^a-zA-Z0-9]/g, "_");
+      const semLabel = sem === 1 ? "Sem1" : sem === 2 ? "Sem2" : "AllSems";
+      const archiveName = `SPOC_${safeDept}_Submissions_${semLabel}`;
+      setZipArchiveTitle(`${department} (${filtered.length} Projects · ${semLabel})`);
+      setZipProgress({ current: 0, total: filtered.length, percent: 0, message: "Collecting departmental files..." });
+      setZipModalOpen(true);
+
+      const controller = new AbortController();
+      zipAbortRef.current = controller;
+
+      await downloadMultipleProjectsZip(filtered as ProjectExportData[], {
+        archiveName,
+        groupByDepartment: false,
+        onProgress: (p) => setZipProgress(p),
+        signal: controller.signal,
+      });
+
+      setZipComplete(true);
+    } catch (err: any) {
+      if (err.message?.includes("cancelled")) {
+        setZipModalOpen(false);
+      } else {
+        setZipError(cleanErrorMessage(err, "Failed to package departmental files."));
+      }
+    } finally {
+      zipAbortRef.current = null;
+    }
+  };
+
+  const handleDownloadAllProjectsZip = async (filteredProjects: ProjectData[]) => {
+    if (filteredProjects.length === 0) {
+      alert("No projects available to download.");
+      return;
+    }
+    try {
+      setZipError(null);
+      setZipComplete(false);
+      const safeDept = department.replace(/[^a-zA-Z0-9]/g, "_");
+      const archiveName = `SPOC_${safeDept}_Filtered_Submissions`;
+      setZipArchiveTitle(`${department} (${filteredProjects.length} Projects)`);
+      setZipProgress({ current: 0, total: filteredProjects.length, percent: 0, message: "Collecting files..." });
+      setZipModalOpen(true);
+
+      const controller = new AbortController();
+      zipAbortRef.current = controller;
+
+      await downloadMultipleProjectsZip(filteredProjects as ProjectExportData[], {
+        archiveName,
+        groupByDepartment: false,
+        onProgress: (p) => setZipProgress(p),
+        signal: controller.signal,
+      });
+
+      setZipComplete(true);
+    } catch (err: any) {
+      if (err.message?.includes("cancelled")) {
+        setZipModalOpen(false);
+      } else {
+        setZipError(cleanErrorMessage(err, "Failed to package files."));
+      }
+    } finally {
+      zipAbortRef.current = null;
     }
   };
 
@@ -310,14 +471,15 @@ export default function SpocPortalPage() {
   }
 
   if (error && !projects.length) {
+    const isRestricted = error.toLowerCase().includes("restricted") || error.toLowerCase().includes("access denied") || error.toLowerCase().includes("permission");
     return (
       <>
         <Header role="SPOC" />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-12">
           <div className="bg-white rounded-2xl p-8 border border-red-200 text-center space-y-4">
             <AlertCircle className="w-10 h-10 text-red-600 mx-auto" />
-            <h2 className="text-lg font-bold text-slate-900">Access Denied</h2>
-            <p className="text-sm text-slate-600 max-w-md mx-auto">{error}</p>
+            <h2 className="text-lg font-bold text-slate-900">{isRestricted ? "Access Restricted" : "Unable to Load Dashboard"}</h2>
+            <p className="text-sm text-slate-600 max-w-md mx-auto">{cleanErrorMessage(error)}</p>
             <div className="flex items-center justify-center gap-3 pt-2">
               <Link
                 href="/spoc/login"
@@ -354,16 +516,16 @@ export default function SpocPortalPage() {
         <SpocKpisCard kpis={kpis} department={department} />
 
         {/* Navigation Tabs */}
-        <div className="flex items-center border-b border-slate-200 gap-2">
+        <div className="flex items-center border-b border-slate-200 gap-2 overflow-x-auto scrollbar-none whitespace-nowrap pb-0.5">
           <button
             onClick={() => setActiveTab("VERIFICATION")}
-            className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 px-3.5 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "VERIFICATION"
                 ? "border-[#0d2137] text-[#0d2137]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <FolderCheck className="w-4 h-4" />
+            <FolderCheck className="w-4 h-4 shrink-0" />
             <span>Project Verification ({projects.length})</span>
             {kpis.pendingCount > 0 && (
               <span className="px-2 py-0.2 rounded-full bg-amber-500 text-white text-[10px]">
@@ -374,37 +536,37 @@ export default function SpocPortalPage() {
 
           <button
             onClick={() => setActiveTab("FACULTY")}
-            className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 px-3.5 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "FACULTY"
                 ? "border-[#0d2137] text-[#0d2137]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Building2 className="w-4 h-4" />
+            <Building2 className="w-4 h-4 shrink-0" />
             <span>Faculty Directory ({facultyList.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab("STUDENTS")}
-            className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 px-3.5 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "STUDENTS"
                 ? "border-[#0d2137] text-[#0d2137]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-4 h-4 shrink-0" />
             <span>Students Enrolled ({studentList.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab("EXPORTS")}
-            className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 px-3.5 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "EXPORTS"
                 ? "border-[#0d2137] text-[#0d2137]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 shrink-0" />
             <span>Data Extraction & Reports</span>
           </button>
         </div>
@@ -414,6 +576,8 @@ export default function SpocPortalPage() {
             projects={projects}
             onOpenReview={handleOpenReview}
             onRefresh={() => fetchSpocData(department)}
+            onDownloadProjectZip={handleDownloadSingleProjectZip}
+            onDownloadAllProjectsZip={handleDownloadAllProjectsZip}
           />
         )}
 
@@ -440,6 +604,7 @@ export default function SpocPortalPage() {
             facultyCount={facultyList.length}
             department={department}
             onExportData={handleExportData}
+            onDownloadSubmissionsZip={handleDownloadDepartmentZip}
           />
         )}
       </main>
@@ -459,6 +624,17 @@ export default function SpocPortalPage() {
           onSuccess={() => fetchSpocData(department)}
         />
       )}
+
+      {/* SUBMISSIONS ZIP DOWNLOAD PROGRESS MODAL */}
+      <ZipDownloadProgressModal
+        isOpen={zipModalOpen}
+        progress={zipProgress}
+        archiveTitle={zipArchiveTitle}
+        error={zipError}
+        isComplete={zipComplete}
+        onCancel={handleCancelZip}
+        onClose={() => setZipModalOpen(false)}
+      />
 
       <Footer />
     </>

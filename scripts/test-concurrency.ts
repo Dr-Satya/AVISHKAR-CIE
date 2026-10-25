@@ -45,6 +45,7 @@ async function runTests() {
       where: { enrollmentNumber: enr },
       update: {
         department: isSame ? "School of Engineering & Sciences" : "School of Management",
+        phoneVerified: true,
       },
       create: {
         enrollmentNumber: enr,
@@ -53,6 +54,7 @@ async function runTests() {
         semester: 3,
         batch: "2025",
         email: `${enr.toLowerCase()}@gdgu.org`,
+        phoneVerified: true,
       },
     });
 

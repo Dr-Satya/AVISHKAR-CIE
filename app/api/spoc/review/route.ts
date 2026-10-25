@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
         where: { id: session.id },
       });
       if (spoc) {
-        reviewerFacultyId = spoc.facultyId || spoc.id;
+        // Only set reviewerFacultyId if it points to a valid Faculty record
+        reviewerFacultyId = spoc.facultyId || null;
         authorizedDepartment = spoc.department;
       } else {
         const faculty = await prisma.faculty.findUnique({
@@ -61,16 +62,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Project ID is required." }, { status: 400 });
     }
 
-    if (!["APPROVE", "REJECT"].includes(action)) {
+    if (!["APPROVE", "REJECT", "NEEDS_REVISION"].includes(action)) {
       return NextResponse.json(
-        { error: "Invalid action. Must be APPROVE or REJECT." },
+        { error: "Invalid action. Must be APPROVE, REJECT, or NEEDS_REVISION." },
         { status: 400 }
       );
     }
 
-    if (action === "REJECT" && (!note || note.trim().length === 0)) {
+    if ((action === "REJECT" || action === "NEEDS_REVISION") && (!note || note.trim().length === 0)) {
       return NextResponse.json(
-        { error: "A note/reason is required when rejecting a submission." },
+        { error: `A note/reason is required when marking a submission as ${action}.` },
         { status: 400 }
       );
     }
@@ -92,60 +93,95 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newStatus = action === "APPROVE" ? "APPROVED" : "REJECTED";
+    const newStatus = action === "APPROVE" ? "APPROVED" : action === "REJECT" ? "REJECTED" : "NEEDS_REVISION";
     const reviewNote = note ? note.trim() : action === "APPROVE" ? "Approved by Department SPOC" : "";
 
-    // If specific artifact ID is provided, update that artifact
+    const reviewDate = new Date();
+    let updatedProject;
+
+    // Atomically update artifact(s), Project status, and AuditLog in a single transaction
     if (artifactId) {
-      await prisma.projectArtifact.update({
-        where: { id: artifactId },
-        data: {
-          status: newStatus,
-          spocNote: reviewNote,
-          reviewedAt: new Date(),
-          reviewedById: reviewerFacultyId,
-        },
-      });
-    } else {
-      // Update all pending artifacts for this project
-      await prisma.projectArtifact.updateMany({
-        where: { projectId: project.id },
-        data: {
-          status: newStatus,
-          spocNote: reviewNote,
-          reviewedAt: new Date(),
-          reviewedById: reviewerFacultyId,
-        },
-      });
-    }
+      const targetArtifact = project.artifacts.find((a: any) => a.id === artifactId);
+      if (!targetArtifact) {
+        return NextResponse.json(
+          { error: "Artifact does not belong to this project or department." },
+          { status: 404 }
+        );
+      }
 
-    // Update overall Project submission status
-    const updatedProject = await prisma.project.update({
-      where: { id: project.id },
-      data: {
-        submissionStatus: newStatus,
-        spocReviewNote: reviewNote,
-        reviewedAt: new Date(),
-        reviewedById: reviewerFacultyId,
-      },
-    });
-
-    // Create Audit Log
-    await prisma.auditLog.create({
-      data: {
-        actor: session.name,
-        actorRole: session.role === "ADMIN" ? "ADMIN" : "SPOC",
-        action: `PROJECT_SUBMISSION_${action}D`,
-        target: `${project.projectId}: ${project.title}`,
-        metadata: JSON.stringify({
-          projectId: project.id,
-          artifactId,
-          action,
-          note: reviewNote,
-          department: project.department,
+      const [, proj] = await prisma.$transaction([
+        prisma.projectArtifact.update({
+          where: { id: artifactId },
+          data: {
+            status: newStatus,
+            spocNote: reviewNote,
+            reviewedAt: reviewDate,
+            ...(reviewerFacultyId ? { reviewedById: reviewerFacultyId } : {}),
+          },
         }),
-      },
-    });
+        prisma.project.update({
+          where: { id: project.id },
+          data: {
+            submissionStatus: newStatus,
+            spocReviewNote: reviewNote,
+            reviewedAt: reviewDate,
+            ...(reviewerFacultyId ? { reviewedById: reviewerFacultyId } : {}),
+          },
+        }),
+        prisma.auditLog.create({
+          data: {
+            actor: session.name,
+            actorRole: session.role === "ADMIN" ? "ADMIN" : "SPOC",
+            action: `PROJECT_SUBMISSION_${action}`,
+            target: `${project.projectId}: ${project.title}`,
+            metadata: JSON.stringify({
+              projectId: project.id,
+              artifactId,
+              action,
+              note: reviewNote,
+              department: project.department,
+            }),
+          },
+        }),
+      ]);
+      updatedProject = proj;
+    } else {
+      const [, proj] = await prisma.$transaction([
+        prisma.projectArtifact.updateMany({
+          where: { projectId: project.id },
+          data: {
+            status: newStatus,
+            spocNote: reviewNote,
+            reviewedAt: reviewDate,
+            ...(reviewerFacultyId ? { reviewedById: reviewerFacultyId } : {}),
+          },
+        }),
+        prisma.project.update({
+          where: { id: project.id },
+          data: {
+            submissionStatus: newStatus,
+            spocReviewNote: reviewNote,
+            reviewedAt: reviewDate,
+            ...(reviewerFacultyId ? { reviewedById: reviewerFacultyId } : {}),
+          },
+        }),
+        prisma.auditLog.create({
+          data: {
+            actor: session.name,
+            actorRole: session.role === "ADMIN" ? "ADMIN" : "SPOC",
+            action: `PROJECT_SUBMISSION_${action}`,
+            target: `${project.projectId}: ${project.title}`,
+            metadata: JSON.stringify({
+              projectId: project.id,
+              action,
+              note: reviewNote,
+              department: project.department,
+            }),
+          },
+        }),
+      ]);
+      updatedProject = proj;
+    }
 
     // Broadcast SSE
     broadcastEvent("submission.reviewed", {

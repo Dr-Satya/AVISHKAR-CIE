@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signSessionToken, setSessionCookie } from "@/lib/auth";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,19 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const ip = getClientIp(req);
+    const rateLimit = checkRateLimit(`spoc_login:${cleanEmail}:${ip}`, {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 10,                  // max 10 attempts per account from this IP
+    });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        {
+          error: `Too many login attempts for this account. Access temporarily locked for security. Please try again in ${Math.ceil(rateLimit.retryAfterSeconds / 60)} minute(s).`,
+        },
+        { status: 429 }
+      );
+    }
 
     // 1. Check Faculty record (Primary: Faculty using their own faculty credentials)
     const faculty = await prisma.faculty.findUnique({
@@ -26,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     if (faculty) {
       // Step A: Check faculty passcode
-      const isValid = await bcrypt.compare(passcode, faculty.passcodeHash);
+      const isValid = faculty.passcodeHash ? await bcrypt.compare(passcode, faculty.passcodeHash) : false;
       if (!isValid) {
         return NextResponse.json(
           { error: "Invalid credentials. Incorrect passcode." },
@@ -85,7 +99,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (spoc) {
-      const isValid = await bcrypt.compare(passcode, spoc.passcodeHash);
+      const isValid = spoc.passcodeHash ? await bcrypt.compare(passcode, spoc.passcodeHash) : false;
       if (!isValid) {
         return NextResponse.json(
           { error: "Invalid credentials. Incorrect passcode." },
@@ -125,7 +139,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("SPOC login error:", error);
     return NextResponse.json(
-      { error: error.message || "SPOC login failed." },
+      { error: "SPOC authentication failed. Please check your credentials and try again." },
       { status: 500 }
     );
   }

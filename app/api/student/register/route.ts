@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { registerStudentForProject } from "@/services/registration.service";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { cleanErrorMessage } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -17,23 +18,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Project ID is required." }, { status: 400 });
     }
 
-    const student = await prisma.student.findUnique({
-      where: { id: session.id },
-      select: { phoneVerified: true, registration: true },
+    // Rate Limiting: 2-second throttle per student to stop bot script spam
+    const rateLimit = checkRateLimit(`student_reg:${session.id}`, {
+      windowMs: 2000,
+      max: 1,
     });
-    if (!student) {
-      return NextResponse.json({ error: "Student record not found." }, { status: 404 });
-    }
-    if (student.registration) {
+    if (!rateLimit.success) {
       return NextResponse.json(
-        { error: "Your project registration is officially locked in. Changes or reassignments can only be performed by the University Administrator." },
-        { status: 403 }
-      );
-    }
-    if (!student.phoneVerified) {
-      return NextResponse.json(
-        { error: "Please verify and confirm your mobile number before registering for a project." },
-        { status: 400 }
+        { error: "Too many registration attempts. Please wait 2 seconds before trying again." },
+        { status: 429 }
       );
     }
 
@@ -48,8 +41,9 @@ export async function POST(req: NextRequest) {
       registration: result.registration,
     });
   } catch (error: any) {
+    console.error("Student registration error:", error);
     return NextResponse.json(
-      { error: error.message || "Registration failed." },
+      { error: cleanErrorMessage(error, "Registration failed. Please try again.") },
       { status: 400 }
     );
   }
