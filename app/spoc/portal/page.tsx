@@ -27,6 +27,7 @@ import { SpocStudentsTab } from "@/components/spoc/SpocStudentsTab";
 import { SpocExportsTab } from "@/components/spoc/SpocExportsTab";
 import { SpocReviewModal } from "@/components/spoc/SpocReviewModal";
 import { ZipDownloadProgressModal } from "@/components/common/ZipDownloadProgressModal";
+import { ConfirmationToast, ToastNotification } from "@/components/common/ConfirmationToast";
 import {
   downloadSingleProjectZip,
   downloadMultipleProjectsZip,
@@ -68,8 +69,16 @@ export default function SpocPortalPage() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewProject, setReviewProject] = useState<ProjectData | null>(null);
   const [reviewAction, setReviewAction] = useState<"APPROVE" | "REJECT">("APPROVE");
+  const [toastNotification, setToastNotification] = useState<ToastNotification | null>(null);
 
-  const fetchSpocData = async (targetDept?: string) => {
+  const fetchSpocData = async (targetDept?: string, confirmMsg?: string) => {
+    if (confirmMsg && typeof confirmMsg === "string") {
+      setToastNotification({
+        type: "success",
+        title: "Action Confirmed",
+        message: confirmMsg,
+      });
+    }
     try {
       setLoading(true);
       setError(null);
@@ -598,7 +607,7 @@ export default function SpocPortalPage() {
             studentList={studentList}
             department={department}
             onExport={(fmt) => handleExportData("STUDENTS", fmt)}
-            onRefresh={() => fetchSpocData(department)}
+            onRefresh={(msg) => fetchSpocData(department, msg)}
           />
         )}
 
@@ -625,7 +634,7 @@ export default function SpocPortalPage() {
             setReviewArtifactId(undefined);
             setReviewArtifactTitle(undefined);
           }}
-          onSuccess={() => fetchSpocData(department)}
+          onSuccess={(msg) => fetchSpocData(department, msg || "Review submitted successfully!")}
         />
       )}
 
@@ -638,6 +647,12 @@ export default function SpocPortalPage() {
         isComplete={zipComplete}
         onCancel={handleCancelZip}
         onClose={() => setZipModalOpen(false)}
+      />
+
+      {/* Realtime Action Confirmation Toast */}
+      <ConfirmationToast
+        toast={toastNotification}
+        onClose={() => setToastNotification(null)}
       />
 
       <Footer />

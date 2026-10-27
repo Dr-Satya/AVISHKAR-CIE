@@ -39,6 +39,7 @@ import { TemplatesModal } from "@/components/admin/TemplatesModal";
 import { BulkImportModal } from "@/components/admin/BulkImportModal";
 import { downloadIdpCohortsXlsx } from "@/lib/export";
 import { cleanErrorMessage } from "@/lib/error-utils";
+import { ConfirmationToast, ToastNotification } from "@/components/common/ConfirmationToast";
 
 // Types
 import {
@@ -152,6 +153,7 @@ export default function AdminPortalPage() {
   const [showUnmapModal, setShowUnmapModal] = useState(false);
   const [selectedStudentForUnmapping, setSelectedStudentForUnmapping] = useState<any | null>(null);
   const [unmappingLoading, setUnmappingLoading] = useState(false);
+  const [toastNotification, setToastNotification] = useState<ToastNotification | null>(null);
   const [unmappingError, setUnmappingError] = useState<string | null>(null);
 
   // SPOC Management State
@@ -390,6 +392,11 @@ export default function AdminPortalPage() {
         return;
       }
       setShowAddStudentModal(false);
+      setToastNotification({
+        type: "success",
+        title: "Student Enrolled",
+        message: `Student ${studentForm.name} (${studentForm.enrollmentNumber}) enrolled and saved successfully!`,
+      });
       setStudentForm({
         id: "",
         enrollmentNumber: "",
@@ -426,6 +433,11 @@ export default function AdminPortalPage() {
         return;
       }
       setShowEditStudentModal(false);
+      setToastNotification({
+        type: "success",
+        title: "Assessment & Record Confirmed",
+        message: `Student assessment marks & details for ${studentForm.name} (${studentForm.enrollmentNumber}) saved successfully!`,
+      });
       await fetchStudents(studentPage, studentSearch, studentFilter);
     } catch (err: any) {
       setStudentCrudError(cleanErrorMessage(err, "Network error while updating student."));
@@ -449,6 +461,11 @@ export default function AdminPortalPage() {
         return;
       }
       setShowDeleteStudentModal(false);
+      setToastNotification({
+        type: "success",
+        title: "Student Removed",
+        message: `Student record removed successfully.`,
+      });
       await Promise.all([
         fetchStudents(studentPage, studentSearch, studentFilter),
         fetchProjects(projectPage),
@@ -2035,6 +2052,11 @@ export default function AdminPortalPage() {
           onSuccess={async () => {
             await Promise.all([fetchStudents(1), fetchProjects(1), fetchFacultyAccess(), fetchDashboardData()]);
           }}
+        />
+        {/* Central Confirmation Toast */}
+        <ConfirmationToast
+          toast={toastNotification}
+          onClose={() => setToastNotification(null)}
         />
       </main>
       <Footer />

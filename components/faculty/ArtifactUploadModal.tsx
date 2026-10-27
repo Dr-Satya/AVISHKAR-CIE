@@ -8,7 +8,7 @@ interface ArtifactUploadModalProps {
   project: AssignedProject;
   initialSemester?: number;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (message?: string) => void;
 }
 
 export function ArtifactUploadModal({
@@ -146,8 +146,15 @@ export function ArtifactUploadModal({
         return;
       }
 
-      setSuccess(`Artifact for Semester ${selectedSemester} uploaded and submitted to Department SPOC!`);
-      onSuccess();
+      const fileTypeLabel =
+        artifactType === "REPORT"
+          ? "Project Report (PDF)"
+          : artifactType === "PPT"
+          ? "Project Presentation (PPT)"
+          : "Project Document";
+      const confirmMsg = `${fileTypeLabel} for Semester ${selectedSemester} uploaded and submitted to Department SPOC successfully!`;
+      setSuccess(confirmMsg);
+      onSuccess(confirmMsg);
       setTimeout(() => onClose(), 1200);
     } catch (err: any) {
       setError("Network error uploading artifact.");

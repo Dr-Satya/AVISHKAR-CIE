@@ -20,7 +20,7 @@ interface ManuscriptModalProps {
   isOpen: boolean;
   onClose: () => void;
   project: AssignedProject;
-  onSuccess: () => void;
+  onSuccess: (message?: string) => void;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Megabytes
@@ -209,8 +209,9 @@ export function ManuscriptModal({
         return;
       }
 
-      setSuccess("Research manuscript tracking saved successfully!");
-      onSuccess();
+      const confirmMsg = "Research manuscript & Turnitin report submitted successfully!";
+      setSuccess(confirmMsg);
+      onSuccess(confirmMsg);
       setTimeout(() => {
         onClose();
       }, 1200);

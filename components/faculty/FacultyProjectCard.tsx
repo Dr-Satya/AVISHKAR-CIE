@@ -41,7 +41,7 @@ interface FacultyProjectCardProps {
   onOpenUpload: (proj: AssignedProject, semester?: number) => void;
   onDeleteArtifact: (artifactId: string) => void;
   onExportStudents: (proj: AssignedProject, format: "csv" | "xlsx" | "pdf") => void;
-  onRefresh?: () => void;
+  onRefresh?: (message?: string) => void;
 }
 
 export function FacultyProjectCard({
@@ -372,9 +372,9 @@ export function FacultyProjectCard({
         return;
       }
 
-      alert(json.message || "Marks shared successfully with Department SPOC!");
+      const confirmMsg = json.message || "Student internal & external marks and attendance saved and shared with Department SPOC successfully!";
       setShowMarksModal(false);
-      if (onRefresh) onRefresh();
+      if (onRefresh) onRefresh(confirmMsg);
     } catch (err: any) {
       alert(cleanErrorMessage(err, "An unexpected error occurred while saving marks."));
     } finally {
@@ -1457,8 +1457,8 @@ export function FacultyProjectCard({
           isOpen={showManuscriptModal}
           project={proj}
           onClose={() => setShowManuscriptModal(false)}
-          onSuccess={() => {
-            if (onRefresh) onRefresh();
+          onSuccess={(msg) => {
+            if (onRefresh) onRefresh(msg || "Research manuscript & Turnitin report submitted successfully!");
           }}
         />
       )}

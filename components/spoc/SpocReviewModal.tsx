@@ -20,7 +20,7 @@ interface SpocReviewModalProps {
   artifactId?: string;
   artifactTitle?: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (message?: string) => void;
 }
 
 export function SpocReviewModal({
@@ -40,6 +40,7 @@ export function SpocReviewModal({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +72,14 @@ export function SpocReviewModal({
         return;
       }
 
-      onSuccess();
-      onClose();
+      const targetArtifact = artifactId
+        ? project.artifacts.find((a) => a.id === artifactId)
+        : null;
+      const label = targetArtifact ? `${targetArtifact.type} (${targetArtifact.title})` : "Project";
+      const confirmMsg = `${label} has been ${action === "APPROVE" ? "approved" : "rejected"} successfully!`;
+      setSuccess(confirmMsg);
+      onSuccess(confirmMsg);
+      setTimeout(() => onClose(), 1000);
     } catch (err) {
       setError("Network error submitting review.");
     } finally {
@@ -122,6 +129,13 @@ export function SpocReviewModal({
           <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 font-medium">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <span>{success}</span>
           </div>
         )}
 

@@ -20,7 +20,7 @@ interface SpocStudentsTabProps {
   studentList: StudentRecord[];
   department: string;
   onExport: (format: "csv" | "xlsx" | "pdf") => void;
-  onRefresh?: () => void;
+  onRefresh?: (message?: string) => void;
 }
 
 export function SpocStudentsTab({
@@ -35,6 +35,8 @@ export function SpocStudentsTab({
   const [editAttendance, setEditAttendance] = useState("");
   const [editInternals, setEditInternals] = useState("");
   const [editExternals, setEditExternals] = useState("");
+  const [singleEditError, setSingleEditError] = useState<string | null>(null);
+  const [singleEditSuccess, setSingleEditSuccess] = useState<string | null>(null);
 
   // Upload parsed state
   const [parsedRows, setParsedRows] = useState<
@@ -204,12 +206,13 @@ export function SpocStudentsTab({
         return;
       }
 
+      const confirmMsg = data.message || `Attendance & marks updated for ${parsedRows.length} student(s) successfully!`;
       setStatusMessage({
         type: "success",
-        text: data.message || "Attendance & marks updated successfully!",
+        text: confirmMsg,
       });
 
-      if (onRefresh) onRefresh();
+      if (onRefresh) onRefresh(confirmMsg);
 
       setTimeout(() => {
         setShowUploadModal(false);
@@ -230,14 +233,16 @@ export function SpocStudentsTab({
     setEditAttendance(std.attendancePercent !== null && std.attendancePercent !== undefined ? String(std.attendancePercent) : "100");
     setEditInternals(std.internalMarks !== null && std.internalMarks !== undefined && std.internalMarks > 0 ? String(std.internalMarks) : "");
     setEditExternals(std.externalMarks !== null && std.externalMarks !== undefined && std.externalMarks > 0 ? String(std.externalMarks) : "");
-    setStatusMessage(null);
+    setSingleEditError(null);
+    setSingleEditSuccess(null);
   };
 
   const handleSaveSingleEdit = async () => {
     if (!editingStudent) return;
 
     setUploadLoading(true);
-    setStatusMessage(null);
+    setSingleEditError(null);
+    setSingleEditSuccess(null);
     try {
       const res = await fetch("/api/spoc/department", {
         method: "POST",
@@ -253,17 +258,19 @@ export function SpocStudentsTab({
 
       const data = await res.json();
       if (!res.ok) {
-        setStatusMessage({
-          type: "error",
-          text: data.error || "Failed to update student marks.",
-        });
+        setSingleEditError(data.error || "Failed to update student marks.");
         return;
       }
 
-      if (onRefresh) onRefresh();
-      setEditingStudent(null);
+      const confirmMsg = `Marks & attendance for ${editingStudent.name} (${editingStudent.enrollmentNumber}) updated successfully!`;
+      setSingleEditSuccess(confirmMsg);
+      if (onRefresh) onRefresh(confirmMsg);
+      setTimeout(() => {
+        setEditingStudent(null);
+        setSingleEditSuccess(null);
+      }, 1000);
     } catch {
-      setStatusMessage({ type: "error", text: "Network error saving changes." });
+      setSingleEditError("Network error saving student marks.");
     } finally {
       setUploadLoading(false);
     }
@@ -630,6 +637,20 @@ export function SpocStudentsTab({
                 <span className="text-slate-700">{editingStudent.programme || "N/A"}</span>
               </div>
             </div>
+
+            {singleEditError && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2 mb-4">
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                <span>{singleEditError}</span>
+              </div>
+            )}
+
+            {singleEditSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 mb-4 font-medium">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>{singleEditSuccess}</span>
+              </div>
+            )}
 
             <div className="space-y-4 mb-5">
               <div>

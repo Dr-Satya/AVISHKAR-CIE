@@ -26,6 +26,7 @@ import { ArtifactUploadModal } from "@/components/faculty/ArtifactUploadModal";
 import { cleanErrorMessage } from "@/lib/error-utils";
 import { ChangePasscodeModal } from "@/components/faculty/ChangePasscodeModal";
 import { ProjectProposalModal } from "@/components/faculty/ProjectProposalModal";
+import { ConfirmationToast, ToastNotification } from "@/components/common/ConfirmationToast";
 
 export default function FacultyPortalPage() {
   const router = useRouter();
@@ -47,8 +48,16 @@ export default function FacultyPortalPage() {
   const [phoneModalSuccess, setPhoneModalSuccess] = useState<string | null>(null);
   const [targetProject, setTargetProject] = useState<AssignedProject | null>(null);
   const [uploadSemester, setUploadSemester] = useState<number | undefined>(undefined);
+  const [toastNotification, setToastNotification] = useState<ToastNotification | null>(null);
 
-  const fetchFacultyData = async () => {
+  const fetchFacultyData = async (confirmMsg?: string) => {
+    if (confirmMsg && typeof confirmMsg === "string") {
+      setToastNotification({
+        type: "success",
+        title: "Submission Confirmed",
+        message: confirmMsg,
+      });
+    }
     try {
       const res = await fetch("/api/faculty/me");
       if (!res.ok) {
@@ -115,7 +124,7 @@ export default function FacultyPortalPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        fetchFacultyData();
+        fetchFacultyData("Document artifact deleted successfully.");
       }
     } catch (err) {}
   };
@@ -281,7 +290,13 @@ export default function FacultyPortalPage() {
             </div>
           </div>
         </main>
-        <Footer />
+        {/* Realtime Submission Confirmation Toast */}
+      <ConfirmationToast
+        toast={toastNotification}
+        onClose={() => setToastNotification(null)}
+      />
+
+      <Footer />
       </>
     );
   }
@@ -400,7 +415,7 @@ export default function FacultyPortalPage() {
             setShowUploadModal(false);
             setUploadSemester(undefined);
           }}
-          onSuccess={fetchFacultyData}
+          onSuccess={(msg) => fetchFacultyData(msg || "Project document uploaded and submitted to SPOC successfully!")}
         />
       )}
 
@@ -414,7 +429,7 @@ export default function FacultyPortalPage() {
         <ProjectProposalModal
           isOpen={showProposalModal}
           onClose={() => setShowProposalModal(false)}
-          onSuccess={fetchFacultyData}
+          onSuccess={() => fetchFacultyData("New project proposal submitted to SPOC for departmental approval!")}
           facultyDepartment={faculty.department}
         />
       )}
@@ -574,6 +589,12 @@ export default function FacultyPortalPage() {
           </div>
         </div>
       )}
+
+      {/* Realtime Submission Confirmation Toast */}
+      <ConfirmationToast
+        toast={toastNotification}
+        onClose={() => setToastNotification(null)}
+      />
 
       <Footer />
     </>

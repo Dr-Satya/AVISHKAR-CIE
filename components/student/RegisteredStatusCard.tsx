@@ -21,11 +21,11 @@ export function RegisteredStatusCard({ registration }: RegisteredStatusCardProps
         </span>
       </div>
 
-      {/* Institutional Lock Notice */}
-      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5 text-xs text-slate-700">
-        <ShieldCheck className="w-4 h-4 text-[#0d2137] flex-shrink-0 mt-0.5" />
+      {/* Institutional Confirmation Notice */}
+      <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 flex items-start gap-2.5 text-xs text-emerald-900">
+        <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
         <div>
-          <span className="font-semibold text-slate-900">Allocation Locked:</span> Your project assignment is permanently recorded in the university IDP database. Reallocations or transfers can only be performed by the University Administrator.
+          <span className="font-semibold text-emerald-950">Registration Confirmed:</span> Your project allocation is finalized and successfully locked. Reallocations or transfers can only be performed by the University Administrator.
         </div>
       </div>
 
