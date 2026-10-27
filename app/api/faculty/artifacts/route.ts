@@ -390,38 +390,36 @@ export async function DELETE(req: NextRequest) {
       console.error("Storage delete warning:", storageErr);
     }
 
-    // Atomically delete artifact, log audit, and reset project status if 0 artifacts remain
-    await prisma.$transaction(async (tx) => {
-      await tx.projectArtifact.delete({
-        where: { id: artifactId },
-      });
-
-      await tx.auditLog.create({
-        data: {
-          actor: session.name,
-          actorRole: session.role,
-          action: "PROJECT_ARTIFACT_DELETED",
-          target: `${artifact.project.projectId}: ${artifact.type} - ${artifact.title}`,
-          metadata: JSON.stringify({
-            artifactId: artifact.id,
-            fileName: artifact.fileName,
-            plagiarismReportFileName: artifact.plagiarismReportFileName,
-            deletedByRole: session.role,
-          }),
-        },
-      });
-
-      const remaining = await tx.projectArtifact.count({
-        where: { projectId: artifact.projectId },
-      });
-
-      if (remaining === 0) {
-        await tx.project.update({
-          where: { id: artifact.projectId },
-          data: { submissionStatus: "NOT_SUBMITTED" },
-        });
-      }
+    // Delete artifact, log audit, and reset project status if 0 artifacts remain
+    await prisma.projectArtifact.delete({
+      where: { id: artifactId },
     });
+
+    await prisma.auditLog.create({
+      data: {
+        actor: session.name,
+        actorRole: session.role,
+        action: "PROJECT_ARTIFACT_DELETED",
+        target: `${artifact.project.projectId}: ${artifact.type} - ${artifact.title}`,
+        metadata: JSON.stringify({
+          artifactId: artifact.id,
+          fileName: artifact.fileName,
+          plagiarismReportFileName: artifact.plagiarismReportFileName,
+          deletedByRole: session.role,
+        }),
+      },
+    });
+
+    const remaining = await prisma.projectArtifact.count({
+      where: { projectId: artifact.projectId },
+    });
+
+    if (remaining === 0) {
+      await prisma.project.update({
+        where: { id: artifact.projectId },
+        data: { submissionStatus: "NOT_SUBMITTED" },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

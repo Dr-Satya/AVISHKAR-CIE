@@ -252,131 +252,117 @@ export async function registerStudentForProject(
 
     const activeYear = globalConfig?.activeAcademicYear || "2025-2026";
 
-    // 2. Atomic Database Transaction with Native Rollback Timeout (8s)
+    // 2. Atomic Database Operations with Concurrency Mutex
     let newRegistration: any;
     let project: any;
 
-    try {
-      const res = await prisma.$transaction(
-        async (tx: any) => {
-          // 2a. Verify Student existence and check if already registered
-          const student = await tx.student.findUnique({
-            where: { id: studentId },
-            include: { registration: true },
-          });
+    // 2a. Verify Student existence and check if already registered
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { registration: true },
+    });
 
-          if (!student) {
-            throw new Error("Student record not found.");
-          }
-
-          if (student.registration) {
-            throw new Error(
-              "Your project registration is officially locked in. Changes or reassignments can only be performed by the University Administrator."
-            );
-          }
-
-          if (actor.role === "STUDENT" && !student.phoneVerified) {
-            throw new Error("Please verify and confirm your mobile number before registering for a project.");
-          }
-
-          // Check academic year cohort matching
-          if (student.academicYear && student.academicYear !== activeYear) {
-            throw new Error(
-              `Your student profile belongs to cohort (${student.academicYear}). Only active cohort (${activeYear}) students can register.`
-            );
-          }
-
-          // 2b. Retrieve project record
-          const proj = await tx.project.findUnique({
-            where: { id: projectId },
-          });
-
-          if (!proj) {
-            throw new Error("Project not found.");
-          }
-
-          if (proj.academicYear && proj.academicYear !== activeYear) {
-            throw new Error(
-              `This project belongs to a previous academic cohort (${proj.academicYear}) and is not open for registration.`
-            );
-          }
-
-          // 2c. Resolve applicable limits (Project > Department > Global)
-          const limits = await resolveProjectLimits(
-            proj.id,
-            proj.department,
-            proj.maxSeats,
-            proj.sameDeptLimit,
-            proj.otherDeptLimit,
-            tx
-          );
-
-          // 2d. Get current registrations under write lock
-          const existingRegs = await tx.registration.findMany({
-            where: { projectId: proj.id },
-            include: {
-              student: {
-                select: { department: true },
-              },
-            },
-          });
-
-          const totalSeatsFilled = existingRegs.length;
-
-          if (totalSeatsFilled >= limits.maxSeats) {
-            throw new Error(`Project is completely full (${totalSeatsFilled}/${limits.maxSeats} seats).`);
-          }
-
-          const isSameDept = normalizeDept(student.department) === normalizeDept(proj.department);
-
-          const sameDeptCount = existingRegs.filter(
-            (r: any) => normalizeDept(r.student?.department) === normalizeDept(proj.department)
-          ).length;
-
-          const otherDeptCount = totalSeatsFilled - sameDeptCount;
-
-          if (isSameDept) {
-            if (sameDeptCount >= limits.sameDeptLimit) {
-              throw new Error(
-                `Same department seat limit reached for this project (${sameDeptCount}/${limits.sameDeptLimit}).`
-              );
-            }
-          } else {
-            if (otherDeptCount >= limits.otherDeptLimit) {
-              throw new Error(
-                `Other department seat limit reached for this project (${otherDeptCount}/${limits.otherDeptLimit}).`
-              );
-            }
-          }
-
-          // 2e. Create Registration record atomically inside the transaction
-          const reg = await tx.registration.create({
-            data: {
-              studentId: student.id,
-              projectId: proj.id,
-              status: "Approved",
-            },
-            include: {
-              student: true,
-              project: {
-                include: { faculty: true },
-              },
-            },
-          });
-
-          return { newRegistration: reg, project: proj };
-        },
-        { maxWait: 4000, timeout: 8000 }
-      );
-
-      newRegistration = res.newRegistration;
-      project = res.project;
-    } catch (txErr: any) {
-      if (txErr?.message?.includes("timed out") || txErr?.code === "P2028") {
-        throw new Error("Server busy under heavy load. Please retry in a few seconds.");
-      }
-      throw txErr;
+    if (!student) {
+      throw new Error("Student record not found.");
     }
+
+    if (student.registration) {
+      throw new Error(
+        "Your project registration is officially locked in. Changes or reassignments can only be performed by the University Administrator."
+      );
+    }
+
+    if (actor.role === "STUDENT" && !student.phoneVerified) {
+      throw new Error("Please verify and confirm your mobile number before registering for a project.");
+    }
+
+    // Check academic year cohort matching
+    if (student.academicYear && student.academicYear !== activeYear) {
+      throw new Error(
+        `Your student profile belongs to cohort (${student.academicYear}). Only active cohort (${activeYear}) students can register.`
+      );
+    }
+
+    // 2b. Retrieve project record
+    const proj = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!proj) {
+      throw new Error("Project not found.");
+    }
+
+    if (proj.academicYear && proj.academicYear !== activeYear) {
+      throw new Error(
+        `This project belongs to a previous academic cohort (${proj.academicYear}) and is not open for registration.`
+      );
+    }
+
+    // 2c. Resolve applicable limits (Project > Department > Global)
+    const limits = await resolveProjectLimits(
+      proj.id,
+      proj.department,
+      proj.maxSeats,
+      proj.sameDeptLimit,
+      proj.otherDeptLimit,
+      prisma
+    );
+
+    // 2d. Get current registrations under write lock
+    const existingRegs = await prisma.registration.findMany({
+      where: { projectId: proj.id },
+      include: {
+        student: {
+          select: { department: true },
+        },
+      },
+    });
+
+    const totalSeatsFilled = existingRegs.length;
+
+    if (totalSeatsFilled >= limits.maxSeats) {
+      throw new Error(`Project is completely full (${totalSeatsFilled}/${limits.maxSeats} seats).`);
+    }
+
+    const isSameDept = normalizeDept(student.department) === normalizeDept(proj.department);
+
+    const sameDeptCount = existingRegs.filter(
+      (r: any) => normalizeDept(r.student?.department) === normalizeDept(proj.department)
+    ).length;
+
+    const otherDeptCount = totalSeatsFilled - sameDeptCount;
+
+    if (isSameDept) {
+      if (sameDeptCount >= limits.sameDeptLimit) {
+        throw new Error(
+          `Same department seat limit reached for this project (${sameDeptCount}/${limits.sameDeptLimit}).`
+        );
+      }
+    } else {
+      if (otherDeptCount >= limits.otherDeptLimit) {
+        throw new Error(
+          `Other department seat limit reached for this project (${otherDeptCount}/${limits.otherDeptLimit}).`
+        );
+      }
+    }
+
+    // 2e. Create Registration record (Unique constraint on studentId guarantees 1-to-1 at DB level)
+    const reg = await prisma.registration.create({
+      data: {
+        studentId: student.id,
+        projectId: proj.id,
+        status: "Approved",
+      },
+      include: {
+        student: true,
+        project: {
+          include: { faculty: true },
+        },
+      },
+    });
+
+    newRegistration = reg;
+    project = proj;
 
     // 3. Persist audit log
     try {
