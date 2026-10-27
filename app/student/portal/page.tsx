@@ -72,10 +72,6 @@ export default function StudentPortalPage() {
       if (typeof data.registrationOpen === "boolean") {
         setRegistrationOpen(data.registrationOpen);
       }
-      if (data.user.phone) {
-        setPhoneInput(data.user.phone);
-        setConfirmPhoneInput(data.user.phone);
-      }
 
       // If unregistered, load categories
       if (!data.user.registration) {
