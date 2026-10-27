@@ -899,8 +899,12 @@ export default function AdminPortalPage() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
+    }
+    window.location.href = "/";
   };
 
   const handleSaveConfig = async (e: React.FormEvent) => {

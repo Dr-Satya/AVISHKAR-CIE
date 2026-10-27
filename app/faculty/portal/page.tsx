@@ -94,8 +94,12 @@ export default function FacultyPortalPage() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
+    }
+    window.location.href = "/";
   };
 
   const handleOpenUpload = (proj: AssignedProject, sem?: number) => {

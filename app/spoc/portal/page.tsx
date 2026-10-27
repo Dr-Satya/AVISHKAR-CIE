@@ -163,8 +163,12 @@ export default function SpocPortalPage() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/spoc/login");
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
+    }
+    window.location.href = "/";
   };
 
   const [reviewArtifactId, setReviewArtifactId] = useState<string | undefined>(undefined);
@@ -488,10 +492,10 @@ export default function SpocPortalPage() {
                 SPOC Login
               </Link>
               <Link
-                href="/faculty/portal"
+                href="/"
                 className="inline-block px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50"
               >
-                Faculty Portal
+                Return to Overview
               </Link>
             </div>
           </div>
