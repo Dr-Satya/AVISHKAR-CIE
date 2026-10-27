@@ -18,7 +18,7 @@ export function StudentHeader({ student, onLogout }: StudentHeaderProps) {
         <p className="text-xs sm:text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span>{student.department}</span>
           {student.programme && <span>· {student.programme}</span>}
-          <span>· Semester {student.semester || 3}</span>
+          <span>· Semester {student.registration?.project?.semester || student.semester || 3}</span>
           <span>· Batch {student.batch || "2025"}</span>
           {student.phone && (
             <span className="inline-flex items-center gap-1 font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-[11px] font-semibold border border-emerald-200">

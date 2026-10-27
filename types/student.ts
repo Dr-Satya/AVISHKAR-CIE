@@ -18,6 +18,7 @@ export interface StudentData {
       department: string;
       theme: string;
       category: string;
+      semester?: number;
       faculty: {
         name: string;
         department: string;
