@@ -61,7 +61,7 @@ export function FacultyProjectCard({
   } | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [marksData, setMarksData] = React.useState<
-    Record<string, { internalMarks: number; externalMarks: number; attendancePercent: number }>
+    Record<string, { internalMarks: number | string; externalMarks: number | string; attendancePercent: number | string }>
   >({});
 
   // ZIP download states
@@ -167,13 +167,13 @@ export function FacultyProjectCard({
     setUploadStatus(null);
     const initial: Record<
       string,
-      { internalMarks: number; externalMarks: number; attendancePercent: number }
+      { internalMarks: number | string; externalMarks: number | string; attendancePercent: number | string }
     > = {};
     proj.students.forEach((s) => {
       initial[s.id] = {
-        internalMarks: s.internalMarks ?? 0,
-        externalMarks: s.externalMarks ?? 0,
-        attendancePercent: s.attendancePercent ?? 100,
+        internalMarks: s.internalMarks !== null && s.internalMarks !== undefined && s.internalMarks > 0 ? String(s.internalMarks) : "",
+        externalMarks: s.externalMarks !== null && s.externalMarks !== undefined && s.externalMarks > 0 ? String(s.externalMarks) : "",
+        attendancePercent: s.attendancePercent !== null && s.attendancePercent !== undefined ? String(s.attendancePercent) : "100",
       };
     });
     setMarksData(initial);
@@ -189,9 +189,15 @@ export function FacultyProjectCard({
       "Enrollment Number": st.enrollment,
       "Student Name": st.name,
       "Department": st.department,
-      "Attendance (%)": marksData[st.id]?.attendancePercent ?? st.attendancePercent ?? 100,
-      "Internal Marks (/50)": marksData[st.id]?.internalMarks ?? st.internalMarks ?? 0,
-      "External Marks (/50)": marksData[st.id]?.externalMarks ?? st.externalMarks ?? 0,
+      "Attendance (%)": marksData[st.id]?.attendancePercent !== undefined && marksData[st.id]?.attendancePercent !== ""
+        ? Number(marksData[st.id]?.attendancePercent)
+        : st.attendancePercent ?? 100,
+      "Internal Marks (/50)": marksData[st.id]?.internalMarks !== undefined && marksData[st.id]?.internalMarks !== ""
+        ? Number(marksData[st.id]?.internalMarks)
+        : st.internalMarks ?? 0,
+      "External Marks (/50)": marksData[st.id]?.externalMarks !== undefined && marksData[st.id]?.externalMarks !== ""
+        ? Number(marksData[st.id]?.externalMarks)
+        : st.externalMarks ?? 0,
     }));
     const cleanProjectId = proj.projectId.replace(/[^a-zA-Z0-9_-]/g, "_");
     const filename = `${cleanProjectId}_Marks_Assessment_Template`;
@@ -280,24 +286,24 @@ export function FacultyProjectCard({
             row["attendancePercent"];
 
           const current = updatedMarks[targetStudent.id] || {
-            internalMarks: targetStudent.internalMarks ?? 0,
-            externalMarks: targetStudent.externalMarks ?? 0,
-            attendancePercent: targetStudent.attendancePercent ?? 100,
+            internalMarks: targetStudent.internalMarks !== null && targetStudent.internalMarks !== undefined && targetStudent.internalMarks > 0 ? String(targetStudent.internalMarks) : "",
+            externalMarks: targetStudent.externalMarks !== null && targetStudent.externalMarks !== undefined && targetStudent.externalMarks > 0 ? String(targetStudent.externalMarks) : "",
+            attendancePercent: targetStudent.attendancePercent !== null && targetStudent.attendancePercent !== undefined ? String(targetStudent.attendancePercent) : "100",
           };
 
           const parsedInternal =
-            internalRaw !== undefined && internalRaw !== null && !isNaN(Number(internalRaw))
-              ? Math.min(50, Math.max(0, Number(internalRaw)))
+            internalRaw !== undefined && internalRaw !== null && internalRaw !== "" && !isNaN(Number(internalRaw))
+              ? String(Math.min(50, Math.max(0, Number(internalRaw))))
               : current.internalMarks;
 
           const parsedExternal =
-            externalRaw !== undefined && externalRaw !== null && !isNaN(Number(externalRaw))
-              ? Math.min(50, Math.max(0, Number(externalRaw)))
+            externalRaw !== undefined && externalRaw !== null && externalRaw !== "" && !isNaN(Number(externalRaw))
+              ? String(Math.min(50, Math.max(0, Number(externalRaw))))
               : current.externalMarks;
 
           const parsedAttendance =
-            attRaw !== undefined && attRaw !== null && !isNaN(Number(attRaw))
-              ? Math.min(100, Math.max(0, Number(attRaw)))
+            attRaw !== undefined && attRaw !== null && attRaw !== "" && !isNaN(Number(attRaw))
+              ? String(Math.min(100, Math.max(0, Number(attRaw))))
               : current.attendancePercent;
 
           updatedMarks[targetStudent.id] = {
@@ -345,9 +351,9 @@ export function FacultyProjectCard({
     try {
       const studentMarks = Object.entries(marksData).map(([studentId, data]) => ({
         studentId,
-        internalMarks: Number(data.internalMarks),
-        externalMarks: Number(data.externalMarks),
-        attendancePercent: Number(data.attendancePercent),
+        internalMarks: data.internalMarks === "" ? 0 : Number(data.internalMarks),
+        externalMarks: data.externalMarks === "" ? 0 : Number(data.externalMarks),
+        attendancePercent: data.attendancePercent === "" ? 100 : Number(data.attendancePercent),
       }));
 
       const res = await fetch("/api/faculty/projects", {
@@ -1296,9 +1302,9 @@ export function FacultyProjectCard({
                   <tbody className="divide-y divide-slate-100">
                     {proj.students.map((st) => {
                       const rowData = marksData[st.id] || {
-                        internalMarks: st.internalMarks ?? 0,
-                        externalMarks: st.externalMarks ?? 0,
-                        attendancePercent: st.attendancePercent ?? 100,
+                        internalMarks: st.internalMarks !== null && st.internalMarks !== undefined && st.internalMarks > 0 ? String(st.internalMarks) : "",
+                        externalMarks: st.externalMarks !== null && st.externalMarks !== undefined && st.externalMarks > 0 ? String(st.externalMarks) : "",
+                        attendancePercent: st.attendancePercent !== null && st.attendancePercent !== undefined ? String(st.attendancePercent) : "100",
                       };
                       const total = Number(rowData.internalMarks || 0) + Number(rowData.externalMarks || 0);
 
@@ -1312,17 +1318,30 @@ export function FacultyProjectCard({
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <input
-                              type="number"
-                              min="0"
-                              max="100"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              placeholder="100"
                               value={rowData.attendancePercent}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => {
-                                const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                                const clean = e.target.value.replace(/[^0-9]/g, "");
+                                if (clean === "") {
+                                  setMarksData((prev) => ({
+                                    ...prev,
+                                    [st.id]: {
+                                      ...rowData,
+                                      attendancePercent: "",
+                                    },
+                                  }));
+                                  return;
+                                }
+                                const num = Math.min(100, Math.max(0, parseInt(clean, 10)));
                                 setMarksData((prev) => ({
                                   ...prev,
                                   [st.id]: {
                                     ...rowData,
-                                    attendancePercent: val,
+                                    attendancePercent: String(num),
                                   },
                                 }));
                               }}
@@ -1331,17 +1350,30 @@ export function FacultyProjectCard({
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <input
-                              type="number"
-                              min="0"
-                              max="50"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              placeholder="0"
                               value={rowData.internalMarks}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => {
-                                const val = Math.min(50, Math.max(0, Number(e.target.value)));
+                                const clean = e.target.value.replace(/[^0-9]/g, "");
+                                if (clean === "") {
+                                  setMarksData((prev) => ({
+                                    ...prev,
+                                    [st.id]: {
+                                      ...rowData,
+                                      internalMarks: "",
+                                    },
+                                  }));
+                                  return;
+                                }
+                                const num = Math.min(50, Math.max(0, parseInt(clean, 10)));
                                 setMarksData((prev) => ({
                                   ...prev,
                                   [st.id]: {
                                     ...rowData,
-                                    internalMarks: val,
+                                    internalMarks: String(num),
                                   },
                                 }));
                               }}
@@ -1350,17 +1382,30 @@ export function FacultyProjectCard({
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <input
-                              type="number"
-                              min="0"
-                              max="50"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              placeholder="0"
                               value={rowData.externalMarks}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => {
-                                const val = Math.min(50, Math.max(0, Number(e.target.value)));
+                                const clean = e.target.value.replace(/[^0-9]/g, "");
+                                if (clean === "") {
+                                  setMarksData((prev) => ({
+                                    ...prev,
+                                    [st.id]: {
+                                      ...rowData,
+                                      externalMarks: "",
+                                    },
+                                  }));
+                                  return;
+                                }
+                                const num = Math.min(50, Math.max(0, parseInt(clean, 10)));
                                 setMarksData((prev) => ({
                                   ...prev,
                                   [st.id]: {
                                     ...rowData,
-                                    externalMarks: val,
+                                    externalMarks: String(num),
                                   },
                                 }));
                               }}

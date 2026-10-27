@@ -192,12 +192,21 @@ export function StudentModals({
                     Internals (/50)
                   </label>
                   <input
-                    type="number"
-                    min={0}
-                    max={50}
-                    placeholder="e.g. 40"
-                    value={studentForm.internalMarks ?? 40}
-                    onChange={(e) => setStudentForm({ ...studentForm, internalMarks: parseFloat(e.target.value) || 0 })}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={studentForm.internalMarks !== undefined && studentForm.internalMarks !== null && studentForm.internalMarks > 0 ? studentForm.internalMarks : ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/[^0-9]/g, "");
+                      if (clean === "") {
+                        setStudentForm({ ...studentForm, internalMarks: 0 });
+                        return;
+                      }
+                      const num = Math.min(50, Math.max(0, parseInt(clean, 10)));
+                      setStudentForm({ ...studentForm, internalMarks: num });
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
                   />
                 </div>
@@ -206,12 +215,21 @@ export function StudentModals({
                     Externals (/50)
                   </label>
                   <input
-                    type="number"
-                    min={0}
-                    max={50}
-                    placeholder="e.g. 40"
-                    value={studentForm.externalMarks ?? 40}
-                    onChange={(e) => setStudentForm({ ...studentForm, externalMarks: parseFloat(e.target.value) || 0 })}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={studentForm.externalMarks !== undefined && studentForm.externalMarks !== null && studentForm.externalMarks > 0 ? studentForm.externalMarks : ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/[^0-9]/g, "");
+                      if (clean === "") {
+                        setStudentForm({ ...studentForm, externalMarks: 0 });
+                        return;
+                      }
+                      const num = Math.min(50, Math.max(0, parseInt(clean, 10)));
+                      setStudentForm({ ...studentForm, externalMarks: num });
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
                   />
                 </div>
@@ -437,11 +455,21 @@ export function StudentModals({
                     Internals (/50)
                   </label>
                   <input
-                    type="number"
-                    min={0}
-                    max={50}
-                    value={studentForm.internalMarks ?? 40}
-                    onChange={(e) => setStudentForm({ ...studentForm, internalMarks: parseFloat(e.target.value) || 0 })}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={studentForm.internalMarks !== undefined && studentForm.internalMarks !== null && studentForm.internalMarks > 0 ? studentForm.internalMarks : ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/[^0-9]/g, "");
+                      if (clean === "") {
+                        setStudentForm({ ...studentForm, internalMarks: 0 });
+                        return;
+                      }
+                      const num = Math.min(50, Math.max(0, parseInt(clean, 10)));
+                      setStudentForm({ ...studentForm, internalMarks: num });
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
                   />
                 </div>
@@ -450,11 +478,21 @@ export function StudentModals({
                     Externals (/50)
                   </label>
                   <input
-                    type="number"
-                    min={0}
-                    max={50}
-                    value={studentForm.externalMarks ?? 40}
-                    onChange={(e) => setStudentForm({ ...studentForm, externalMarks: parseFloat(e.target.value) || 0 })}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={studentForm.externalMarks !== undefined && studentForm.externalMarks !== null && studentForm.externalMarks > 0 ? studentForm.externalMarks : ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/[^0-9]/g, "");
+                      if (clean === "") {
+                        setStudentForm({ ...studentForm, externalMarks: 0 });
+                        return;
+                      }
+                      const num = Math.min(50, Math.max(0, parseInt(clean, 10)));
+                      setStudentForm({ ...studentForm, externalMarks: num });
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
                   />
                 </div>
