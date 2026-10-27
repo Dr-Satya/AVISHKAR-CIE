@@ -29,7 +29,7 @@ export function StudentHeader({ student, onLogout }: StudentHeaderProps) {
       </div>
       <button
         onClick={onLogout}
-        className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+        className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap flex-shrink-0"
       >
         Log out
       </button>

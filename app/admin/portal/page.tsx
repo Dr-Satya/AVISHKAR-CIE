@@ -1121,7 +1121,7 @@ export default function AdminPortalPage() {
           <button
             type="button"
             onClick={handleLogout}
-            className="tactile-btn text-xs font-semibold px-4 py-2.5 rounded-2xl border border-slate-300/90 text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all shadow-subtle"
+            className="tactile-btn text-xs font-semibold px-4 py-2.5 rounded-2xl border border-slate-300/90 text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all shadow-subtle whitespace-nowrap flex-shrink-0"
           >
             Log out
           </button>

@@ -66,7 +66,7 @@ export function SpocHeader({
 
         <button
           onClick={onLogout}
-          className="text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-300 hover:border-red-300 text-slate-700 hover:text-red-700 hover:bg-red-50/50 flex items-center gap-1.5 transition-colors"
+          className="text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-300 hover:border-red-300 text-slate-700 hover:text-red-700 hover:bg-red-50/50 flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Log out</span>
