@@ -17,7 +17,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanInput = email.trim();
+    const cleanEmail = cleanInput.toLowerCase();
+    const searchEmail = cleanEmail.includes("@") ? cleanEmail : `${cleanEmail}@gdgu.org`;
     const ip = getClientIp(req);
     const rateLimit = checkRateLimit(`spoc_login:${cleanEmail}:${ip}`, {
       windowMs: 15 * 60 * 1000, // 15 minutes
@@ -33,8 +35,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Check Faculty record (Primary: Faculty using their own faculty credentials)
-    const faculty = await prisma.faculty.findUnique({
-      where: { email: cleanEmail },
+    const faculty = await prisma.faculty.findFirst({
+      where: {
+        OR: [
+          { email: cleanEmail },
+          { email: searchEmail },
+        ],
+      },
       include: { spocProfile: true },
     });
 

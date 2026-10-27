@@ -16,12 +16,56 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let cleanInput = rawInput.replace(/\s+/g, "");
+    let isEmail = rawInput.includes("@");
+    let normalizedEmail = isEmail ? rawInput.toLowerCase() : "";
     let cleanEnrollment = "";
-    let normalizedEmail = "";
+    let prefixDigits = "";
 
-    if (rawInput.includes("@")) {
-      normalizedEmail = rawInput.toLowerCase();
-      if (!normalizedEmail.endsWith("@gdgu.org") && !normalizedEmail.endsWith("@gmail.com")) {
+    if (isEmail) {
+      const rawUsername = normalizedEmail.split("@")[0];
+      const matchDigits = rawUsername.match(/^\d+/);
+      prefixDigits = matchDigits ? matchDigits[0] : "";
+      cleanEnrollment = prefixDigits || rawUsername;
+    } else {
+      cleanEnrollment = cleanInput;
+      normalizedEmail = `${cleanEnrollment.toLowerCase()}@gdgu.org`;
+    }
+
+    const upperEnrollment = cleanEnrollment.toUpperCase();
+    const lowerEnrollment = cleanEnrollment.toLowerCase();
+    const phoneDigits = cleanInput.replace(/\D/g, "");
+
+    // Verify student exists in official master records across enrollment, admission number, email, or phone
+    const student = await prisma.student.findFirst({
+      where: {
+        OR: [
+          { enrollmentNumber: cleanEnrollment },
+          { enrollmentNumber: upperEnrollment },
+          { enrollmentNumber: lowerEnrollment },
+          { admissionNumber: cleanEnrollment },
+          { admissionNumber: upperEnrollment },
+          { email: normalizedEmail },
+          { identities: { some: { email: normalizedEmail } } },
+          ...(prefixDigits
+            ? [
+                { enrollmentNumber: prefixDigits },
+                { admissionNumber: prefixDigits },
+              ]
+            : []),
+          ...(phoneDigits.length >= 10
+            ? [
+                { phone: cleanInput },
+                { phone: phoneDigits.slice(-10) },
+              ]
+            : []),
+        ],
+      },
+      include: { registration: true },
+    });
+
+    if (!student) {
+      if (isEmail && !normalizedEmail.endsWith("@gdgu.org") && !normalizedEmail.endsWith("@gmail.com")) {
         const response = NextResponse.json(
           {
             error: "Please sign in using your official GDGU account (@gdgu.org) or authorized test account.",
@@ -32,32 +76,12 @@ export async function POST(req: NextRequest) {
         clearSessionCookie(response);
         return response;
       }
-      const rawUsername = normalizedEmail.split("@")[0];
-      const matchDigits = rawUsername.match(/^\d+/);
-      cleanEnrollment = matchDigits ? matchDigits[0] : rawUsername;
-    } else {
-      cleanEnrollment = rawInput.replace(/\s+/g, "");
-      normalizedEmail = `${cleanEnrollment.toLowerCase()}@gdgu.org`;
-    }
 
-    // Verify student exists in official master records
-    const student = await prisma.student.findFirst({
-      where: {
-        OR: [
-          { enrollmentNumber: cleanEnrollment },
-          { email: normalizedEmail },
-          { identities: { some: { email: normalizedEmail } } },
-        ],
-      },
-      include: { registration: true },
-    });
-
-    if (!student) {
       // Reject unauthorized enrollment / email immediately.
       // Clear any existing session cookie so no previous session leaks.
       const response = NextResponse.json(
         {
-          error: `Enrollment number / Email '${rawInput}' is not found in the official university IDP student records. Access denied. You must be an officially enrolled student to access this portal.`,
+          error: `Identifier '${rawInput}' was not found in official university IDP student records. Please verify your Enrollment Number or Admission ID.`,
           notFound: true,
         },
         { status: 404 }

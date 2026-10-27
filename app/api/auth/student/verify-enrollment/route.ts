@@ -22,29 +22,48 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEnrollment = enrollmentNumber.trim();
+    const upperEnrollment = cleanEnrollment.toUpperCase();
+    const lowerEnrollment = cleanEnrollment.toLowerCase();
 
-    // Verify enrollment number exists in master records
-    const student = await prisma.student.findUnique({
-      where: { enrollmentNumber: cleanEnrollment },
+    // Verify enrollment number exists in master records (checking enrollmentNumber and admissionNumber)
+    const student = await prisma.student.findFirst({
+      where: {
+        OR: [
+          { enrollmentNumber: cleanEnrollment },
+          { enrollmentNumber: upperEnrollment },
+          { enrollmentNumber: lowerEnrollment },
+          { admissionNumber: cleanEnrollment },
+          { admissionNumber: upperEnrollment },
+        ],
+      },
       include: { registration: true, identities: true },
     });
 
     if (!student) {
       return NextResponse.json(
-        { error: "Enrollment number not found in student master records." },
+        { error: "Enrollment number or Admission ID not found in student master records." },
         { status: 404 }
       );
     }
 
-    // Security check: Check if email prefix enrollment matches requested enrollment
+    // Security check: Check if email prefix enrollment/admission matches requested student
     const emailPrefixDigits = session.email.split("@")[0].match(/^\d+/);
-    if (emailPrefixDigits && emailPrefixDigits[0] !== cleanEnrollment) {
-      return NextResponse.json(
-        {
-          error: `Account Mismatch: Your university account (${session.email}) has enrollment ${emailPrefixDigits[0]}, but you entered enrollment ${cleanEnrollment}. You cannot claim another student's account.`,
-        },
-        { status: 403 }
-      );
+    if (emailPrefixDigits) {
+      const p = emailPrefixDigits[0];
+      const isMatch =
+        p === student.enrollmentNumber ||
+        p === student.admissionNumber ||
+        upperEnrollment === (student.enrollmentNumber || "").toUpperCase() ||
+        upperEnrollment === (student.admissionNumber || "").toUpperCase();
+
+      if (!isMatch) {
+        return NextResponse.json(
+          {
+            error: `Account Mismatch: Your university account (${session.email}) does not match this student record. You cannot claim another student's account.`,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Security check: Check if this enrollment is already linked to another email
@@ -59,23 +78,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Link the student to this Google email identity
-    await prisma.$transaction([
-      prisma.student.update({
-        where: { id: student.id },
-        data: {
-          email: session.email,
-        },
-      }),
-      prisma.studentIdentity.upsert({
-        where: { email: session.email },
-        update: { studentId: student.id },
-        create: {
-          studentId: student.id,
-          email: session.email,
-          googleId: `google_${session.email}`,
-        },
-      }),
-    ]);
+    await prisma.student.update({
+      where: { id: student.id },
+      data: {
+        email: session.email,
+      },
+    });
+
+    await prisma.studentIdentity.upsert({
+      where: { email: session.email },
+      update: { studentId: student.id },
+      create: {
+        studentId: student.id,
+        email: session.email,
+        googleId: `google_${session.email}`,
+      },
+    });
 
     // Issue permanent student session
     const permanentToken = await signSessionToken({

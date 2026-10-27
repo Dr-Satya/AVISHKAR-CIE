@@ -17,7 +17,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanInput = email.trim();
+    const cleanEmail = cleanInput.toLowerCase();
+    const searchEmail = cleanEmail.includes("@") ? cleanEmail : `${cleanEmail}@gdgu.org`;
     const ip = getClientIp(req);
     const rateLimit = checkRateLimit(`admin_login:${cleanEmail}:${ip}`, {
       windowMs: 15 * 60 * 1000, // 15 minutes
@@ -33,8 +35,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Check system admin table
-    const admin = await prisma.admin.findUnique({
-      where: { email: cleanEmail },
+    const admin = await prisma.admin.findFirst({
+      where: {
+        OR: [
+          { email: cleanEmail },
+          { email: searchEmail },
+        ],
+      },
     });
 
     if (admin) {
@@ -68,8 +75,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Check Faculty record (Faculty using their own credentials for Admin access)
-    const faculty = await prisma.faculty.findUnique({
-      where: { email: cleanEmail },
+    const faculty = await prisma.faculty.findFirst({
+      where: {
+        OR: [
+          { email: cleanEmail },
+          { email: searchEmail },
+        ],
+      },
     });
 
     if (faculty) {
