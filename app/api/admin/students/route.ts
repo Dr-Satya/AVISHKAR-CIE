@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { cleanErrorMessage } from "@/lib/api-response";
+import { cleanErrorMessage, safeIsoString } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -178,7 +178,7 @@ export async function GET(req: NextRequest) {
     facultyName: s.registration?.project?.faculty?.name || "—",
     facultyEmail: s.registration?.project?.faculty?.email || "",
     facultyPhone: s.registration?.project?.faculty?.phone || "",
-    registeredAt: s.registration?.createdAt ? s.registration.createdAt.toISOString() : null,
+    registeredAt: safeIsoString(s.registration?.createdAt),
   }));
 
   return NextResponse.json({

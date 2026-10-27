@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { cleanErrorMessage } from "@/lib/api-response";
+import { cleanErrorMessage, safeIsoString } from "@/lib/api-response";
 import { resolveProjectLimits } from "@/services/registration.service";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +56,7 @@ export async function GET() {
         semester: p.semester,
         submissionStatus: p.submissionStatus,
         spocReviewNote: p.spocReviewNote,
-        reviewedAt: p.reviewedAt?.toISOString() || null,
+        reviewedAt: safeIsoString(p.reviewedAt),
         // Research Manuscript & Publication (Optional)
         hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
         hasCommunicatedManuscript: p.hasCommunicatedManuscript,
@@ -73,7 +73,7 @@ export async function GET() {
         manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
         manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
         manuscriptAiPercent: p.manuscriptAiPercent,
-        manuscriptSubmittedAt: p.manuscriptSubmittedAt?.toISOString() || null,
+        manuscriptSubmittedAt: safeIsoString(p.manuscriptSubmittedAt),
         maxSeats: limits.maxSeats,
         currentRegistrations: p.registrations.length,
         availableSeats: Math.max(0, limits.maxSeats - p.registrations.length),
@@ -96,8 +96,8 @@ export async function GET() {
           selfDeclaration: a.selfDeclaration,
           status: a.status,
           spocNote: a.spocNote,
-          submittedAt: a.submittedAt.toISOString(),
-          reviewedAt: a.reviewedAt?.toISOString() || null,
+          submittedAt: safeIsoString(a.submittedAt) || "",
+          reviewedAt: safeIsoString(a.reviewedAt),
         })),
         students: p.registrations.map((r) => ({
           id: r.student.id,
@@ -111,7 +111,7 @@ export async function GET() {
           email: r.student.email,
           semester: r.student.semester,
           batch: r.student.batch,
-          registeredAt: r.createdAt.toISOString(),
+          registeredAt: safeIsoString(r.createdAt) || "",
           status: r.status,
           internalMarks: r.student.internalMarks ?? 0,
           externalMarks: r.student.externalMarks ?? 0,

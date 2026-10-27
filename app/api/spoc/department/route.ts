@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { cleanErrorMessage } from "@/lib/api-response";
+import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -104,19 +104,19 @@ export async function GET(req: NextRequest) {
       regId: string;
       projectId: string;
       status: string;
-      regCreatedAt: string;
+      regCreatedAt: unknown;
       studentId: string;
       enrollmentNumber: string;
       studentName: string;
       studentDepartment: string;
       programme: string | null;
-      semester: number;
+      semester: number | bigint;
       batch: string;
       studentEmail: string | null;
       studentPhone: string | null;
-      internalMarks: number | null;
-      externalMarks: number | null;
-      attendancePercent: number | null;
+      internalMarks: number | bigint | null;
+      externalMarks: number | bigint | null;
+      attendancePercent: number | bigint | null;
     }
 
     const rawRegs: RawStudentReg[] = await prisma.$queryRaw`
@@ -163,18 +163,18 @@ export async function GET(req: NextRequest) {
           name: r.studentName,
           department: r.studentDepartment,
           programme: r.programme,
-          semester: r.semester,
+          semester: parseNum(r.semester),
           batch: r.batch,
           email: r.studentEmail,
           phone: r.studentPhone,
-          internalMarks: r.internalMarks,
-          externalMarks: r.externalMarks,
-          attendancePercent: r.attendancePercent,
+          internalMarks: r.internalMarks != null ? parseNum(r.internalMarks) : null,
+          externalMarks: r.externalMarks != null ? parseNum(r.externalMarks) : null,
+          attendancePercent: r.attendancePercent != null ? parseNum(r.attendancePercent) : null,
           projectId: proj?.projectId || "",
           projectTitle: proj?.title || "",
           facultyName: proj?.faculty.name || "",
           facultyEmail: proj?.faculty.email || "",
-          registeredAt: typeof r.regCreatedAt === "string" ? r.regCreatedAt : new Date(r.regCreatedAt).toISOString(),
+          registeredAt: safeIsoString(r.regCreatedAt) || "",
         });
       }
     }
@@ -203,9 +203,9 @@ export async function GET(req: NextRequest) {
         const pRegs = regsByProjectId.get(proj.id) || [];
         pRegs.forEach((r) => {
           if (!facultyStudentsMap.has(r.studentId)) {
-            const internalMarks = r.internalMarks ?? 0;
-            const externalMarks = r.externalMarks ?? 0;
-            const attendancePercent = r.attendancePercent ?? 100;
+            const internalMarks = r.internalMarks != null ? parseNum(r.internalMarks) : 0;
+            const externalMarks = r.externalMarks != null ? parseNum(r.externalMarks) : 0;
+            const attendancePercent = r.attendancePercent != null ? parseNum(r.attendancePercent, 100) : 100;
             const marksShared = internalMarks > 0 || externalMarks > 0;
             facultyStudentsMap.set(r.studentId, {
               studentId: r.studentId,
@@ -308,7 +308,7 @@ export async function GET(req: NextRequest) {
           academicYear: p.academicYear,
           submissionStatus: p.submissionStatus,
           spocReviewNote: p.spocReviewNote,
-          reviewedAt: p.reviewedAt?.toISOString() || null,
+          reviewedAt: safeIsoString(p.reviewedAt),
           hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
           hasCommunicatedManuscript: p.hasCommunicatedManuscript,
           draftManuscriptUrl: p.draftManuscriptUrl,
@@ -324,7 +324,7 @@ export async function GET(req: NextRequest) {
           manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
           manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
           manuscriptAiPercent: p.manuscriptAiPercent,
-          manuscriptSubmittedAt: p.manuscriptSubmittedAt?.toISOString() || null,
+          manuscriptSubmittedAt: safeIsoString(p.manuscriptSubmittedAt),
           faculty: p.faculty,
           studentsCount: pRegs.length,
           artifacts: p.artifacts.map((a) => ({
@@ -346,8 +346,8 @@ export async function GET(req: NextRequest) {
             selfDeclaration: a.selfDeclaration,
             status: a.status,
             spocNote: a.spocNote,
-            submittedAt: a.submittedAt.toISOString(),
-            reviewedAt: a.reviewedAt?.toISOString() || null,
+            submittedAt: safeIsoString(a.submittedAt) || "",
+            reviewedAt: safeIsoString(a.reviewedAt),
             reviewedBy: a.reviewedBy?.name || null,
           })),
           students: pRegs.map((r) => ({
@@ -356,11 +356,11 @@ export async function GET(req: NextRequest) {
             name: r.studentName,
             department: r.studentDepartment,
             programme: r.programme,
-            semester: r.semester,
+            semester: parseNum(r.semester),
             batch: r.batch,
-            internalMarks: r.internalMarks,
-            externalMarks: r.externalMarks,
-            attendancePercent: r.attendancePercent,
+            internalMarks: r.internalMarks != null ? parseNum(r.internalMarks) : null,
+            externalMarks: r.externalMarks != null ? parseNum(r.externalMarks) : null,
+            attendancePercent: r.attendancePercent != null ? parseNum(r.attendancePercent) : null,
           })),
         };
       }),

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { broadcastEvent } from "@/lib/events";
-import { cleanErrorMessage } from "@/lib/api-response";
+import { cleanErrorMessage, safeIsoString } from "@/lib/api-response";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -66,7 +66,7 @@ export async function GET() {
         facultyId: s.facultyId,
         facultyName: s.faculty?.name || "N/A",
         facultyEmail: s.faculty?.email || "N/A",
-        createdAt: s.createdAt.toISOString(),
+        createdAt: safeIsoString(s.createdAt) || "",
       };
       if (!spocByDepartment[s.department]) {
         spocByDepartment[s.department] = [];

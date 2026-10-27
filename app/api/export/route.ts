@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { cleanErrorMessage } from "@/lib/api-response";
+import { cleanErrorMessage, safeIsoString } from "@/lib/api-response";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
@@ -401,7 +401,7 @@ export async function GET(req: NextRequest) {
         "Category": r.project.category,
         "Faculty Mentor": r.project.faculty.name,
         "Faculty Email": r.project.faculty.email,
-        "Registration Date": r.createdAt.toISOString().split("T")[0],
+        "Registration Date": safeIsoString(r.createdAt)?.split("T")[0] || "",
         "Status": r.status,
       }));
 
@@ -450,7 +450,7 @@ export async function GET(req: NextRequest) {
           "Project ID": r.project.projectId,
           "Project Title": r.project.title,
           "Faculty Mentor": r.project.faculty.name,
-          "Registration Date": r.createdAt.toISOString().split("T")[0],
+          "Registration Date": safeIsoString(r.createdAt)?.split("T")[0] || "",
           "Status": r.status,
         }));
         title = `SPOC_${dept.replace(/[^a-zA-Z0-9]/g, "_")}_Students`;

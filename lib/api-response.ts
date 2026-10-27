@@ -4,6 +4,45 @@ import { cleanErrorMessage } from "./error-utils";
 
 export { cleanErrorMessage };
 
+/**
+ * Safely converts any date-like value (Date, number, bigint, or string) to an ISO 8601 string.
+ * Returns null if the value is null, undefined, or invalid.
+ */
+export function safeIsoString(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val.toISOString();
+  }
+  if (typeof val === "bigint" || typeof val === "number") {
+    const d = new Date(Number(val));
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (typeof val === "string") {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+    const num = Number(val);
+    if (!isNaN(num)) {
+      const dNum = new Date(num);
+      return isNaN(dNum.getTime()) ? null : dNum.toISOString();
+    }
+    return val;
+  }
+  return null;
+}
+
+/**
+ * Safely parses any number-like or bigint value into a JavaScript number.
+ */
+export function parseNum(val: unknown, fallback = 0): number {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === "bigint") return Number(val);
+  if (typeof val === "number") return isNaN(val) ? fallback : val;
+  const parsed = Number(val);
+  return isNaN(parsed) ? fallback : parsed;
+}
+
 export interface ApiSuccessResponse<T = any> {
   success: true;
   message?: string;
