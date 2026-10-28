@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { resolveProjectLimits } from "@/services/registration.service";
 import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export const dynamic = "force-dynamic";
 
@@ -141,6 +142,131 @@ export async function GET(req: NextRequest) {
       const statusFilter = searchParams.get("status") || "all";
       const schoolFilter = searchParams.get("school") || "all";
 
+      let cfDb: any = null;
+      try {
+        const cfCtx = getCloudflareContext();
+        if (cfCtx?.env?.DB) cfDb = cfCtx.env.DB;
+      } catch (e) {}
+
+      if (cfDb) {
+        // Fast direct D1 execution bypassing Wasm serialization bottleneck
+        let sql = `
+          SELECT 
+            p.id, p.projectId, p.title, p.department, p.category, p.theme, p.submissionStatus,
+            p.hasDraftManuscript, p.hasCommunicatedManuscript, p.draftManuscriptUrl, p.draftManuscriptFileName,
+            p.journalName, p.isManuscriptPublished, p.publicationDoi, p.publishedManuscriptUrl,
+            p.publishedManuscriptFileName, p.manuscriptPlagiarismUrl, p.manuscriptPlagiarismFileName,
+            p.manuscriptSimilarityPercent,
+            f.name as facultyName, f.email as facultyEmail, f.department as facultyDepartment
+          FROM Project p
+          LEFT JOIN Faculty f ON p.facultyId = f.id
+          WHERE 1=1
+        `;
+        const params: any[] = [];
+        if (search) {
+          sql += ` AND (p.projectId LIKE ? OR p.title LIKE ? OR p.department LIKE ? OR p.theme LIKE ? OR f.name LIKE ?)`;
+          const s = `%${search}%`;
+          params.push(s, s, s, s, s);
+        }
+        if (categoryFilter !== "all") {
+          sql += ` AND p.category = ?`;
+          params.push(categoryFilter);
+        }
+        if (statusFilter !== "all") {
+          sql += ` AND p.submissionStatus = ?`;
+          params.push(statusFilter);
+        }
+        if (schoolFilter !== "all") {
+          sql += ` AND p.department = ?`;
+          params.push(schoolFilter);
+        }
+        sql += ` ORDER BY p.department ASC, p.projectId ASC`;
+
+        const [projectsRes, artifactsRes, studentsRes] = await Promise.all([
+          cfDb.prepare(sql).bind(...params).all(),
+          cfDb.prepare(`
+            SELECT id, projectId, type, title, fileName, fileUrl, fileSize, semester, similarityPercent, aiPercent, plagiarismReportFileName, plagiarismReportUrl, status, submittedAt
+            FROM ProjectArtifact
+            ORDER BY createdAt DESC
+          `).all(),
+          cfDb.prepare(`
+            SELECT 
+              r.projectId, 
+              s.enrollmentNumber, 
+              s.name, 
+              s.department, 
+              s.programme, 
+              s.semester, 
+              s.batch, 
+              s.attendancePercent, 
+              s.internalMarks, 
+              s.externalMarks 
+            FROM Registration r 
+            JOIN Student s ON r.studentId = s.id
+          `).all(),
+        ]);
+
+        const artifactsByProject: Record<string, any[]> = {};
+        for (const a of artifactsRes.results || []) {
+          if (!artifactsByProject[a.projectId]) artifactsByProject[a.projectId] = [];
+          artifactsByProject[a.projectId].push({
+            ...a,
+            fileSize: parseNum(a.fileSize, 0),
+            semester: parseNum(a.semester, 3),
+            similarityPercent: a.similarityPercent != null ? parseNum(a.similarityPercent) : null,
+            aiPercent: a.aiPercent != null ? parseNum(a.aiPercent) : null,
+            submittedAt: safeIsoString(a.submittedAt) || "",
+          });
+        }
+
+        const studentsByProject: Record<string, any[]> = {};
+        for (const s of studentsRes.results || []) {
+          if (!studentsByProject[s.projectId]) studentsByProject[s.projectId] = [];
+          studentsByProject[s.projectId].push({
+            enrollmentNumber: s.enrollmentNumber,
+            name: s.name,
+            department: s.department,
+            programme: s.programme,
+            semester: parseNum(s.semester, 3),
+            batch: s.batch,
+            attendancePercent: parseNum(s.attendancePercent, 100),
+            internalMarks: parseNum(s.internalMarks, 0),
+            externalMarks: parseNum(s.externalMarks, 0),
+          });
+        }
+
+        const projects = (projectsRes.results || []).map((p: any) => ({
+          id: p.id,
+          projectId: p.projectId,
+          title: p.title,
+          department: p.department,
+          category: p.category,
+          theme: p.theme,
+          submissionStatus: p.submissionStatus,
+          hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
+          hasCommunicatedManuscript: Boolean(p.hasCommunicatedManuscript),
+          draftManuscriptUrl: p.draftManuscriptUrl,
+          draftManuscriptFileName: p.draftManuscriptFileName,
+          journalName: p.journalName,
+          isManuscriptPublished: Boolean(p.isManuscriptPublished),
+          publicationDoi: p.publicationDoi,
+          publishedManuscriptUrl: p.publishedManuscriptUrl,
+          publishedManuscriptFileName: p.publishedManuscriptFileName,
+          manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
+          manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
+          manuscriptSimilarityPercent: p.manuscriptSimilarityPercent != null ? parseNum(p.manuscriptSimilarityPercent) : null,
+          faculty: {
+            name: p.facultyName,
+            email: p.facultyEmail,
+            department: p.facultyDepartment,
+          },
+          artifacts: artifactsByProject[p.id] || [],
+          students: studentsByProject[p.id] || [],
+        }));
+
+        return NextResponse.json({ projects });
+      }
+
       const where: Prisma.ProjectWhereInput = {};
       if (search) {
         where.OR = [
@@ -155,49 +281,77 @@ export async function GET(req: NextRequest) {
       if (statusFilter !== "all") where.submissionStatus = statusFilter;
       if (schoolFilter !== "all") where.department = schoolFilter;
 
-      const projectsWithFiles = await prisma.project.findMany({
-        where,
-        orderBy: [{ department: "asc" }, { projectId: "asc" }],
-        include: {
-          faculty: { select: { name: true, email: true, department: true } },
-          artifacts: {
-            orderBy: { createdAt: "desc" },
-            select: {
-              id: true,
-              type: true,
-              title: true,
-              fileName: true,
-              fileUrl: true,
-              fileSize: true,
-              semester: true,
-              similarityPercent: true,
-              aiPercent: true,
-              plagiarismReportFileName: true,
-              plagiarismReportUrl: true,
-              status: true,
-              submittedAt: true,
-            },
-          },
-          registrations: {
-            include: {
-              student: {
-                select: {
-                  id: true,
-                  enrollmentNumber: true,
-                  name: true,
-                  department: true,
-                  programme: true,
-                  semester: true,
-                  batch: true,
-                  attendancePercent: true,
-                  internalMarks: true,
-                  externalMarks: true,
-                },
+      const [projectsWithFiles, enrolledStudentsRaw] = await Promise.all([
+        prisma.project.findMany({
+          where,
+          orderBy: [{ department: "asc" }, { projectId: "asc" }],
+          include: {
+            faculty: { select: { name: true, email: true, department: true } },
+            artifacts: {
+              orderBy: { createdAt: "desc" },
+              select: {
+                id: true,
+                type: true,
+                title: true,
+                fileName: true,
+                fileUrl: true,
+                fileSize: true,
+                semester: true,
+                similarityPercent: true,
+                aiPercent: true,
+                plagiarismReportFileName: true,
+                plagiarismReportUrl: true,
+                status: true,
+                submittedAt: true,
               },
             },
           },
-        },
-      });
+        }),
+        prisma.$queryRaw<Array<{
+          projectId: string;
+          enrollmentNumber: string;
+          name: string;
+          department: string;
+          programme: string;
+          semester: number | null;
+          batch: string;
+          attendancePercent: number | null;
+          internalMarks: number | null;
+          externalMarks: number | null;
+        }>>`
+          SELECT 
+            r.projectId, 
+            s.enrollmentNumber, 
+            s.name, 
+            s.department, 
+            s.programme, 
+            s.semester, 
+            s.batch, 
+            s.attendancePercent, 
+            s.internalMarks, 
+            s.externalMarks 
+          FROM Registration r 
+          JOIN Student s ON r.studentId = s.id
+        `,
+      ]);
+
+      const studentsByProject: Record<string, any[]> = {};
+      for (const s of enrolledStudentsRaw) {
+        if (!studentsByProject[s.projectId]) {
+          studentsByProject[s.projectId] = [];
+        }
+        studentsByProject[s.projectId].push({
+          enrollmentNumber: s.enrollmentNumber,
+          name: s.name,
+          department: s.department,
+          programme: s.programme,
+          semester: parseNum(s.semester, 3),
+          batch: s.batch,
+          attendancePercent: parseNum(s.attendancePercent, 100),
+          internalMarks: parseNum(s.internalMarks, 0),
+          externalMarks: parseNum(s.externalMarks, 0),
+        });
+      }
 
       return NextResponse.json({
         projects: projectsWithFiles.map((p) => ({
@@ -229,17 +383,7 @@ export async function GET(req: NextRequest) {
             aiPercent: a.aiPercent != null ? parseNum(a.aiPercent) : null,
             submittedAt: safeIsoString((a as any).submittedAt) || "",
           })),
-          students: p.registrations.map((r) => ({
-            enrollmentNumber: r.student.enrollmentNumber,
-            name: r.student.name,
-            department: r.student.department,
-            programme: r.student.programme,
-            semester: parseNum(r.student.semester, 3),
-            batch: r.student.batch,
-            attendancePercent: parseNum(r.student.attendancePercent, 100),
-            internalMarks: parseNum(r.student.internalMarks, 0),
-            externalMarks: parseNum(r.student.externalMarks, 0),
-          })),
+          students: studentsByProject[p.id] || [],
         })),
       });
     }

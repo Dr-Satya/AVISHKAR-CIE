@@ -142,19 +142,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json().catch(() => ({}));
     const session = await getSession();
     if (!session || session.role !== "STUDENT") {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const student = await prisma.student.findUnique({
-      where: { id: session.id },
-    });
-    if (!student) {
-      return NextResponse.json({ error: "Student record not found." }, { status: 404 });
-    }
-
-    const body = await req.json();
     const { phone, confirmPhone, consent } = body;
 
     // Normalize phone (strip non-digits)
@@ -179,6 +172,13 @@ export async function POST(req: NextRequest) {
         { error: "Consent is required: please tick 'this will be used for further communication'." },
         { status: 400 }
       );
+    }
+
+    const student = await prisma.student.findUnique({
+      where: { id: session.id },
+    });
+    if (!student) {
+      return NextResponse.json({ error: "Student record not found." }, { status: 404 });
     }
 
     const updated = await prisma.student.update({

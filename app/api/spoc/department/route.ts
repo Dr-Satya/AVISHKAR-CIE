@@ -377,6 +377,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json().catch(() => ({}));
     const session = await getSession();
     if (!session || (session.role !== "SPOC" && session.role !== "ADMIN" && session.role !== "FACULTY")) {
       return NextResponse.json({ error: "Unauthorized. SPOC or Admin access required." }, { status: 401 });
@@ -404,7 +405,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Access forbidden. SPOC authorization not found." }, { status: 403 });
     }
 
-    const body = await req.json();
     const { action, updates, studentId, attendancePercent, internalMarks, externalMarks } = body;
 
     if (action === "UPDATE_STUDENT_MARKS" || action === "BULK_UPDATE_MARKS") {

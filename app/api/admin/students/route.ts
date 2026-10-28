@@ -35,11 +35,22 @@ async function getStudentAnalyticsAndDropdowns(academicYearFilter: string): Prom
     ...(academicYearFilter && academicYearFilter !== "all" ? { academicYear: academicYearFilter } : {}),
   };
 
-  const [unregisteredTotal, unregStudentsSample, allSchoolsRaw, allBranchesRaw] = await Promise.all([
+  const [unregisteredTotal, schoolCounts, branchCounts, genderCounts, allSchoolsRaw, allBranchesRaw] = await Promise.all([
     prisma.student.count({ where: unregWhere }),
-    prisma.student.findMany({
+    prisma.student.groupBy({
+      by: ["department"],
       where: unregWhere,
-      select: { department: true, programme: true, gender: true },
+      _count: { id: true },
+    }),
+    prisma.student.groupBy({
+      by: ["programme"],
+      where: unregWhere,
+      _count: { id: true },
+    }),
+    prisma.student.groupBy({
+      by: ["gender"],
+      where: unregWhere,
+      _count: { id: true },
     }),
     prisma.student.findMany({
       distinct: ["department"],
@@ -55,21 +66,24 @@ async function getStudentAnalyticsAndDropdowns(academicYearFilter: string): Prom
   ]);
 
   const unregBySchool: Record<string, number> = {};
-  const unregByBranch: Record<string, number> = {};
-  const unregByGender: Record<string, number> = { Male: 0, Female: 0, Other: 0, Unspecified: 0 };
-
-  for (const s of unregStudentsSample) {
+  for (const s of schoolCounts) {
     const d = s.department || "Other";
-    unregBySchool[d] = (unregBySchool[d] || 0) + 1;
+    unregBySchool[d] = (unregBySchool[d] || 0) + s._count.id;
+  }
 
-    const b = s.programme || "Unassigned";
-    unregByBranch[b] = (unregByBranch[b] || 0) + 1;
+  const unregByBranch: Record<string, number> = {};
+  for (const b of branchCounts) {
+    const p = b.programme || "Unassigned";
+    unregByBranch[p] = (unregByBranch[p] || 0) + b._count.id;
+  }
 
-    const g = s.gender || "Unspecified";
-    if (g in unregByGender) {
-      unregByGender[g] += 1;
+  const unregByGender: Record<string, number> = { Male: 0, Female: 0, Other: 0, Unspecified: 0 };
+  for (const g of genderCounts) {
+    const key = g.gender || "Unspecified";
+    if (key in unregByGender) {
+      unregByGender[key] += g._count.id;
     } else {
-      unregByGender[g] = 1;
+      unregByGender[key] = g._count.id;
     }
   }
 

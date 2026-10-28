@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json().catch(() => ({}));
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const { projectId, artifactId, action, note } = await req.json();
+    const { projectId, artifactId, action, note } = body;
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID is required." }, { status: 400 });
@@ -204,6 +205,7 @@ export async function POST(req: NextRequest) {
 // SPOC EDIT PROJECT PROPOSAL DETAILS
 export async function PUT(req: NextRequest) {
   try {
+    const body = await req.json().catch(() => ({}));
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -228,7 +230,6 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden. SPOC or Admin access required." }, { status: 403 });
     }
 
-    const body = await req.json();
     const {
       projectId,
       title,
