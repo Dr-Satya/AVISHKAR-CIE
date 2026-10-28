@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { resolveProjectLimits } from "@/services/registration.service";
-import { cleanErrorMessage } from "@/lib/api-response";
+import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -330,15 +330,15 @@ export async function GET(req: NextRequest) {
           title: a.title,
           fileName: a.fileName,
           fileUrl: a.fileUrl,
-          semester: a.semester,
+          semester: parseNum(a.semester, 3),
           academicYear: a.academicYear,
-          similarityPercent: a.similarityPercent,
-          aiPercent: a.aiPercent,
+          similarityPercent: a.similarityPercent != null ? parseNum(a.similarityPercent) : null,
+          aiPercent: a.aiPercent != null ? parseNum(a.aiPercent) : null,
           status: a.status,
           spocNote: a.spocNote,
           plagiarismReportUrl: a.plagiarismReportUrl,
           plagiarismReportFileName: a.plagiarismReportFileName,
-          submittedAt: a.submittedAt,
+          submittedAt: safeIsoString(a.submittedAt) || "",
         })),
         students: (p.registrations || []).map((r) => ({
           id: r.student.id,
