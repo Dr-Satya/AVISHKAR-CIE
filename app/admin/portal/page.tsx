@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -618,6 +618,8 @@ export default function AdminPortalPage() {
     }
   };
 
+  const fetchProjectsAbortRef = useRef<AbortController | null>(null);
+
   const fetchProjects = async (
     page = 1,
     search = projectSearch,
@@ -625,13 +627,21 @@ export default function AdminPortalPage() {
     status = projectStatusFilter,
     school = projectSchoolFilter
   ) => {
+    if (fetchProjectsAbortRef.current) {
+      fetchProjectsAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    fetchProjectsAbortRef.current = controller;
+
     setLoadingProjects(true);
     try {
       const res = await fetch(
         `/api/admin/projects?page=${page}&limit=10&search=${encodeURIComponent(
           search
-        )}&category=${cat}&status=${status}&school=${encodeURIComponent(school)}`
+        )}&category=${cat}&status=${status}&school=${encodeURIComponent(school)}`,
+        { signal: controller.signal }
       );
+      if (!res.ok) return;
       const data = await res.json();
       setProjects(data.projects || []);
       setProjectPage(data.pagination?.page || 1);
@@ -640,7 +650,8 @@ export default function AdminPortalPage() {
       if (data.completionStats) {
         setCompletionStats(data.completionStats);
       }
-    } catch {
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
     } finally {
       setLoadingProjects(false);
     }

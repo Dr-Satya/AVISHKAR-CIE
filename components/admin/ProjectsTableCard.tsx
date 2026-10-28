@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
   Loader2,
@@ -104,6 +104,23 @@ export function ProjectsTableCard({
   const [zipError, setZipError] = useState<string | null>(null);
   const zipAbortRef = useRef<AbortController | null>(null);
   const [downloadingBulk, setDownloadingBulk] = useState(false);
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
+
+  const handleSearchChange = (val: string) => {
+    setProjectSearch(val);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      onFetchProjects(1, val, projectCategoryFilter, projectStatusFilter, projectSchoolFilter);
+    }, 300);
+  };
 
   const handleCancelZip = () => {
     if (zipAbortRef.current) {
@@ -312,9 +329,12 @@ export function ProjectsTableCard({
               placeholder="Search project ID, title, mentor..."
               aria-label="Search projects by ID, title, or mentor"
               value={projectSearch}
-              onChange={(e) => {
-                setProjectSearch(e.target.value);
-                onFetchProjects(1, e.target.value, projectCategoryFilter, projectStatusFilter, projectSchoolFilter);
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                  onFetchProjects(1, projectSearch, projectCategoryFilter, projectStatusFilter, projectSchoolFilter);
+                }
               }}
               className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none focus:ring-1 focus:ring-[#0d2137] w-48 sm:w-64"
             />
