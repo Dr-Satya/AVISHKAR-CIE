@@ -408,6 +408,7 @@ export async function GET(req: NextRequest) {
     },
   });
   } catch (err: any) {
+    console.error("ADMIN_PROJECTS_GET_ERROR:", err);
     return NextResponse.json(
       { error: cleanErrorMessage(err, "Failed to load projects.") },
       { status: 500 }
