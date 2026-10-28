@@ -481,11 +481,17 @@ export async function executeBulkRegistration(
     });
   }
 
-  // 3. Fetch all unregistered students for active cohort
+  // 3. Fetch all unregistered students for active cohort (select only required fields)
   const unregisteredStudents = await prisma.student.findMany({
     where: {
       registration: null,
       academicYear: activeYear,
+    },
+    select: {
+      id: true,
+      enrollmentNumber: true,
+      name: true,
+      department: true,
     },
     orderBy: {
       enrollmentNumber: "asc",
@@ -588,8 +594,25 @@ export async function executeBulkRegistration(
   const newRegistrationsToInsert: Array<{ studentId: string; projectId: string; status: string }> = [];
 
   // 6. Match each unregistered student according to rules
-  for (const student of unregisteredStudents) {
+  for (let i = 0; i < unregisteredStudents.length; i++) {
+    const student = unregisteredStudents[i];
     const studentNormDept = normalizeDept(student.department);
+
+    // Fast capacity check: if all projects have reached capacity, all remaining students are guaranteed skipped
+    const anyAvailableSeats = projectStates.some((p) => p.totalSeats < p.maxSeats);
+    if (!anyAvailableSeats) {
+      const remainingUnallocated = unregisteredStudents.length - progress.processed;
+      progress.skipped += remainingUnallocated;
+      progress.processed = unregisteredStudents.length;
+      if (progress.skippedDetails.length < 50) {
+        progress.skippedDetails.push({
+          enrollment: student.enrollmentNumber,
+          name: student.name,
+          reason: "All eligible projects in active cohort have reached full seat capacity",
+        });
+      }
+      break;
+    }
 
     // Sort projects: emptiest first (fewest totalSeats)
     projectStates.sort((a, b) => a.totalSeats - b.totalSeats);
@@ -641,14 +664,16 @@ export async function executeBulkRegistration(
       progress.registered++;
     } else {
       progress.skipped++;
-      progress.skippedDetails.push({
-        enrollment: student.enrollmentNumber,
-        name: student.name,
-        reason: failureReason,
-      });
+      if (progress.skippedDetails.length < 50) {
+        progress.skippedDetails.push({
+          enrollment: student.enrollmentNumber,
+          name: student.name,
+          reason: failureReason,
+        });
+      }
     }
 
-    if (progress.processed % 25 === 0 || progress.processed === progress.totalToProcess) {
+    if (progress.processed % 100 === 0 || progress.processed === progress.totalToProcess) {
       broadcastEvent("bulk_registration.progress", progress);
       if (onProgress) onProgress({ ...progress });
     }
@@ -656,18 +681,13 @@ export async function executeBulkRegistration(
 
   // 7. Persist newly created registrations in sequential batches to prevent D1 socket contention
   if (newRegistrationsToInsert.length > 0) {
-    const BATCH_SIZE = 25;
+    const BATCH_SIZE = 50;
     for (let i = 0; i < newRegistrationsToInsert.length; i += BATCH_SIZE) {
       const batch = newRegistrationsToInsert.slice(i, i + BATCH_SIZE);
       await prisma.$transaction(
         batch.map((reg) =>
-          prisma.registration.upsert({
-            where: { studentId: reg.studentId },
-            update: {
-              projectId: reg.projectId,
-              status: reg.status,
-            },
-            create: {
+          prisma.registration.create({
+            data: {
               studentId: reg.studentId,
               projectId: reg.projectId,
               status: reg.status,

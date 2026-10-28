@@ -969,11 +969,15 @@ export default function AdminPortalPage() {
           otherDeptLimit: otherDeptInput,
         }),
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to save department limit.");
+      } else {
         setDeptInput("");
         await fetchDeptLimits();
       }
     } catch {
+      alert("Network error while saving department limit.");
     } finally {
       setDeptSaving(false);
     }
@@ -982,9 +986,15 @@ export default function AdminPortalPage() {
   const handleDeleteDeptLimit = async (id: string) => {
     if (!confirm("Are you sure you want to remove this department limit override?")) return;
     try {
-      await fetch(`/api/admin/department-limits?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/department-limits?id=${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || "Failed to remove department limit.");
+      }
       await fetchDeptLimits();
-    } catch {}
+    } catch {
+      alert("Network error while removing department limit.");
+    }
   };
 
   const handleRunBulkRegistration = async () => {
@@ -1000,10 +1010,13 @@ export default function AdminPortalPage() {
     try {
       const res = await fetch("/api/admin/bulk-registration", { method: "POST" });
       const data = await res.json();
-      if (data.result) {
+      if (!res.ok) {
+        alert(data.error || "Bulk registration execution failed.");
+      } else if (data.result) {
         setBulkResult(data.result);
       }
     } catch {
+      alert("Network or timeout error while executing bulk registration.");
     } finally {
       setBulkRunning(false);
       fetchDashboardData();
