@@ -361,6 +361,44 @@ export async function registerStudentForProject(
       },
     });
 
+    // 2f. Edge Multi-Isolate Concurrency Arbitration Guard
+    // Under high concurrency (e.g., thousands of simultaneous student registrations),
+    // two Cloudflare Worker isolates may both pass the pre-check. This post-insert arbitration
+    // guarantees strict adherence to total seats and department quotas with zero overbooking.
+    const allRegs = await prisma.registration.findMany({
+      where: { projectId: proj.id },
+      include: {
+        student: {
+          select: { department: true },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const ourOverallIndex = allRegs.findIndex((r: any) => r.id === reg.id);
+    let seatExceeded = ourOverallIndex >= limits.maxSeats;
+
+    if (!seatExceeded) {
+      if (isSameDept) {
+        const sameDeptRegs = allRegs.filter(
+          (r: any) => normalizeDept(r.student?.department) === normalizeDept(proj.department)
+        );
+        const ourDeptIndex = sameDeptRegs.findIndex((r: any) => r.id === reg.id);
+        if (ourDeptIndex >= limits.sameDeptLimit) seatExceeded = true;
+      } else {
+        const otherDeptRegs = allRegs.filter(
+          (r: any) => normalizeDept(r.student?.department) !== normalizeDept(proj.department)
+        );
+        const ourDeptIndex = otherDeptRegs.findIndex((r: any) => r.id === reg.id);
+        if (ourDeptIndex >= limits.otherDeptLimit) seatExceeded = true;
+      }
+    }
+
+    if (seatExceeded) {
+      await prisma.registration.delete({ where: { id: reg.id } });
+      throw new Error("This seat was just claimed by another student milliseconds before your submission. Please select another available project.");
+    }
+
     newRegistration = reg;
     project = proj;
 

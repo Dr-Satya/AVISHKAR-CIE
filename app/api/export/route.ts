@@ -613,7 +613,7 @@ export async function GET(req: NextRequest) {
 <body>
   <div class="header">
     <div>
-      <h1 class="title">GD GUENKA UNIVERSITY · IDP PORTAL</h1>
+      <h1 class="title">G.D. GOENKA UNIVERSITY · IDP PORTAL</h1>
       <div class="meta">${escapeHtml(title.replace(/_/g, " "))} · Generated on ${new Date().toLocaleString()} · Total Records: ${rows.length}</div>
     </div>
   </div>

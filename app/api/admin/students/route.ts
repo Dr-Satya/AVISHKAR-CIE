@@ -6,6 +6,86 @@ import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
+interface StudentAnalyticsCache {
+  unregisteredTotal: number;
+  unregBySchool: Record<string, number>;
+  unregByBranch: Record<string, number>;
+  unregByGender: Record<string, number>;
+  allSchools: string[];
+  allBranches: string[];
+}
+
+const studentAnalyticsCache = new Map<string, { data: StudentAnalyticsCache; time: number }>();
+const STUDENT_ANALYTICS_TTL_MS = 15 * 1000;
+
+function invalidateStudentAnalyticsCache() {
+  studentAnalyticsCache.clear();
+}
+
+async function getStudentAnalyticsAndDropdowns(academicYearFilter: string): Promise<StudentAnalyticsCache> {
+  const cacheKey = academicYearFilter || "all";
+  const now = Date.now();
+  const cached = studentAnalyticsCache.get(cacheKey);
+  if (cached && now - cached.time < STUDENT_ANALYTICS_TTL_MS) {
+    return cached.data;
+  }
+
+  const unregWhere: Prisma.StudentWhereInput = {
+    registration: null,
+    ...(academicYearFilter && academicYearFilter !== "all" ? { academicYear: academicYearFilter } : {}),
+  };
+
+  const [unregisteredTotal, unregStudentsSample, allSchoolsRaw, allBranchesRaw] = await Promise.all([
+    prisma.student.count({ where: unregWhere }),
+    prisma.student.findMany({
+      where: unregWhere,
+      select: { department: true, programme: true, gender: true },
+    }),
+    prisma.student.findMany({
+      distinct: ["department"],
+      select: { department: true },
+      orderBy: { department: "asc" },
+    }),
+    prisma.student.findMany({
+      where: { programme: { not: null } },
+      distinct: ["programme"],
+      select: { programme: true },
+      orderBy: { programme: "asc" },
+    }),
+  ]);
+
+  const unregBySchool: Record<string, number> = {};
+  const unregByBranch: Record<string, number> = {};
+  const unregByGender: Record<string, number> = { Male: 0, Female: 0, Other: 0, Unspecified: 0 };
+
+  for (const s of unregStudentsSample) {
+    const d = s.department || "Other";
+    unregBySchool[d] = (unregBySchool[d] || 0) + 1;
+
+    const b = s.programme || "Unassigned";
+    unregByBranch[b] = (unregByBranch[b] || 0) + 1;
+
+    const g = s.gender || "Unspecified";
+    if (g in unregByGender) {
+      unregByGender[g] += 1;
+    } else {
+      unregByGender[g] = 1;
+    }
+  }
+
+  const result: StudentAnalyticsCache = {
+    unregisteredTotal,
+    unregBySchool,
+    unregByBranch,
+    unregByGender,
+    allSchools: allSchoolsRaw.map((s) => s.department).filter(Boolean),
+    allBranches: allBranchesRaw.map((b) => b.programme).filter(Boolean) as string[],
+  };
+
+  studentAnalyticsCache.set(cacheKey, { data: result, time: now });
+  return result;
+}
+
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
@@ -83,13 +163,7 @@ export async function GET(req: NextRequest) {
     orderByClause = { enrollmentNumber: sortOrder };
   }
 
-  // Filter for unregistered aggregates
-  const unregWhere: Prisma.StudentWhereInput = {
-    registration: null,
-    ...(academicYearFilter && academicYearFilter !== "all" ? { academicYear: academicYearFilter } : {}),
-  };
-
-  const [total, students, unregisteredTotal, unregStudentsSample, allSchoolsRaw, allBranchesRaw] = await Promise.all([
+  const [total, students, analytics] = await Promise.all([
     prisma.student.count({ where }),
     prisma.student.findMany({
       where,
@@ -114,43 +188,17 @@ export async function GET(req: NextRequest) {
         },
       },
     }),
-    prisma.student.count({ where: unregWhere }),
-    prisma.student.findMany({
-      where: unregWhere,
-      select: { department: true, programme: true, gender: true },
-    }),
-    prisma.student.findMany({
-      distinct: ["department"],
-      select: { department: true },
-      orderBy: { department: "asc" },
-    }),
-    prisma.student.findMany({
-      where: { programme: { not: null } },
-      distinct: ["programme"],
-      select: { programme: true },
-      orderBy: { programme: "asc" },
-    }),
+    getStudentAnalyticsAndDropdowns(academicYearFilter),
   ]);
 
-  // Aggregate unregistered analytics
-  const unregBySchool: Record<string, number> = {};
-  const unregByBranch: Record<string, number> = {};
-  const unregByGender: Record<string, number> = { Male: 0, Female: 0, Other: 0, Unspecified: 0 };
-
-  for (const s of unregStudentsSample) {
-    const d = s.department || "Other";
-    unregBySchool[d] = (unregBySchool[d] || 0) + 1;
-
-    const b = s.programme || "Unassigned";
-    unregByBranch[b] = (unregByBranch[b] || 0) + 1;
-
-    const g = s.gender || "Unspecified";
-    if (g in unregByGender) {
-      unregByGender[g] += 1;
-    } else {
-      unregByGender[g] = 1;
-    }
-  }
+  const {
+    unregisteredTotal,
+    unregBySchool,
+    unregByBranch,
+    unregByGender,
+    allSchools,
+    allBranches,
+  } = analytics;
 
   const rows = students.map((s) => ({
     id: s.id,
@@ -197,8 +245,8 @@ export async function GET(req: NextRequest) {
       byGender: unregByGender,
     },
     filterOptions: {
-      schools: allSchoolsRaw.map((x) => x.department).filter(Boolean),
-      branches: allBranchesRaw.map((x) => x.programme).filter(Boolean) as string[],
+      schools: allSchools,
+      branches: allBranches,
       genders: ["Male", "Female", "Other"],
     },
   });
@@ -290,6 +338,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    invalidateStudentAnalyticsCache();
     return NextResponse.json({ success: true, student });
   } catch (err: any) {
     console.error("Student create error:", err);
@@ -367,6 +416,7 @@ export async function PUT(req: NextRequest) {
       },
     });
 
+    invalidateStudentAnalyticsCache();
     return NextResponse.json({ success: true, student: updated });
   } catch (err: any) {
     console.error("Student update error:", err);
@@ -440,6 +490,7 @@ export async function DELETE(req: NextRequest) {
       },
     });
 
+    invalidateStudentAnalyticsCache();
     return NextResponse.json({
       success: true,
       message:

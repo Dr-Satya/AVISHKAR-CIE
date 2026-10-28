@@ -19,6 +19,18 @@ let globalWasmClient: any = null;
 let cachedDbBinding: any = null;
 let localPrisma: NodePrismaClient | null = null;
 
+// Global BigInt serialization patch: guarantees NextResponse.json and JSON.stringify
+// never throw "TypeError: Do not know how to serialize a BigInt" on Edge or Node runtimes
+if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
+  Object.defineProperty(BigInt.prototype, "toJSON", {
+    value: function () {
+      return Number(this);
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
 
 function normalizeValue(v: any): any {
@@ -46,11 +58,17 @@ function wrapD1Statement(stmt: any): any {
     async raw(options?: any) {
       const result = await stmt.raw(options);
       if (Array.isArray(result)) {
-        const [columnNames, ...rows] = result;
-        const normalizedRows = rows.map((row: any[]) =>
-          Array.isArray(row) ? row.map(normalizeValue) : row
-        );
-        return [columnNames, ...normalizedRows];
+        if (options && options.columnNames) {
+          const [columnNames, ...rows] = result;
+          const normalizedRows = rows.map((row: any[]) =>
+            Array.isArray(row) ? row.map(normalizeValue) : row
+          );
+          return [columnNames, ...normalizedRows];
+        } else {
+          return result.map((row: any[]) =>
+            Array.isArray(row) ? row.map(normalizeValue) : row
+          );
+        }
       }
       return result;
     },

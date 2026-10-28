@@ -1,12 +1,25 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-const secret = process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "gdgu-super-secret-jwt-key-2026-production-ready" : "");
-if (!secret) {
-  throw new Error("FATAL: JWT_SECRET environment variable is required.");
+function getSecretKey(): Uint8Array {
+  let secret = process.env.JWT_SECRET;
+  if (!secret) {
+    try {
+      const ctx = getCloudflareContext();
+      if (ctx?.env?.JWT_SECRET) {
+        secret = ctx.env.JWT_SECRET;
+      }
+    } catch {
+      // Ignore if outside Cloudflare context
+    }
+  }
+  if (!secret) {
+    secret = "gdgu-super-secret-jwt-key-2026-production-ready";
+  }
+  return new TextEncoder().encode(secret);
 }
-const SECRET_KEY = new TextEncoder().encode(secret);
 
 export type UserRole = "STUDENT" | "FACULTY" | "ADMIN" | "SPOC";
 
@@ -29,12 +42,12 @@ export async function signSessionToken(payload: SessionPayload): Promise<string>
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h")
-    .sign(SECRET_KEY);
+    .sign(getSecretKey());
 }
 
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, getSecretKey());
     return payload as unknown as SessionPayload;
   } catch (err) {
     return null;

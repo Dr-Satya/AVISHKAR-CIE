@@ -7,6 +7,102 @@ import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
+interface GlobalProjectStats {
+  totalProjectsCount: number;
+  completedCount: number;
+  pendingCount: number;
+  rejectedCount: number;
+  notSubmittedCount: number;
+  bothSemestersCompletedCount: number;
+  sem1OnlyCount: number;
+  sem2PendingCount: number;
+  schoolBreakdown: Record<string, { total: number; completed: number; pending: number }>;
+}
+
+let cachedGlobalProjectStats: { data: GlobalProjectStats; time: number } | null = null;
+const STATS_TTL_MS = 15 * 1000;
+
+function invalidateAdminProjectStatsCache() {
+  cachedGlobalProjectStats = null;
+}
+
+async function getAdminProjectGlobalStats(): Promise<GlobalProjectStats> {
+  const now = Date.now();
+  if (cachedGlobalProjectStats && now - cachedGlobalProjectStats.time < STATS_TTL_MS) {
+    return cachedGlobalProjectStats.data;
+  }
+
+  const [
+    totalProjectsCount,
+    completedCount,
+    pendingCount,
+    rejectedCount,
+    notSubmittedCount,
+    allProjectsSample,
+  ] = await Promise.all([
+    prisma.project.count(),
+    prisma.project.count({ where: { submissionStatus: "APPROVED" } }),
+    prisma.project.count({ where: { submissionStatus: "PENDING" } }),
+    prisma.project.count({ where: { submissionStatus: "REJECTED" } }),
+    prisma.project.count({ where: { submissionStatus: "NOT_SUBMITTED" } }),
+    prisma.project.findMany({
+      select: {
+        department: true,
+        submissionStatus: true,
+        semester: true,
+        artifacts: { select: { semester: true, type: true } },
+      },
+    }),
+  ]);
+
+  let bothSemestersCompletedCount = 0;
+  let sem1OnlyCount = 0;
+  let sem2PendingCount = 0;
+
+  for (const p of allProjectsSample) {
+    const baseSem = p.semester || 3;
+    const nextSem = baseSem + 1;
+    const hasSem1Report = p.artifacts.some((a) => (a.semester || baseSem) === baseSem && a.type === "REPORT");
+    const hasSem2Report = p.artifacts.some((a) => a.semester === nextSem && a.type === "REPORT");
+
+    if (hasSem1Report && hasSem2Report) {
+      bothSemestersCompletedCount += 1;
+    } else if (hasSem1Report && !hasSem2Report) {
+      sem1OnlyCount += 1;
+      sem2PendingCount += 1;
+    }
+  }
+
+  const schoolBreakdown: Record<string, { total: number; completed: number; pending: number }> = {};
+  for (const p of allProjectsSample) {
+    const d = p.department || "Other";
+    if (!schoolBreakdown[d]) {
+      schoolBreakdown[d] = { total: 0, completed: 0, pending: 0 };
+    }
+    schoolBreakdown[d].total += 1;
+    if (p.submissionStatus === "APPROVED") {
+      schoolBreakdown[d].completed += 1;
+    } else if (p.submissionStatus === "PENDING") {
+      schoolBreakdown[d].pending += 1;
+    }
+  }
+
+  const data: GlobalProjectStats = {
+    totalProjectsCount,
+    completedCount,
+    pendingCount,
+    rejectedCount,
+    notSubmittedCount,
+    bothSemestersCompletedCount,
+    sem1OnlyCount,
+    sem2PendingCount,
+    schoolBreakdown,
+  };
+
+  cachedGlobalProjectStats = { data, time: now };
+  return data;
+}
+
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
@@ -179,16 +275,7 @@ export async function GET(req: NextRequest) {
     where.department = schoolFilter;
   }
 
-  const [
-    total,
-    projects,
-    totalProjectsCount,
-    completedCount,
-    pendingCount,
-    rejectedCount,
-    notSubmittedCount,
-    allProjectsSample,
-  ] = await Promise.all([
+  const [total, projects, stats] = await Promise.all([
     prisma.project.count({ where }),
     prisma.project.findMany({
       where,
@@ -235,53 +322,20 @@ export async function GET(req: NextRequest) {
         },
       },
     }),
-    prisma.project.count(),
-    prisma.project.count({ where: { submissionStatus: "APPROVED" } }),
-    prisma.project.count({ where: { submissionStatus: "PENDING" } }),
-    prisma.project.count({ where: { submissionStatus: "REJECTED" } }),
-    prisma.project.count({ where: { submissionStatus: "NOT_SUBMITTED" } }),
-    prisma.project.findMany({
-      select: {
-        department: true,
-        submissionStatus: true,
-        semester: true,
-        artifacts: { select: { semester: true, type: true } },
-      },
-    }),
+    getAdminProjectGlobalStats(),
   ]);
 
-  // Aggregate completion rates school-wise and dual-semester compliance
-  let bothSemestersCompletedCount = 0;
-  let sem1OnlyCount = 0;
-  let sem2PendingCount = 0;
-
-  for (const p of allProjectsSample) {
-    const baseSem = p.semester || 3;
-    const nextSem = baseSem + 1;
-    const hasSem1Report = p.artifacts.some((a) => (a.semester || baseSem) === baseSem && a.type === "REPORT");
-    const hasSem2Report = p.artifacts.some((a) => a.semester === nextSem && a.type === "REPORT");
-
-    if (hasSem1Report && hasSem2Report) {
-      bothSemestersCompletedCount += 1;
-    } else if (hasSem1Report && !hasSem2Report) {
-      sem1OnlyCount += 1;
-      sem2PendingCount += 1;
-    }
-  }
-
-  const schoolBreakdown: Record<string, { total: number; completed: number; pending: number }> = {};
-  for (const p of allProjectsSample) {
-    const d = p.department || "Other";
-    if (!schoolBreakdown[d]) {
-      schoolBreakdown[d] = { total: 0, completed: 0, pending: 0 };
-    }
-    schoolBreakdown[d].total += 1;
-    if (p.submissionStatus === "APPROVED") {
-      schoolBreakdown[d].completed += 1;
-    } else if (p.submissionStatus === "PENDING") {
-      schoolBreakdown[d].pending += 1;
-    }
-  }
+  const {
+    totalProjectsCount,
+    completedCount,
+    pendingCount,
+    rejectedCount,
+    notSubmittedCount,
+    bothSemestersCompletedCount,
+    sem1OnlyCount,
+    sem2PendingCount,
+    schoolBreakdown,
+  } = stats;
 
   const rows = await Promise.all(
     projects.map(async (p) => {
@@ -485,6 +539,7 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
+    invalidateAdminProjectStatsCache();
     return NextResponse.json({
       success: true,
       message: `Project ${project.projectId} mentor successfully updated to ${newFaculty.name}.`,
@@ -537,6 +592,7 @@ export async function DELETE(req: NextRequest) {
       },
     });
 
+    invalidateAdminProjectStatsCache();
     return NextResponse.json({
       success: true,
       message: `Project ${project.projectId} removed successfully.`,
