@@ -85,22 +85,24 @@ export async function GET(
   }
 
   // 2. Fallback to local public/uploads (local development only)
-  try {
-    const rootUploads = path.join(process.cwd(), "public", "uploads");
-    const localPath = path.normalize(path.join(rootUploads, ...decodedKey.split("/")));
-    if (localPath.startsWith(rootUploads) && !localPath.includes("\0") && fs.existsSync(localPath)) {
-      const fileBuffer = fs.readFileSync(localPath);
-      return new Response(fileBuffer, {
-        headers: {
-          "Content-Type": mimeType,
-          "Content-Disposition": `inline; filename="${encodeURIComponent(baseName)}"`,
-          "Cache-Control": "public, max-age=31536000, immutable",
-          "X-Content-Type-Options": "nosniff",
-        },
-      });
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      const rootUploads = path.join(process.cwd(), "public", "uploads");
+      const localPath = path.normalize(path.join(rootUploads, ...decodedKey.split("/")));
+      if (localPath.startsWith(rootUploads) && !localPath.includes("\0") && fs.existsSync(localPath)) {
+        const fileBuffer = fs.readFileSync(localPath);
+        return new Response(fileBuffer, {
+          headers: {
+            "Content-Type": mimeType,
+            "Content-Disposition": `inline; filename="${encodeURIComponent(baseName)}"`,
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Local file retrieval error:", err);
     }
-  } catch (err) {
-    console.error("Local file retrieval error:", err);
   }
 
   return new Response("File not found", { status: 404 });

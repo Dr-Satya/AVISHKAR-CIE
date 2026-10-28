@@ -33,6 +33,20 @@ export function safeIsoString(val: unknown): string | null {
 }
 
 /**
+ * Global BigInt serialization patch: ensures native JSON.stringify and NextResponse.json
+ * never throw "TypeError: Do not know how to serialize a BigInt" across the application.
+ */
+if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
+  Object.defineProperty(BigInt.prototype, "toJSON", {
+    value: function () {
+      return Number(this);
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+/**
  * Safely parses any number-like or bigint value into a JavaScript number.
  */
 export function parseNum(val: unknown, fallback = 0): number {

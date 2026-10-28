@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { cleanErrorMessage } from "@/lib/api-response";
+import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
 import { broadcastEvent } from "@/lib/events";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import fs from "fs";
@@ -318,7 +318,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      artifact,
+      artifact: {
+        ...artifact,
+        fileSize: parseNum(artifact.fileSize, 0),
+        semester: parseNum(artifact.semester, 3),
+        similarityPercent: artifact.similarityPercent != null ? parseNum(artifact.similarityPercent) : null,
+        aiPercent: artifact.aiPercent != null ? parseNum(artifact.aiPercent) : null,
+        submittedAt: safeIsoString(artifact.submittedAt),
+      },
     });
   } catch (error: any) {
     console.error("Error uploading artifact:", error);
