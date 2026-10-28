@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { safeIsoString, parseNum } from "@/lib/api-response";
 import * as XLSX from "xlsx";
 import fs from "fs";
 import path from "path";
@@ -162,7 +163,7 @@ export async function exportAllTables(
     "Registered": s.registration ? "Yes" : "No",
     "Project Code": s.registration?.project?.projectId || "",
     "Project Title": s.registration?.project?.title || "",
-    "Created At": s.createdAt?.toISOString?.() || "",
+    "Created At": safeIsoString(s.createdAt) || "",
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentRows), "Students");
 
@@ -178,7 +179,7 @@ export async function exportAllTables(
     "Faculty Mentor": r.project.faculty.name,
     "Faculty Email": r.project.faculty.email,
     "Status": r.status,
-    "Registered At": r.createdAt?.toISOString?.() || "",
+    "Registered At": safeIsoString(r.createdAt) || "",
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(regRows), "Registrations");
 
@@ -201,7 +202,7 @@ export async function exportAllTables(
     "Max Seats": p.maxSeats || "",
     "Submission Status": p.submissionStatus,
     "SPOC Review Note": p.spocReviewNote || "",
-    "Reviewed At": p.reviewedAt?.toISOString?.() || "",
+    "Reviewed At": safeIsoString(p.reviewedAt) || "",
     "Manuscript in Draft": (p.draftManuscriptUrl || (p as any).hasDraftManuscript) ? "Yes" : "No",
     "Manuscript Communicated": p.hasCommunicatedManuscript ? "Yes" : "No",
     "Journal Name": p.journalName || "",
@@ -214,7 +215,7 @@ export async function exportAllTables(
     "Publication DOI": p.publicationDoi || "",
     "Avishkar Affiliation (Published)": p.avishkarAffiliationPublished ? "Confirmed" : "No",
     "Published Paper URL": p.publishedManuscriptUrl || "",
-    "Created At": p.createdAt?.toISOString?.() || "",
+    "Created At": safeIsoString(p.createdAt) || "",
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(projRows), "Projects");
 
@@ -229,7 +230,7 @@ export async function exportAllTables(
     "Is SPOC": f.isSpoc ? "Yes" : "No",
     "SPOC Department": f.spocDepartment || "",
     "Total Projects": f._count.projects,
-    "Created At": f.createdAt?.toISOString?.() || "",
+    "Created At": safeIsoString(f.createdAt) || "",
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(facRows), "Faculty");
 
@@ -242,15 +243,15 @@ export async function exportAllTables(
       "Type": a.type,
       "Title": a.title,
       "File Name": a.fileName,
-      "File Size": a.fileSize || 0,
+      "File Size": parseNum(a.fileSize, 0),
       "MIME Type": a.mimeType || "",
       "Academic Year": a.academicYear,
-      "Semester": a.semester,
-      "Similarity %": a.similarityPercent ?? "",
-      "AI %": a.aiPercent ?? "",
+      "Semester": parseNum(a.semester, 3),
+      "Similarity %": a.similarityPercent != null ? parseNum(a.similarityPercent) : "",
+      "AI %": a.aiPercent != null ? parseNum(a.aiPercent) : "",
       "Status": a.status,
       "SPOC Note": a.spocNote || "",
-      "Submitted At": a.submittedAt?.toISOString?.() || "",
+      "Submitted At": safeIsoString(a.submittedAt) || "",
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(artRows), "Artifacts");
   }
@@ -262,7 +263,7 @@ export async function exportAllTables(
       "Name": s.name,
       "Email": s.email,
       "Department": s.department,
-      "Created At": s.createdAt?.toISOString?.() || "",
+      "Created At": safeIsoString(s.createdAt) || "",
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(spocRows), "SPOCs");
   }
