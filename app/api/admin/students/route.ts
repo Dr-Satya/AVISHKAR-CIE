@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { cleanErrorMessage, safeIsoString } from "@/lib/api-response";
+import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const { searchParams } = new URL(req.url);
+  try {
+    const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limit = Math.min(100, Math.max(10, parseInt(searchParams.get("limit") || "25", 10)));
   const search = searchParams.get("search")?.trim() || "";
@@ -159,10 +160,10 @@ export async function GET(req: NextRequest) {
     department: s.department,
     program: s.programme || "N/A",
     gender: s.gender || "Unspecified",
-    internals: s.internalMarks ?? 0,
-    externals: s.externalMarks ?? 0,
-    attendance: s.attendancePercent ?? 100,
-    sem: s.semester,
+    internals: parseNum(s.internalMarks, 0),
+    externals: parseNum(s.externalMarks, 0),
+    attendance: parseNum(s.attendancePercent, 100),
+    sem: parseNum(s.semester, 3),
     batch: s.batch,
     academicYear: s.academicYear,
     admissionNumber: s.admissionNumber || "",
@@ -201,6 +202,12 @@ export async function GET(req: NextRequest) {
       genders: ["Male", "Female", "Other"],
     },
   });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: cleanErrorMessage(err, "Failed to load students.") },
+      { status: 500 }
+    );
+  }
 }
 
 // CREATE STUDENT

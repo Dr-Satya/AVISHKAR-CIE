@@ -13,131 +13,140 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const { searchParams } = new URL(req.url);
+  try {
+    const { searchParams } = new URL(req.url);
 
-  if (searchParams.get("all") === "true") {
-    const allProjects = await prisma.project.findMany({
-      orderBy: { projectId: "asc" },
-      include: {
-        faculty: { select: { name: true, department: true } },
-        registrations: { select: { id: true } },
-      },
-    });
-
-    const simpleList = allProjects.map((p) => ({
-      id: p.id,
-      projectId: p.projectId,
-      title: p.title,
-      facultyName: p.faculty.name,
-      department: p.department,
-      seatsFilled: p.registrations.length,
-      maxSeats: p.maxSeats || 10,
-    }));
-
-    return NextResponse.json({ projects: simpleList });
-  }
-
-  // Bulk File Download for Admin: Fetch all projects with artifacts, manuscripts, and enrolled student marks
-  if (searchParams.get("exportFiles") === "true") {
-    const search = searchParams.get("search")?.trim() || "";
-    const categoryFilter = searchParams.get("category") || "all";
-    const statusFilter = searchParams.get("status") || "all";
-    const schoolFilter = searchParams.get("school") || "all";
-
-    const where: Prisma.ProjectWhereInput = {};
-    if (search) {
-      where.OR = [
-        { projectId: { contains: search } },
-        { title: { contains: search } },
-        { department: { contains: search } },
-        { theme: { contains: search } },
-        { faculty: { name: { contains: search } } },
-      ];
-    }
-    if (categoryFilter !== "all") where.category = categoryFilter;
-    if (statusFilter !== "all") where.submissionStatus = statusFilter;
-    if (schoolFilter !== "all") where.department = schoolFilter;
-
-    const projectsWithFiles = await prisma.project.findMany({
-      where,
-      orderBy: [{ department: "asc" }, { projectId: "asc" }],
-      include: {
-        faculty: { select: { name: true, email: true, department: true } },
-        artifacts: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            type: true,
-            title: true,
-            fileName: true,
-            fileUrl: true,
-            fileSize: true,
-            semester: true,
-            similarityPercent: true,
-            aiPercent: true,
-            plagiarismReportFileName: true,
-            plagiarismReportUrl: true,
-            status: true,
-          },
+    if (searchParams.get("all") === "true") {
+      const allProjects = await prisma.project.findMany({
+        orderBy: { projectId: "asc" },
+        include: {
+          faculty: { select: { name: true, department: true } },
+          registrations: { select: { id: true } },
         },
-        registrations: {
-          include: {
-            student: {
-              select: {
-                id: true,
-                enrollmentNumber: true,
-                name: true,
-                department: true,
-                programme: true,
-                semester: true,
-                batch: true,
-                attendancePercent: true,
-                internalMarks: true,
-                externalMarks: true,
+      });
+
+      const simpleList = allProjects.map((p) => ({
+        id: p.id,
+        projectId: p.projectId,
+        title: p.title,
+        facultyName: p.faculty.name,
+        department: p.department,
+        seatsFilled: p.registrations.length,
+        maxSeats: parseNum(p.maxSeats, 10),
+      }));
+
+      return NextResponse.json({ projects: simpleList });
+    }
+
+    // Bulk File Download for Admin: Fetch all projects with artifacts, manuscripts, and enrolled student marks
+    if (searchParams.get("exportFiles") === "true") {
+      const search = searchParams.get("search")?.trim() || "";
+      const categoryFilter = searchParams.get("category") || "all";
+      const statusFilter = searchParams.get("status") || "all";
+      const schoolFilter = searchParams.get("school") || "all";
+
+      const where: Prisma.ProjectWhereInput = {};
+      if (search) {
+        where.OR = [
+          { projectId: { contains: search } },
+          { title: { contains: search } },
+          { department: { contains: search } },
+          { theme: { contains: search } },
+          { faculty: { name: { contains: search } } },
+        ];
+      }
+      if (categoryFilter !== "all") where.category = categoryFilter;
+      if (statusFilter !== "all") where.submissionStatus = statusFilter;
+      if (schoolFilter !== "all") where.department = schoolFilter;
+
+      const projectsWithFiles = await prisma.project.findMany({
+        where,
+        orderBy: [{ department: "asc" }, { projectId: "asc" }],
+        include: {
+          faculty: { select: { name: true, email: true, department: true } },
+          artifacts: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              type: true,
+              title: true,
+              fileName: true,
+              fileUrl: true,
+              fileSize: true,
+              semester: true,
+              similarityPercent: true,
+              aiPercent: true,
+              plagiarismReportFileName: true,
+              plagiarismReportUrl: true,
+              status: true,
+              submittedAt: true,
+            },
+          },
+          registrations: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  enrollmentNumber: true,
+                  name: true,
+                  department: true,
+                  programme: true,
+                  semester: true,
+                  batch: true,
+                  attendancePercent: true,
+                  internalMarks: true,
+                  externalMarks: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    return NextResponse.json({
-      projects: projectsWithFiles.map((p) => ({
-        id: p.id,
-        projectId: p.projectId,
-        title: p.title,
-        department: p.department,
-        category: p.category,
-        theme: p.theme,
-        submissionStatus: p.submissionStatus,
-        hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
-        hasCommunicatedManuscript: p.hasCommunicatedManuscript,
-        draftManuscriptUrl: p.draftManuscriptUrl,
-        draftManuscriptFileName: p.draftManuscriptFileName,
-        journalName: p.journalName,
-        isManuscriptPublished: p.isManuscriptPublished,
-        publicationDoi: p.publicationDoi,
-        publishedManuscriptUrl: p.publishedManuscriptUrl,
-        publishedManuscriptFileName: p.publishedManuscriptFileName,
-        manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
-        manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
-        manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
-        faculty: p.faculty,
-        artifacts: p.artifacts,
-        students: p.registrations.map((r) => ({
-          enrollmentNumber: r.student.enrollmentNumber,
-          name: r.student.name,
-          department: r.student.department,
-          programme: r.student.programme,
-          semester: r.student.semester,
-          batch: r.student.batch,
-          attendancePercent: r.student.attendancePercent,
-          internalMarks: r.student.internalMarks,
-          externalMarks: r.student.externalMarks,
+      return NextResponse.json({
+        projects: projectsWithFiles.map((p) => ({
+          id: p.id,
+          projectId: p.projectId,
+          title: p.title,
+          department: p.department,
+          category: p.category,
+          theme: p.theme,
+          submissionStatus: p.submissionStatus,
+          hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
+          hasCommunicatedManuscript: Boolean(p.hasCommunicatedManuscript),
+          draftManuscriptUrl: p.draftManuscriptUrl,
+          draftManuscriptFileName: p.draftManuscriptFileName,
+          journalName: p.journalName,
+          isManuscriptPublished: Boolean(p.isManuscriptPublished),
+          publicationDoi: p.publicationDoi,
+          publishedManuscriptUrl: p.publishedManuscriptUrl,
+          publishedManuscriptFileName: p.publishedManuscriptFileName,
+          manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
+          manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
+          manuscriptSimilarityPercent: p.manuscriptSimilarityPercent != null ? parseNum(p.manuscriptSimilarityPercent) : null,
+          faculty: p.faculty,
+          artifacts: p.artifacts.map((a) => ({
+            ...a,
+            fileSize: parseNum(a.fileSize, 0),
+            semester: parseNum(a.semester, 3),
+            similarityPercent: a.similarityPercent != null ? parseNum(a.similarityPercent) : null,
+            aiPercent: a.aiPercent != null ? parseNum(a.aiPercent) : null,
+            submittedAt: safeIsoString((a as any).submittedAt) || "",
+          })),
+          students: p.registrations.map((r) => ({
+            enrollmentNumber: r.student.enrollmentNumber,
+            name: r.student.name,
+            department: r.student.department,
+            programme: r.student.programme,
+            semester: parseNum(r.student.semester, 3),
+            batch: r.student.batch,
+            attendancePercent: parseNum(r.student.attendancePercent, 100),
+            internalMarks: parseNum(r.student.internalMarks, 0),
+            externalMarks: parseNum(r.student.externalMarks, 0),
+          })),
         })),
-      })),
-    });
-  }
+      });
+    }
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limit = Math.min(100, Math.max(10, parseInt(searchParams.get("limit") || "25", 10)));
@@ -212,6 +221,7 @@ export async function GET(req: NextRequest) {
             title: true,
             fileName: true,
             fileUrl: true,
+            fileSize: true,
             semester: true,
             academicYear: true,
             similarityPercent: true,
@@ -322,14 +332,15 @@ export async function GET(req: NextRequest) {
         sem1HasReport,
         sem2HasReport,
         bothSemestersSubmitted,
-        sem1Similarity: sem1Report?.similarityPercent ?? null,
-        sem2Similarity: sem2Report?.similarityPercent ?? null,
+        sem1Similarity: sem1Report?.similarityPercent != null ? parseNum(sem1Report.similarityPercent) : null,
+        sem2Similarity: sem2Report?.similarityPercent != null ? parseNum(sem2Report.similarityPercent) : null,
         artifacts: artifacts.map((a) => ({
           id: a.id,
           type: a.type,
           title: a.title,
           fileName: a.fileName,
           fileUrl: a.fileUrl,
+          fileSize: parseNum(a.fileSize, 0),
           semester: parseNum(a.semester, 3),
           academicYear: a.academicYear,
           similarityPercent: a.similarityPercent != null ? parseNum(a.similarityPercent) : null,
@@ -346,10 +357,10 @@ export async function GET(req: NextRequest) {
           name: r.student.name,
           department: r.student.department,
           programme: r.student.programme,
-          attendancePercent: r.student.attendancePercent ?? 100,
-          internalMarks: r.student.internalMarks ?? 0,
-          externalMarks: r.student.externalMarks ?? 0,
-          totalMarks: (r.student.internalMarks ?? 0) + (r.student.externalMarks ?? 0),
+          attendancePercent: parseNum(r.student.attendancePercent, 100),
+          internalMarks: parseNum(r.student.internalMarks, 0),
+          externalMarks: parseNum(r.student.externalMarks, 0),
+          totalMarks: parseNum(r.student.internalMarks, 0) + parseNum(r.student.externalMarks, 0),
         })),
         hasDraftManuscript: Boolean(p.hasDraftManuscript || p.draftManuscriptUrl),
         hasCommunicatedManuscript: Boolean(p.hasCommunicatedManuscript),
@@ -364,11 +375,11 @@ export async function GET(req: NextRequest) {
         avishkarAffiliationPublished: Boolean(p.avishkarAffiliationPublished),
         manuscriptPlagiarismUrl: p.manuscriptPlagiarismUrl,
         manuscriptPlagiarismFileName: p.manuscriptPlagiarismFileName,
-        manuscriptSimilarityPercent: p.manuscriptSimilarityPercent,
-        manuscriptAiPercent: p.manuscriptAiPercent,
-        manuscriptSubmittedAt: p.manuscriptSubmittedAt,
-        similarityPercent: reportArtifact?.similarityPercent ?? null,
-        aiPercent: reportArtifact?.aiPercent ?? null,
+        manuscriptSimilarityPercent: p.manuscriptSimilarityPercent != null ? parseNum(p.manuscriptSimilarityPercent) : null,
+        manuscriptAiPercent: p.manuscriptAiPercent != null ? parseNum(p.manuscriptAiPercent) : null,
+        manuscriptSubmittedAt: safeIsoString(p.manuscriptSubmittedAt) || null,
+        similarityPercent: reportArtifact?.similarityPercent != null ? parseNum(reportArtifact.similarityPercent) : null,
+        aiPercent: reportArtifact?.aiPercent != null ? parseNum(reportArtifact.aiPercent) : null,
         plagiarismReportUrl: reportArtifact?.plagiarismReportUrl ?? null,
       };
     })
@@ -396,6 +407,12 @@ export async function GET(req: NextRequest) {
       schoolBreakdown,
     },
   });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: cleanErrorMessage(err, "Failed to load projects.") },
+      { status: 500 }
+    );
+  }
 }
 
 // REASSIGN / REPLACE FACULTY MENTOR ON A PROJECT (PATCH)
