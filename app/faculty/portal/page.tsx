@@ -61,7 +61,12 @@ export default function FacultyPortalPage() {
     try {
       const res = await fetch("/api/faculty/me");
       if (!res.ok) {
-        router.push("/faculty/login");
+        if (res.status === 401) {
+          router.push("/faculty/login");
+          return;
+        }
+        const errData = await res.json().catch(() => ({}));
+        setError(cleanErrorMessage(errData.error, "Failed to refresh faculty dashboard. Please reload."));
         return;
       }
       const data = await res.json();
