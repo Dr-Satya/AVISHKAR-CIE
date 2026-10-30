@@ -40,6 +40,68 @@ function getLocalPrisma(): NodePrismaClient {
   return localPrisma;
 }
 
+/**
+ * Resilient D1 Binding Proxy
+ * Wraps Cloudflare D1 with automatic exponential backoff retry with jitter
+ * to eliminate SQLITE_BUSY / database is locked errors under high write concurrency.
+ */
+function createResilientD1Binding(rawDb: any): any {
+  if (!rawDb || typeof rawDb.prepare !== "function") return rawDb;
+
+  const retryAsync = async <T>(fn: () => Promise<T>, maxRetries = 5): Promise<T> => {
+    let lastErr: any;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        lastErr = err;
+        const msg = String(err?.message || err || "").toLowerCase();
+        const isTransient =
+          msg.includes("sqlite_busy") ||
+          msg.includes("database is locked") ||
+          msg.includes("d1_reset_do") ||
+          msg.includes("timeout") ||
+          msg.includes("too many requests") ||
+          msg.includes("temporarily unavailable");
+
+        if (!isTransient || attempt === maxRetries) {
+          throw err;
+        }
+        // Jittered exponential backoff: 25ms, 50ms, 100ms, 200ms, 400ms (+0-50ms random)
+        const delay = Math.min(1000, 25 * Math.pow(2, attempt) + Math.random() * 50);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+    throw lastErr;
+  };
+
+  return new Proxy(rawDb, {
+    get(target, prop, receiver) {
+      if (prop === "batch") {
+        return (statements: any[]) => retryAsync(() => target.batch(statements));
+      }
+      if (prop === "exec") {
+        return (query: string) => retryAsync(() => target.exec(query));
+      }
+      if (prop === "prepare") {
+        return (query: string) => {
+          const stmt = target.prepare(query);
+          return new Proxy(stmt, {
+            get(stmtTarget, stmtProp, stmtReceiver) {
+              if (["all", "run", "first", "raw"].includes(stmtProp as string)) {
+                return (...args: any[]) =>
+                  retryAsync(() => (stmtTarget as any)[stmtProp](...args));
+              }
+              return Reflect.get(stmtTarget, stmtProp, stmtReceiver);
+            },
+          });
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
+
 export function resetDbClient(): void {
   globalWasmClient = null;
   cachedDbBinding = null;
@@ -51,7 +113,8 @@ export function getDb(): any {
     if (cfContext?.env?.DB) {
       if (!globalWasmClient || cachedDbBinding !== cfContext.env.DB) {
         cachedDbBinding = cfContext.env.DB;
-        const adapter = new PrismaD1(cfContext.env.DB);
+        const resilientDb = createResilientD1Binding(cfContext.env.DB);
+        const adapter = new PrismaD1(resilientDb);
         globalWasmClient = new WasmPrismaClient({ adapter });
       }
       return globalWasmClient;

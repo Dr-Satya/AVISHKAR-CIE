@@ -186,17 +186,17 @@ export async function POST(req: NextRequest) {
     const r2Key = `${academicYear}/sem${semester}/${project.projectId}/${fileName}`;
     const fileUrl = `/api/artifacts/${encodeURIComponent(r2Key)}`;
 
-    if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-      const arrayBuffer = await file.arrayBuffer();
-
+    if (file && typeof file === "object" && file.size > 0) {
       try {
         const ctx = getCloudflareContext();
         const env = ctx?.env as any;
         if (env?.ARTIFACTS) {
-          await env.ARTIFACTS.put(r2Key, arrayBuffer, {
+          const uploadStream = typeof file.stream === "function" ? file.stream() : await file.arrayBuffer();
+          await env.ARTIFACTS.put(r2Key, uploadStream, {
             httpMetadata: { contentType: mimeType },
           });
         } else if (process.env.NODE_ENV !== "production") {
+          const arrayBuffer = await file.arrayBuffer();
           const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`, project.projectId);
           if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
           fs.writeFileSync(path.join(uploadsDir, fileName), Buffer.from(arrayBuffer));
@@ -238,17 +238,17 @@ export async function POST(req: NextRequest) {
       plagiarismReportFileName = plagR2Key;
       plagiarismReportUrl = `/api/artifacts/${encodeURIComponent(plagR2Key)}`;
 
-      const plagArrayBuffer = await plagiarismFile.arrayBuffer();
-      const plagMimeType = plagiarismFile.type || "application/pdf";
-
       try {
         const ctx = getCloudflareContext();
         const env = ctx?.env as any;
+        const plagMimeType = plagiarismFile.type || "application/pdf";
         if (env?.ARTIFACTS) {
-          await env.ARTIFACTS.put(plagR2Key, plagArrayBuffer, {
+          const plagStream = typeof plagiarismFile.stream === "function" ? plagiarismFile.stream() : await plagiarismFile.arrayBuffer();
+          await env.ARTIFACTS.put(plagR2Key, plagStream, {
             httpMetadata: { contentType: plagMimeType },
           });
         } else if (process.env.NODE_ENV !== "production") {
+          const plagArrayBuffer = await plagiarismFile.arrayBuffer();
           const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, `sem${semester}`, project.projectId);
           if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
           fs.writeFileSync(path.join(uploadsDir, plagFileName), Buffer.from(plagArrayBuffer));

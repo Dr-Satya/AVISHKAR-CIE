@@ -34,14 +34,13 @@ async function saveFile(
   const fileName = `${Date.now()}_${prefix}_${cleanName}`;
   const r2Key = `${academicYear}/manuscripts/${projectId}/${fileName}`;
   const fileUrl = `/api/artifacts/${encodeURIComponent(r2Key)}`;
-  const arrayBuffer = await file.arrayBuffer();
   const mimeType = file.type || "application/pdf";
-
   try {
     const ctx = getCloudflareContext();
     const env = ctx?.env as any;
     if (env?.ARTIFACTS) {
-      await env.ARTIFACTS.put(r2Key, arrayBuffer, {
+      const uploadBody = typeof file.stream === "function" ? file.stream() : await file.arrayBuffer();
+      await env.ARTIFACTS.put(r2Key, uploadBody, {
         httpMetadata: { contentType: mimeType },
       });
       return { fileName: r2Key, fileUrl };
@@ -52,6 +51,7 @@ async function saveFile(
 
   // Fallback to local uploads directory (dev mode only)
   if (process.env.NODE_ENV !== "production") {
+    const arrayBuffer = await file.arrayBuffer();
     const uploadsDir = path.join(process.cwd(), "public", "uploads", academicYear, "manuscripts", projectId);
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
