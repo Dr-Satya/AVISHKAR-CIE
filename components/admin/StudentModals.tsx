@@ -70,7 +70,7 @@ export function StudentModals({
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. 24001011001"
+                    placeholder="Enter enrollment number"
                     value={studentForm.enrollmentNumber}
                     onChange={(e) => setStudentForm({ ...studentForm, enrollmentNumber: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
@@ -101,7 +101,7 @@ export function StudentModals({
                   <input
                     type="tel"
                     maxLength={10}
-                    placeholder="e.g. 9876543210"
+                    placeholder="10-digit mobile number"
                     value={studentForm.phone || ""}
                     onChange={(e) =>
                       setStudentForm({
@@ -349,7 +349,7 @@ export function StudentModals({
                     <input
                       type="tel"
                       maxLength={10}
-                      placeholder="e.g. 9876543210"
+                      placeholder="10-digit mobile number"
                       value={studentForm.phone || ""}
                       onChange={(e) =>
                         setStudentForm({

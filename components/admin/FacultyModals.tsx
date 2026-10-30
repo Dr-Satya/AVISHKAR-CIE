@@ -132,7 +132,7 @@ export function FacultyModals({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Dr. Annu Rani"
+                  placeholder="Faculty Full Name"
                   value={facultyForm.name}
                   onChange={(e) => setFacultyForm({ ...facultyForm, name: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
@@ -147,7 +147,7 @@ export function FacultyModals({
                   </label>
                   <input
                     type="email"
-                    placeholder="e.g. annu.rani@gdgu.org"
+                    placeholder="Official email address"
                     value={facultyForm.email}
                     onChange={(e) => setFacultyForm({ ...facultyForm, email: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
@@ -160,7 +160,7 @@ export function FacultyModals({
                   </label>
                   <input
                     type="tel"
-                    placeholder="e.g. 9876543210"
+                    placeholder="10-digit mobile number"
                     maxLength={15}
                     value={facultyForm.phone}
                     onChange={(e) => setFacultyForm({ ...facultyForm, phone: e.target.value })}
@@ -314,7 +314,7 @@ export function FacultyModals({
                   </label>
                   <input
                     type="tel"
-                    placeholder="e.g. 9876543210"
+                    placeholder="10-digit mobile number"
                     maxLength={15}
                     value={facultyForm.phone}
                     onChange={(e) => setFacultyForm({ ...facultyForm, phone: e.target.value })}
@@ -709,7 +709,7 @@ export function FacultyModals({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Prof. R. K. Sharma"
+                  placeholder="Administrator Full Name"
                   value={adminForm.name}
                   onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
@@ -723,7 +723,7 @@ export function FacultyModals({
                 </label>
                 <input
                   type="email"
-                  placeholder="e.g. admin.rksharma@gdgu.org"
+                  placeholder="Official email address"
                   value={adminForm.email}
                   onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"

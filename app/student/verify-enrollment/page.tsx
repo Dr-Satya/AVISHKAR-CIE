@@ -94,7 +94,7 @@ export default function VerifyEnrollmentPage() {
                 name="enrollmentNumber"
                 type="text"
                 autoComplete="username"
-                placeholder="e.g. 24001011001"
+                placeholder="Enter Enrollment Number"
                 value={enrollment}
                 onChange={(e) => setEnrollment(e.target.value)}
                 className="w-full px-4 py-3 rounded-2xl border border-slate-300/90 bg-slate-50/50 text-sm font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a192f] focus:border-transparent transition-all"

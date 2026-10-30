@@ -97,7 +97,7 @@ export default function SpocLoginPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="spoc@gdgu.org"
+                placeholder="Enter official email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-2xl border border-slate-300/90 bg-slate-50/50 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a192f] focus:border-transparent transition-all"

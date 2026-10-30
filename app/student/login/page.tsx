@@ -112,7 +112,7 @@ export default function StudentLoginPage() {
                   name="identifier"
                   type="text"
                   autoComplete="username"
-                  placeholder="e.g. 250160226549 or enrollment@gdgu.org"
+                  placeholder="Enter Enrollment Number or GDGU Email"
                   value={identifierInput}
                   onChange={(e) => setIdentifierInput(e.target.value)}
                   className="w-full px-4 py-3 rounded-2xl border border-slate-300/90 bg-slate-50/50 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a192f] focus:border-transparent transition-all font-mono"

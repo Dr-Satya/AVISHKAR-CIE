@@ -508,7 +508,7 @@ export default function FacultyPortalPage() {
                   <input
                     type="tel"
                     maxLength={10}
-                    placeholder="9876543210"
+                    placeholder="10-digit mobile number"
                     value={phoneInput}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
