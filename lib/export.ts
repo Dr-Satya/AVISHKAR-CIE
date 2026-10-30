@@ -1,3 +1,15 @@
+/**
+ * G D Goenka University - Inter-Disciplinary Project (IDP) Portal
+ * 
+ * Code Attribution:
+ * - Dr. Satya Prakash (Avishkar Centre for Innovation and Entrepreneurship,
+ *   School of Engineering and Sciences, G D Goenka University, Haryana)
+ * - Potla Sri Sharan
+ * - Sarthak Singh
+ * 
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 export async function exportToCsv(data: Record<string, any>[], filename: string) {
   if (!data || data.length === 0) return;
   const XLSX = await import("xlsx");

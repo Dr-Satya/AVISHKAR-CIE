@@ -1,4 +1,14 @@
 /**
+ * G D Goenka University - Inter-Disciplinary Project (IDP) Portal
+ * 
+ * Code Attribution:
+ * - Dr. Satya Prakash (Avishkar Centre for Innovation and Entrepreneurship,
+ *   School of Engineering and Sciences, G D Goenka University, Haryana)
+ * - Potla Sri Sharan
+ * - Sarthak Singh
+ * 
+ * Licensed under the Apache License, Version 2.0.
+ *
  * In-Memory Sliding Window Rate Limiter for Cloudflare Workers Edge
  * Provides IP and identifier-based request throttling with zero external dependencies.
  */
