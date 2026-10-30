@@ -1,110 +1,121 @@
-# GDGU Project Registration Portal
+# GDGU IDP (Inter-Disciplinary Project) Portal
 
-Production-quality Inter-Disciplinary Project (IDP) Registration Portal for G D Goenka University built with Next.js 14, TypeScript, Tailwind CSS, PostgreSQL, and Prisma ORM.
+Production Inter-Disciplinary Project (IDP) Registration and Management Portal for G D Goenka University (Avishkar - Centre for Innovation and Entrepreneurship).
+
+Engineered with Next.js 14, TypeScript, Tailwind CSS, Prisma ORM, and deployed on Cloudflare Workers using OpenNext, Cloudflare D1 (distributed SQL database), and Cloudflare R2 (object storage).
 
 ---
 
-## 🚀 Quick Start (Local Setup)
+## 🚀 Technology Stack
+
+- **Framework:** Next.js 14 (App Router, Server Actions, Edge / Node API routes)
+- **Runtime & Deployment:** Cloudflare Workers via `@opennextjs/cloudflare`
+- **Database:** Cloudflare D1 (SQLite-compatible distributed relational database) / Local SQLite for development
+- **ORM & Data Layer:** Prisma ORM with `@prisma/adapter-d1` and direct D1 SQL batching for low-latency operations
+- **File Storage:** Cloudflare R2 (S3-compatible object storage for project presentations, reports, and database archives)
+- **Styling:** Tailwind CSS with official GDGU navy (`#0a192f`) and university gold (`#c59b27`) palette
+- **Exports:** Streaming Excel workbook generation via SheetJS (`xlsx`)
+
+---
+
+## 💻 Local Development
 
 ### 1. Prerequisites
-- **Node.js**: v18+ (tested on Node v20.20.1)
-- **PostgreSQL**: v14+ running locally on port 5432
+- **Node.js**: v18+ (tested on Node v20+)
+- **Cloudflare Wrangler CLI**: v4+ (installed via `devDependencies`)
 
 ### 2. Environment Setup
-The `.env` file is pre-configured for local execution:
 ```bash
 cp .env.example .env
 ```
-Ensure your database `gdgu_idp` exists:
-```bash
-createdb gdgu_idp
-```
 
-### 3. Install & Sync Database
+### 3. Database Sync & Seeding
 ```bash
-npm install
+# Push Prisma schema to local dev.db
 npm run db:push
+
+# Generate Prisma Client
+npm run db:generate
 ```
 
-### 4. Import Datasets from Excel Files
-Normalizes and seeds all 188 projects, faculty accounts, student master data, and existing registrations directly from the provided Excel spreadsheets:
-```bash
-npm run import:data
-```
-
-### 5. Launch Development Server
+### 4. Run Development Server
 ```bash
 npm run dev
 ```
-Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🧪 Automated Concurrency & Rule Testing
-Run the automated test suite simulating concurrent student registrations, verifying zero overbooking, quota enforcement, and kill-switch safety:
+## ☁️ Cloudflare Deployment
+
+### 1. Build for Cloudflare OpenNext
 ```bash
-npx tsx scripts/test-concurrency.ts
+npm run build:cf
 ```
 
----
+### 2. Deploy to Cloudflare Workers
+```bash
+npx wrangler deploy
+```
 
-## 🔑 Default Credentials for Local Testing
-
-### System Administrator
-- **URL:** `/admin/login`
-- **Email:** `admin@gdgu.org`
-- **Passcode:** `admin@gdgu2026`
-
-### Faculty
-- **URL:** `/faculty/login`
-- **Sample Email:** `debajyoti.roy@gdgu.org` or `shipra@uid.edu.in`
-- **Default Passcode:** `gdgu@2026`
-- *Faculty can change their passcode anytime from their portal dashboard.*
-
-### Student
-- **URL:** `/student/login`
-- **Sample Registered Student:** `250040205005@gdgu.org` (Aarshiya Lahiry, registered for P080)
-- **Sample Unregistered Student:** `250010301003@gdgu.org` (Sandhya Verma, MBA, Unregistered)
-- *Enforces @gdgu.org Google official email authentication.*
+Production Worker: `https://gdgu-idp-portal.cie-1e4.workers.dev`
 
 ---
 
-## 📐 System Architecture
+## 🔑 Login Portals & Access
 
-### 1. Database & Schema
-- **PostgreSQL & Prisma ORM**: Fully normalized relational schema with unique constraints on `Student.enrollmentNumber`, `Faculty.email`, `Project.projectId`, and `Registration.studentId`.
-- **Constraint Precedence**:
-  1. Department-Specific Override (`DepartmentRegistrationLimit`)
-  2. Project-Specific Limit (`Project.sameDeptLimit`, `Project.otherDeptLimit`)
-  3. Global Default Configuration (`GlobalConfig`)
-
-### 2. Concurrency & Transaction Safety
-- Uses PostgreSQL row-level locks (`SELECT ... FOR UPDATE`) inside atomic database transactions.
-- Zero overbooking guarantee even when multiple students submit registrations for the same last seat at the exact same millisecond.
-
-### 3. Bulk Registration Engine
-- Evaluates identical transaction-safe constraints as individual registrations.
-- Sorts projects by current registration count ascending (filling the emptiest projects first).
-- Respects project maximum seats, same-department quotas, and other-department quotas.
-- Records and displays detailed reason codes for any skipped students.
-
-### 4. Real-Time Synchronization
-- Server-Sent Events (SSE) via `/api/events` automatically syncs Admin KPI counters, project seat ratios, and faculty student rosters without manual browser refresh.
-
-### 5. Responsive Visual Design
-- Faithful recreation of the GDGU visual identity: deep navy headers (`#0a192f`), university gold accent bars (`#c59b27`), crisp white cards, and responsive table-to-card transitions for mobile viewports.
+| Role | Login URL | Default / Sample Credentials | Notes |
+|---|---|---|---|
+| **System Admin** | `/admin/login` | `admin@gdgu.org` / `admin@gdgu2026` | Full administrative controls, cohort management, quota overrides, safe wipe |
+| **Faculty Mentor** | `/faculty/login` | Email (e.g. `debajyoti.roy@gdgu.org`) / `gdgu@2026` | Roster review, project manuscript uploads, passcode change |
+| **Department SPOC** | `/spoc/login` | Email (e.g. `dr.akhileshlatoria@gdgu.org`) / `gdgu@2026` | Milestone evaluation, manuscript similarity reviews, department filtering |
+| **Student (Unregistered)** | `/student/login` | `250010301003@gdgu.org` (Sandhya Verma) | Authenticates via Google OAuth (@gdgu.org) or enrollment ID verification |
+| **Student (Registered)** | `/student/login` | `250040205005@gdgu.org` (Aarshiya Lahiry, P080) | Displays project details, faculty contact, and submission status |
 
 ---
 
-## 👥 Authors & Code Attribution
+## 🛡️ Key Features & Architectural Guarantees
 
-- **Director & Project Lead:** **Dr. Satya Prakash**  
-  *Avishkar Centre for Innovation and Entrepreneurship (CIE)*  
-  *School of Engineering and Sciences, G D Goenka University, Haryana*
-- **Architecture & Full-Stack Development:** **Potla Sri Sharan**
-- **Engineering & Development Contributor:** **Sarthak Singh**
+1. **Transaction-Safe Seat Allocation:**
+   - Real-time seat validation enforcing Department-Specific limits, Project-Specific limits, and Global defaults.
+   - Atomic conditional reservations preventing race conditions and zero overbooking.
+
+2. **Ultra-Low-Latency Edge Exports:**
+   - Cohort details and full database backups run on direct D1 SQL batch queries with streaming `ArrayBuffer` responses, avoiding Worker CPU timeouts.
+
+3. **Safe Wipe & Data Management:**
+   - Atomic pre-wipe export verification to Cloudflare R2 before any records are modified or purged.
+   - Comprehensive audit logging (`AuditLog`) for all sensitive operations.
+
+4. **Multi-Role RBAC:**
+   - Encrypted HTTP-only JWT session management with distinct privilege boundaries for Students, Faculty, Department SPOCs, and Administrators.
+
+---
+
+## 📂 Repository Structure
+
+```
+├── app/                    # Next.js 14 App Router (pages and API routes)
+│   ├── admin/             # Admin console and dashboards
+│   ├── api/               # Serverless API endpoints
+│   ├── faculty/           # Faculty mentor interface
+│   ├── spoc/              # School SPOC review interface
+│   └── student/           # Student registration and status portal
+├── components/             # Modular React UI components
+│   ├── admin/             # Admin management modals and tables
+│   ├── faculty/           # Faculty project views
+│   └── student/           # Registration flows and project cards
+├── lib/                    # Core business logic and database adapters
+│   ├── auth.ts            # JWT authentication and session handling
+│   ├── data-management.ts # D1-optimized export, wipe, and audit engine
+│   ├── prisma.ts          # Edge-compatible Prisma client instance
+│   └── quota.ts           # Department and project seat allocation rules
+├── prisma/                 # Database schema definition
+├── public/                 # Static assets, university logos, and favicons
+└── scripts/                # Database migrations, seeders, and build patches
+```
 
 ---
 
 ## 📄 License
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+Avishkar - Centre for Innovation and Entrepreneurship (CIE), G D Goenka University.
