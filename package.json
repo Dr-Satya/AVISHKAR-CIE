@@ -27,6 +27,7 @@
     "db:studio": "prisma studio",
     "import:data": "tsx scripts/import-data.ts",
     "test:concurrency": "tsx scripts/test-concurrency.ts",
+    "test:e2e": "tsx scripts/test-all-buttons-and-endpoints.ts",
     "db:backup": "mkdir -p backups && npx wrangler d1 export gdgu_idp_db --remote --output backups/gdgu_idp_backup_$(date +%Y%m%d_%H%M%S).sql -y",
     "db:timetravel": "npx wrangler d1 time-travel info gdgu_idp_db",
     "build:cf": "npx @opennextjs/cloudflare build && node scripts/patch-worker.mjs",
