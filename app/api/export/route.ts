@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cleanErrorMessage, safeIsoString } from "@/lib/api-response";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,12 @@ export async function GET(req: NextRequest) {
     const format = (rawFormat || (scope?.startsWith("TEMPLATE_") ? "xlsx" : "csv")).toLowerCase(); // "csv" | "xlsx" | "pdf"
     const projectId = searchParams.get("projectId");
     const departmentParam = searchParams.get("department");
+
+    let cfDb: any = null;
+    try {
+      const cfCtx = getCloudflareContext();
+      if (cfCtx?.env?.DB) cfDb = cfCtx.env.DB;
+    } catch (e) {}
 
     let rows: Record<string, any>[] = [];
     let title = "GDGU_IDP_Export";
@@ -249,111 +256,211 @@ export async function GET(req: NextRequest) {
       const filterParam = searchParams.get("filter") || "registered"; // "registered" | "all" | "unregistered"
       const academicYearParam = searchParams.get("academicYear");
 
-      if (filterParam === "all" || filterParam === "unregistered") {
-        const whereStudent: any = {};
-        if (schoolParam && schoolParam !== "all") {
-          whereStudent.department = schoolParam;
-        }
-        if (academicYearParam && academicYearParam !== "all") {
-          whereStudent.academicYear = academicYearParam;
-        }
-        if (filterParam === "unregistered") {
-          whereStudent.registration = null;
-        }
+      if (cfDb) {
+        if (filterParam === "all" || filterParam === "unregistered") {
+          let sql = `
+            SELECT 
+              f.name as facultyName,
+              COALESCE(p.department, f.department, s.department, '') as school,
+              COALESCE(f.email, '') as facultyEmail,
+              COALESCE(f.phone, '') as facultyPhone,
+              COALESCE(p.title, CASE WHEN r.id IS NOT NULL THEN 'Allocated' ELSE 'UNREGISTERED' END) as projectTitle,
+              COALESCE(p.category, '') as projectCategory,
+              COALESCE(p.theme, '') as projectTheme,
+              COALESCE(p.description, '') as projectDescription,
+              COALESCE(p.projectId, CASE WHEN r.id IS NOT NULL THEN 'N/A' ELSE 'UNREGISTERED' END) as projectCode,
+              s.enrollmentNumber as studentEnrollment,
+              COALESCE(s.name, '') as studentName
+            FROM Student s
+            LEFT JOIN Registration r ON s.id = r.studentId
+            LEFT JOIN Project p ON r.projectId = p.id
+            LEFT JOIN Faculty f ON p.facultyId = f.id
+            WHERE 1=1
+          `;
+          const binds: any[] = [];
+          if (filterParam === "unregistered") {
+            sql += ` AND r.id IS NULL`;
+          }
+          if (schoolParam && schoolParam !== "all") {
+            sql += ` AND s.department = ?`;
+            binds.push(schoolParam);
+          }
+          if (academicYearParam && academicYearParam !== "all") {
+            sql += ` AND s.academicYear = ?`;
+            binds.push(academicYearParam);
+          }
+          sql += ` ORDER BY s.department ASC, s.enrollmentNumber ASC`;
 
-        const studentsList = await prisma.student.findMany({
-          where: whereStudent,
-          include: {
-            registration: {
-              include: {
-                project: {
-                  include: { faculty: true },
+          const stmt = binds.length > 0 ? cfDb.prepare(sql).bind(...binds) : cfDb.prepare(sql);
+          const result = await stmt.all();
+          rows = (result.results || []).map((r: any) => ({
+            "Faculty Name": r.facultyName || "",
+            "School": r.school || "",
+            "Email ID": r.facultyEmail || "",
+            "Contact No.": r.facultyPhone || "",
+            "Projet Title": r.projectTitle || "",
+            "Project  Category  (IDP2501/IDP2502)": r.projectCategory || "",
+            "Theme": r.projectTheme || "",
+            "Description  of IDP  project": r.projectDescription || "",
+            "Project ID": r.projectCode || "",
+            "Enrollment": /^\d+$/.test(r.studentEnrollment) ? Number(r.studentEnrollment) : r.studentEnrollment,
+            "Student Name": r.studentName || "",
+          }));
+        } else {
+          // Default: "registered"
+          let sql = `
+            SELECT 
+              f.name as facultyName,
+              COALESCE(p.department, f.department, s.department, '') as school,
+              COALESCE(f.email, '') as facultyEmail,
+              COALESCE(f.phone, '') as facultyPhone,
+              COALESCE(p.title, '') as projectTitle,
+              COALESCE(p.category, '') as projectCategory,
+              COALESCE(p.theme, '') as projectTheme,
+              COALESCE(p.description, '') as projectDescription,
+              COALESCE(p.projectId, '') as projectCode,
+              s.enrollmentNumber as studentEnrollment,
+              COALESCE(s.name, '') as studentName
+            FROM Registration r
+            JOIN Student s ON r.studentId = s.id
+            JOIN Project p ON r.projectId = p.id
+            LEFT JOIN Faculty f ON p.facultyId = f.id
+            WHERE 1=1
+          `;
+          const binds: any[] = [];
+          if (schoolParam && schoolParam !== "all") {
+            sql += ` AND (p.department = ? OR f.department = ? OR s.department = ?)`;
+            binds.push(schoolParam, schoolParam, schoolParam);
+          }
+          if (academicYearParam && academicYearParam !== "all") {
+            sql += ` AND p.academicYear = ?`;
+            binds.push(academicYearParam);
+          }
+          sql += ` ORDER BY p.department ASC, p.projectId ASC, s.enrollmentNumber ASC`;
+
+          const stmt = binds.length > 0 ? cfDb.prepare(sql).bind(...binds) : cfDb.prepare(sql);
+          const result = await stmt.all();
+          rows = (result.results || []).map((r: any) => ({
+            "Faculty Name": r.facultyName || "",
+            "School": r.school || "",
+            "Email ID": r.facultyEmail || "",
+            "Contact No.": r.facultyPhone || "",
+            "Projet Title": r.projectTitle || "",
+            "Project  Category  (IDP2501/IDP2502)": r.projectCategory || "",
+            "Theme": r.projectTheme || "",
+            "Description  of IDP  project": r.projectDescription || "",
+            "Project ID": r.projectCode || "",
+            "Enrollment": /^\d+$/.test(r.studentEnrollment) ? Number(r.studentEnrollment) : r.studentEnrollment,
+            "Student Name": r.studentName || "",
+          }));
+        }
+      } else {
+        if (filterParam === "all" || filterParam === "unregistered") {
+          const whereStudent: any = {};
+          if (schoolParam && schoolParam !== "all") {
+            whereStudent.department = schoolParam;
+          }
+          if (academicYearParam && academicYearParam !== "all") {
+            whereStudent.academicYear = academicYearParam;
+          }
+          if (filterParam === "unregistered") {
+            whereStudent.registration = null;
+          }
+
+          const studentsList = await prisma.student.findMany({
+            where: whereStudent,
+            include: {
+              registration: {
+                include: {
+                  project: {
+                    include: { faculty: true },
+                  },
                 },
               },
             },
-          },
-          orderBy: [
-            { department: "asc" },
-            { enrollmentNumber: "asc" },
-          ],
-        });
+            orderBy: [
+              { department: "asc" },
+              { enrollmentNumber: "asc" },
+            ],
+          });
 
-        rows = studentsList.map((st) => {
-          const reg = st.registration;
-          const proj = reg?.project;
-          const fac = proj?.faculty;
+          rows = studentsList.map((st) => {
+            const reg = st.registration;
+            const proj = reg?.project;
+            const fac = proj?.faculty;
 
-          const enrNum = /^\d+$/.test(st.enrollmentNumber)
-            ? Number(st.enrollmentNumber)
-            : st.enrollmentNumber;
+            const enrNum = /^\d+$/.test(st.enrollmentNumber)
+              ? Number(st.enrollmentNumber)
+              : st.enrollmentNumber;
 
-          return {
-            "Faculty Name": fac?.name || "",
-            "School": proj?.department || fac?.department || st.department || "",
-            "Email ID": fac?.email || "",
-            "Contact No.": fac?.phone || "",
-            "Projet Title": proj?.title || (reg ? "Allocated" : "UNREGISTERED"),
-            "Project  Category  (IDP2501/IDP2502)": proj?.category || "",
-            "Theme": proj?.theme || "",
-            "Description  of IDP  project": proj?.description || "",
-            "Project ID": proj?.projectId || (reg ? "N/A" : "UNREGISTERED"),
-            "Enrollment": enrNum,
-            "Student Name": st.name || "",
-          };
-        });
-      } else {
-        const whereRegistration: any = {};
-        if (schoolParam && schoolParam !== "all") {
-          whereRegistration.OR = [
-            { project: { department: schoolParam } },
-            { project: { faculty: { department: schoolParam } } },
-            { student: { department: schoolParam } },
-          ];
-        }
-        if (academicYearParam && academicYearParam !== "all") {
-          whereRegistration.project = {
-            academicYear: academicYearParam,
-          };
-        }
+            return {
+              "Faculty Name": fac?.name || "",
+              "School": proj?.department || fac?.department || st.department || "",
+              "Email ID": fac?.email || "",
+              "Contact No.": fac?.phone || "",
+              "Projet Title": proj?.title || (reg ? "Allocated" : "UNREGISTERED"),
+              "Project  Category  (IDP2501/IDP2502)": proj?.category || "",
+              "Theme": proj?.theme || "",
+              "Description  of IDP  project": proj?.description || "",
+              "Project ID": proj?.projectId || (reg ? "N/A" : "UNREGISTERED"),
+              "Enrollment": enrNum,
+              "Student Name": st.name || "",
+            };
+          });
+        } else {
+          const whereRegistration: any = {};
+          if (schoolParam && schoolParam !== "all") {
+            whereRegistration.OR = [
+              { project: { department: schoolParam } },
+              { project: { faculty: { department: schoolParam } } },
+              { student: { department: schoolParam } },
+            ];
+          }
+          if (academicYearParam && academicYearParam !== "all") {
+            whereRegistration.project = {
+              academicYear: academicYearParam,
+            };
+          }
 
-        const registrations = await prisma.registration.findMany({
-          where: whereRegistration,
-          include: {
-            student: true,
-            project: {
-              include: { faculty: true },
+          const registrations = await prisma.registration.findMany({
+            where: whereRegistration,
+            include: {
+              student: true,
+              project: {
+                include: { faculty: true },
+              },
             },
-          },
-          orderBy: [
-            { project: { department: "asc" } },
-            { project: { projectId: "asc" } },
-            { student: { enrollmentNumber: "asc" } },
-          ],
-        });
+            orderBy: [
+              { project: { department: "asc" } },
+              { project: { projectId: "asc" } },
+              { student: { enrollmentNumber: "asc" } },
+            ],
+          });
 
-        rows = registrations.map((r) => {
-          const st = r.student;
-          const proj = r.project;
-          const fac = proj?.faculty;
+          rows = registrations.map((r) => {
+            const st = r.student;
+            const proj = r.project;
+            const fac = proj?.faculty;
 
-          const enrNum = /^\d+$/.test(st.enrollmentNumber)
-            ? Number(st.enrollmentNumber)
-            : st.enrollmentNumber;
+            const enrNum = /^\d+$/.test(st.enrollmentNumber)
+              ? Number(st.enrollmentNumber)
+              : st.enrollmentNumber;
 
-          return {
-            "Faculty Name": fac?.name || "",
-            "School": proj?.department || fac?.department || st?.department || "",
-            "Email ID": fac?.email || "",
-            "Contact No.": fac?.phone || "",
-            "Projet Title": proj?.title || "",
-            "Project  Category  (IDP2501/IDP2502)": proj?.category || "",
-            "Theme": proj?.theme || "",
-            "Description  of IDP  project": proj?.description || "",
-            "Project ID": proj?.projectId || "",
-            "Enrollment": enrNum,
-            "Student Name": st?.name || "",
-          };
-        });
+            return {
+              "Faculty Name": fac?.name || "",
+              "School": proj?.department || fac?.department || st?.department || "",
+              "Email ID": fac?.email || "",
+              "Contact No.": fac?.phone || "",
+              "Projet Title": proj?.title || "",
+              "Project  Category  (IDP2501/IDP2502)": proj?.category || "",
+              "Theme": proj?.theme || "",
+              "Description  of IDP  project": proj?.description || "",
+              "Project ID": proj?.projectId || "",
+              "Enrollment": enrNum,
+              "Student Name": st?.name || "",
+            };
+          });
+        }
       }
 
       const dateStr = new Date().toISOString().split("T")[0];
@@ -567,9 +674,9 @@ export async function GET(req: NextRequest) {
           : (isCohortScope || scope?.startsWith("TEMPLATE_") ? "Sheet1" : "Data");
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-      const excelBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+      const excelBuffer = XLSX.write(wb, { type: "array", bookType: "xlsx" });
 
-      return new NextResponse(excelBuffer, {
+      return new NextResponse(new Uint8Array(excelBuffer), {
         status: 200,
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
