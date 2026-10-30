@@ -17,6 +17,7 @@ import { RegisteredStatusCard } from "@/components/student/RegisteredStatusCard"
 import { CategorySelector } from "@/components/student/CategorySelector";
 import { ThemeSelector } from "@/components/student/ThemeSelector";
 import { AvailableProjectsList } from "@/components/student/AvailableProjectsList";
+import { RegistrationProgressModal } from "@/components/student/RegistrationProgressModal";
 import { cleanErrorMessage } from "@/lib/error-utils";
 
 export default function StudentPortalPage() {
@@ -43,6 +44,14 @@ export default function StudentPortalPage() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
+  const [selectedProjectForModal, setSelectedProjectForModal] = useState<ProjectCardData | null>(null);
+  const [modalSuccessData, setModalSuccessData] = useState<{
+    projectId: string;
+    projectTitle: string;
+    facultyName?: string;
+    category?: string;
+  } | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // High-concurrency SSE throttle refs to prevent 5,000-user thundering herd
   const selectedCategoryRef = useRef<string | null>(null);
@@ -196,7 +205,11 @@ export default function StudentPortalPage() {
       setError("Please complete mobile number verification before registering.");
       return;
     }
+    const targetProj = projects.find((p) => p.id === projectId) || null;
+    setSelectedProjectForModal(targetProj);
     setRegisteringId(projectId);
+    setModalError(null);
+    setModalSuccessData(null);
     setError(null);
     try {
       const res = await fetch("/api/student/register", {
@@ -206,15 +219,25 @@ export default function StudentPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(cleanErrorMessage(data.error, "Registration failed."));
+        const errMsg = cleanErrorMessage(data.error, "Registration failed.");
+        setError(errMsg);
+        setModalError(errMsg);
         setRegisteringId(null);
         return;
       }
 
+      setModalSuccessData({
+        projectId: targetProj?.projectId || "IDP",
+        projectTitle: targetProj?.title || "Inter-Disciplinary Project",
+        facultyName: targetProj?.facultyName,
+        category: targetProj?.category,
+      });
       setRegistrationSuccessMessage("Registration Successful!");
       await fetchStudentData();
     } catch (err: any) {
-      setError(cleanErrorMessage(err, "Registration request failed."));
+      const errMsg = cleanErrorMessage(err, "Registration request failed.");
+      setError(errMsg);
+      setModalError(errMsg);
     } finally {
       setRegisteringId(null);
     }
@@ -476,6 +499,19 @@ export default function StudentPortalPage() {
             </div>
           </div>
         )}
+        {/* REGISTRATION PROGRESS & SUCCESS MODAL */}
+        <RegistrationProgressModal
+          isOpen={registeringId !== null || modalSuccessData !== null || modalError !== null}
+          isRegistering={registeringId !== null}
+          project={selectedProjectForModal}
+          successData={modalSuccessData}
+          errorMessage={modalError}
+          onClose={() => {
+            setModalSuccessData(null);
+            setModalError(null);
+            setSelectedProjectForModal(null);
+          }}
+        />
       </main>
       <Footer />
     </>
