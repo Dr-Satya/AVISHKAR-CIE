@@ -5,6 +5,40 @@ import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
+const SCHOOL_ACRONYM_MAP: Record<string, string> = {
+  COHSFE: "Centre Of Excellence: Occupational Health, Safety, Fire & Environment",
+  SOAS: "School of Agricultural Sciences",
+  SOES: "School of Engineering & Sciences",
+  SOLA: "School of Liberal Arts",
+  SOHT: "School of Hospitality & Tourism",
+};
+
+function getDepartmentVariants(department: string): string[] {
+  const variants = new Set<string>([department]);
+  const trimmed = department.trim();
+  const upper = trimmed.toUpperCase();
+  if (SCHOOL_ACRONYM_MAP[upper]) {
+    variants.add(SCHOOL_ACRONYM_MAP[upper]);
+  }
+  for (const [acronym, fullName] of Object.entries(SCHOOL_ACRONYM_MAP)) {
+    if (fullName.toLowerCase() === trimmed.toLowerCase()) {
+      variants.add(acronym);
+    }
+  }
+  return Array.from(variants);
+}
+
+function normalizeGender(rawGender?: string | null): string {
+  if (!rawGender) return "Unspecified";
+  const trimmed = String(rawGender).trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "female" || lower === "f") return "Female";
+  if (lower === "male" || lower === "m") return "Male";
+  if (lower === "other" || lower === "o") return "Other";
+  if (lower === "unspecified") return "Unspecified";
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
@@ -108,6 +142,7 @@ export async function GET(req: NextRequest) {
       studentId: string;
       enrollmentNumber: string;
       studentName: string;
+      studentGender: string | null;
       studentDepartment: string;
       programme: string | null;
       semester: number | bigint;
@@ -128,6 +163,7 @@ export async function GET(req: NextRequest) {
         s.id as studentId,
         s.enrollmentNumber as enrollmentNumber,
         s.name as studentName,
+        s.gender as studentGender,
         s.department as studentDepartment,
         s.programme as programme,
         s.semester as semester,
@@ -161,6 +197,7 @@ export async function GET(req: NextRequest) {
           id: r.studentId,
           enrollmentNumber: r.enrollmentNumber,
           name: r.studentName,
+          gender: normalizeGender(r.studentGender),
           department: r.studentDepartment,
           programme: r.programme,
           semester: parseNum(r.semester),
@@ -190,7 +227,29 @@ export async function GET(req: NextRequest) {
       projectsByFacultyId.get(p.facultyId)!.push(p);
     }
 
-    // 6. Compute Faculty Marks Submission Metrics
+    // 6. Fetch marks submission audit records to distinguish legitimate 0 marks from unsubmitted
+    const marksSharedLogs = await prisma.auditLog.findMany({
+      where: {
+        action: "FACULTY_MARKS_SHARED",
+      },
+      select: {
+        target: true,
+        metadata: true,
+      },
+    });
+    const sharedProjectCodes = new Set<string>();
+    const sharedProjectIds = new Set<string>();
+    for (const log of marksSharedLogs) {
+      if (log.target) sharedProjectCodes.add(log.target);
+      if (log.metadata) {
+        try {
+          const parsed = JSON.parse(log.metadata);
+          if (parsed.projectId) sharedProjectIds.add(parsed.projectId);
+        } catch {}
+      }
+    }
+
+    // 7. Compute Faculty Marks Submission Metrics
     let facultyMarksSharedCount = 0;
     let facultyMarksPartialCount = 0;
     let facultyMarksPendingCount = 0;
@@ -201,12 +260,19 @@ export async function GET(req: NextRequest) {
 
       facProjects.forEach((proj) => {
         const pRegs = regsByProjectId.get(proj.id) || [];
+        const projectHasMarksAudit =
+          sharedProjectCodes.has(proj.projectId) || sharedProjectIds.has(proj.id);
+
         pRegs.forEach((r) => {
           if (!facultyStudentsMap.has(r.studentId)) {
             const internalMarks = r.internalMarks != null ? parseNum(r.internalMarks) : 0;
             const externalMarks = r.externalMarks != null ? parseNum(r.externalMarks) : 0;
             const attendancePercent = r.attendancePercent != null ? parseNum(r.attendancePercent, 100) : 100;
-            const marksShared = internalMarks > 0 || externalMarks > 0;
+            const marksShared =
+              internalMarks > 0 ||
+              externalMarks > 0 ||
+              (projectHasMarksAudit && (r.internalMarks != null || r.externalMarks != null));
+
             facultyStudentsMap.set(r.studentId, {
               studentId: r.studentId,
               enrollmentNumber: r.enrollmentNumber,
@@ -263,10 +329,24 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 7. Compute KPIs
+    // 8. Compute KPIs and Department Cohort Visibility
     const totalProjects = projects.length;
     const totalFaculty = facultyList.length;
+    const facultyWithStudentsCount = formattedFaculty.filter((f) => f.studentsCount > 0).length;
     const totalStudents = students.length;
+
+    const deptVariants = getDepartmentVariants(department);
+    const departmentEnrolledStudents = await prisma.student.count({
+      where: {
+        department: { in: deptVariants },
+      },
+    });
+    const departmentUnregisteredStudents = await prisma.student.count({
+      where: {
+        department: { in: deptVariants },
+        registration: null,
+      },
+    });
 
     let pendingCount = 0;
     let approvedCount = 0;
@@ -285,6 +365,7 @@ export async function GET(req: NextRequest) {
       kpis: {
         totalProjects,
         totalFaculty,
+        facultyWithStudentsCount,
         totalStudents,
         pendingCount,
         approvedCount,
@@ -293,6 +374,8 @@ export async function GET(req: NextRequest) {
         facultyMarksSharedCount,
         facultyMarksPartialCount,
         facultyMarksPendingCount,
+        departmentEnrolledStudents,
+        departmentUnregisteredStudents,
       },
       faculty: formattedFaculty,
       projects: projects.map((p) => {
@@ -354,6 +437,7 @@ export async function GET(req: NextRequest) {
             id: r.studentId,
             enrollment: r.enrollmentNumber,
             name: r.studentName,
+            gender: normalizeGender(r.studentGender),
             department: r.studentDepartment,
             programme: r.programme,
             semester: parseNum(r.semester),

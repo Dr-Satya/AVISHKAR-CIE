@@ -2,15 +2,23 @@ import React from "react";
 import { KpiData } from "@/types/admin";
 
 interface KpiStatsProps {
-  kpi: KpiData;
+  kpi?: KpiData | null;
 }
 
 export function KpiStats({ kpi }: KpiStatsProps) {
+  const safeKpi = kpi || {
+    totalStudents: 0,
+    totalProjects: 0,
+    totalRegistrations: 0,
+    totalCapacity: 0,
+    seatsFilledRatio: "0/0",
+  };
+
   const cards = [
-    { label: "Total Students", value: kpi.totalStudents.toLocaleString(), tag: "Enrolled", color: "from-[#c59b27]/20 to-transparent" },
-    { label: "Project Tracks", value: kpi.totalProjects.toLocaleString(), tag: "Active", color: "from-blue-500/10 to-transparent" },
-    { label: "Total Registrations", value: kpi.totalRegistrations.toLocaleString(), tag: "Allocated", color: "from-emerald-500/10 to-transparent" },
-    { label: "Seats Filled Ratio", value: kpi.seatsFilledRatio, tag: "Capacity", color: "from-amber-500/10 to-transparent" },
+    { label: "Total Students", value: (safeKpi.totalStudents ?? 0).toLocaleString(), tag: "Enrolled", color: "from-[#c59b27]/20 to-transparent" },
+    { label: "Project Tracks", value: (safeKpi.totalProjects ?? 0).toLocaleString(), tag: "Active", color: "from-blue-500/10 to-transparent" },
+    { label: "Total Registrations", value: (safeKpi.totalRegistrations ?? 0).toLocaleString(), tag: "Allocated", color: "from-emerald-500/10 to-transparent" },
+    { label: "Seats Filled Ratio", value: safeKpi.seatsFilledRatio || "0/0", tag: "Capacity", color: "from-amber-500/10 to-transparent" },
   ];
 
   return (

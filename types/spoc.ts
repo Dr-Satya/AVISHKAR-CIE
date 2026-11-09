@@ -75,6 +75,7 @@ export interface ProjectData {
     id: string;
     enrollment: string;
     name: string;
+    gender?: string | null;
     department: string;
     programme?: string;
     semester: number;
@@ -122,6 +123,7 @@ export interface StudentRecord {
   id: string;
   enrollmentNumber: string;
   name: string;
+  gender?: string | null;
   department: string;
   programme?: string;
   semester: number;
@@ -141,6 +143,7 @@ export interface StudentRecord {
 export interface SpocKpis {
   totalProjects: number;
   totalFaculty: number;
+  facultyWithStudentsCount?: number;
   totalStudents: number;
   pendingCount: number;
   approvedCount: number;
@@ -149,4 +152,8 @@ export interface SpocKpis {
   facultyMarksSharedCount?: number;
   facultyMarksPendingCount?: number;
   facultyMarksPartialCount?: number;
+  departmentEnrolledStudents?: number;
+  departmentUnregisteredStudents?: number;
 }
+
+export type DepartmentKpis = SpocKpis;

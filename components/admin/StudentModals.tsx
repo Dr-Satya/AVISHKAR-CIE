@@ -18,6 +18,13 @@ interface StudentModalsProps {
   onDeleteStudent: () => void;
 }
 
+function matchGenderOption(gender?: string | null): string {
+  const g = (gender || "").trim().toLowerCase();
+  if (g === "female" || g === "f") return "Female";
+  if (g === "other" || g === "o") return "Other";
+  return "Male";
+}
+
 export function StudentModals({
   showAddModal,
   setShowAddModal,
@@ -161,7 +168,7 @@ export function StudentModals({
                     Gender
                   </label>
                   <select
-                    value={studentForm.gender || "Male"}
+                    value={matchGenderOption(studentForm.gender)}
                     onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137] bg-white"
                   >
@@ -425,7 +432,7 @@ export function StudentModals({
                     Gender
                   </label>
                   <select
-                    value={studentForm.gender || "Male"}
+                    value={matchGenderOption(studentForm.gender)}
                     onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137] bg-white"
                   >

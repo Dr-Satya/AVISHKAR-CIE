@@ -7,12 +7,15 @@ import { SpocKpis } from "@/types/spoc";
 interface SpocKpisCardProps {
   kpis: SpocKpis;
   department: string;
+  facultyList?: Array<{ studentsCount: number }>;
 }
 
-export function SpocKpisCard({ kpis, department }: SpocKpisCardProps) {
+export function SpocKpisCard({ kpis, department, facultyList }: SpocKpisCardProps) {
+  const activeFacultyCount =
+    kpis.facultyWithStudentsCount ??
+    (facultyList ? facultyList.filter((f) => f.studentsCount > 0).length : (kpis.totalFaculty || 0));
   const sharedCount = kpis.facultyMarksSharedCount ?? 0;
-  const totalFaculty = kpis.totalFaculty || 0;
-  const sharedPercent = totalFaculty > 0 ? Math.round((sharedCount / totalFaculty) * 100) : 0;
+  const sharedPercent = activeFacultyCount > 0 ? Math.round((sharedCount / activeFacultyCount) * 100) : 0;
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -24,7 +27,7 @@ export function SpocKpisCard({ kpis, department }: SpocKpisCardProps) {
           <Briefcase className="w-4 h-4 text-blue-600" />
         </div>
         <div className="text-2xl font-bold text-[#0d2137] mt-2">
-          {kpis.totalProjects}
+          {kpis.totalProjects ?? 0}
         </div>
         <div className="text-[11px] text-slate-500 mt-0.5">
           Across department faculty
@@ -39,7 +42,7 @@ export function SpocKpisCard({ kpis, department }: SpocKpisCardProps) {
           <Clock className="w-4 h-4 text-amber-600" />
         </div>
         <div className="text-2xl font-bold text-amber-600 mt-2">
-          {kpis.pendingCount}
+          {kpis.pendingCount ?? 0}
         </div>
         <div className="text-[11px] text-slate-500 mt-0.5">
           Requires SPOC action
@@ -54,10 +57,10 @@ export function SpocKpisCard({ kpis, department }: SpocKpisCardProps) {
           <Building2 className="w-4 h-4 text-purple-600" />
         </div>
         <div className="text-2xl font-bold text-[#0d2137] mt-2">
-          {kpis.totalFaculty}
+          {kpis.totalFaculty ?? 0}
         </div>
         <div className="text-[11px] text-slate-500 mt-0.5">
-          In {department.slice(0, 20)}...
+          In {(department || "").slice(0, 20)}...
         </div>
       </div>
 
@@ -70,14 +73,18 @@ export function SpocKpisCard({ kpis, department }: SpocKpisCardProps) {
         </div>
         <div className="flex items-baseline gap-2 mt-2">
           <span className="text-2xl font-bold text-emerald-700">
-            {sharedCount}/{totalFaculty}
+            {activeFacultyCount > 0 ? `${sharedCount}/${activeFacultyCount}` : "—"}
           </span>
-          <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-            {sharedPercent}%
-          </span>
+          {activeFacultyCount > 0 ? (
+            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+              {sharedPercent}%
+            </span>
+          ) : null}
         </div>
         <div className="text-[11px] text-slate-500 mt-0.5">
-          {kpis.facultyMarksPendingCount ?? 0} faculty pending
+          {activeFacultyCount > 0
+            ? `${sharedCount}/${activeFacultyCount} Active Mentors (${sharedPercent}%)`
+            : "No active faculty mentors"}
         </div>
       </div>
 
@@ -89,10 +96,12 @@ export function SpocKpisCard({ kpis, department }: SpocKpisCardProps) {
           <Users className="w-4 h-4 text-green-600" />
         </div>
         <div className="text-2xl font-bold text-[#0d2137] mt-2">
-          {kpis.totalStudents}
+          {kpis.totalStudents ?? 0}
         </div>
         <div className="text-[11px] text-slate-500 mt-0.5">
-          Active in department
+          {kpis.departmentUnregisteredStudents != null
+            ? `${kpis.departmentUnregisteredStudents} unallocated in cohort`
+            : "Active in department"}
         </div>
       </div>
     </div>

@@ -342,6 +342,7 @@ export function SpocStudentsTab({
             <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
               <th className="py-3 px-3">Enrollment No.</th>
               <th className="py-3 px-3">Student Name</th>
+              <th className="py-3 px-2 text-center">Gender</th>
               <th className="py-3 px-3">Branch / Programme</th>
               <th className="py-3 px-2 text-center">Attendance (%)</th>
               <th className="py-3 px-2 text-center">Internals (/50)</th>
@@ -354,7 +355,7 @@ export function SpocStudentsTab({
           <tbody className="divide-y divide-slate-100">
             {studentList.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-8 text-center text-slate-400">
+                <td colSpan={10} className="py-8 text-center text-slate-400">
                   No students currently enrolled in this department&apos;s projects.
                 </td>
               </tr>
@@ -376,6 +377,38 @@ export function SpocStudentsTab({
                         </div>
                       )}
                     </td>
+
+                    {/* Gender */}
+                    <td className="py-3 px-2 text-center">
+                      {(() => {
+                        const gLower = (std.gender || "").trim().toLowerCase();
+                        const isFemale = gLower === "female" || gLower === "f";
+                        const isMale = gLower === "male" || gLower === "m";
+                        const isOther = gLower === "other" || gLower === "o";
+                        const displayGender = isFemale
+                          ? "Female"
+                          : isMale
+                          ? "Male"
+                          : isOther
+                          ? "Other"
+                          : std.gender?.trim() || "Unspecified";
+
+                        return (
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              isFemale
+                                ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                : isMale
+                                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                : "bg-slate-100 text-slate-600 border border-slate-200"
+                            }`}
+                          >
+                            {displayGender}
+                          </span>
+                        );
+                      })()}
+                    </td>
+
                     <td className="py-3 px-3 text-slate-600">{std.programme || "—"}</td>
 
                     {/* Attendance */}

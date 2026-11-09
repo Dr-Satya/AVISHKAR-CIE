@@ -48,11 +48,17 @@ export default function SpocPortalPage() {
   const [kpis, setKpis] = useState<SpocKpis>({
     totalProjects: 0,
     totalFaculty: 0,
+    facultyWithStudentsCount: 0,
     totalStudents: 0,
     pendingCount: 0,
     approvedCount: 0,
     rejectedCount: 0,
     notSubmittedCount: 0,
+    facultyMarksSharedCount: 0,
+    facultyMarksPendingCount: 0,
+    facultyMarksPartialCount: 0,
+    departmentEnrolledStudents: 0,
+    departmentUnregisteredStudents: 0,
   });
 
   // Data lists
@@ -219,6 +225,7 @@ export default function SpocPortalPage() {
           "Sr. No": idx + 1,
           "Enrollment Number": s.enrollmentNumber,
           "Student Name": s.name,
+          Gender: s.gender || "Unspecified",
           Department: s.department,
           Programme: s.programme || "N/A",
           Semester: s.semester,
@@ -231,7 +238,7 @@ export default function SpocPortalPage() {
           "External Marks (/50)": hasExt ? extMarks : "Pending",
           "Total Marks (/100)": isSubmitted ? totMarks : "Pending",
           "Marks Status": isSubmitted ? "Submitted" : "Pending",
-          "Registration Date": s.registeredAt.split("T")[0],
+          "Registration Date": s.registeredAt ? s.registeredAt.split("T")[0] : "N/A",
         };
       });
       const title = `SPOC_${safeDept}_Students`;
@@ -526,7 +533,7 @@ export default function SpocPortalPage() {
           onLogout={handleLogout}
         />
 
-        <SpocKpisCard kpis={kpis} department={department} />
+        <SpocKpisCard kpis={kpis} department={department} facultyList={facultyList} />
 
         {/* Navigation Tabs */}
         <div className="flex items-center border-b border-slate-200 gap-2 overflow-x-auto scrollbar-none whitespace-nowrap pb-0.5">
@@ -540,9 +547,9 @@ export default function SpocPortalPage() {
           >
             <FolderCheck className="w-4 h-4 shrink-0" />
             <span>Project Verification ({projects.length})</span>
-            {kpis.pendingCount > 0 && (
+            {(kpis?.pendingCount ?? 0) > 0 && (
               <span className="px-2 py-0.2 rounded-full bg-amber-500 text-white text-[10px]">
-                {kpis.pendingCount}
+                {kpis?.pendingCount ?? 0}
               </span>
             )}
           </button>
