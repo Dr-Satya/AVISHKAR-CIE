@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       // 2. IMPORT FACULTY
       else if (importType === "FACULTY") {
         const defaultPasscode = process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026";
-        const passcodeHash = await bcrypt.hash(defaultPasscode, 10);
+        const passcodeHash = await bcrypt.hash(defaultPasscode, 8);
 
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
       // 3. IMPORT SPOC
       else if (importType === "SPOC") {
         const defaultPasscode = process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026";
-        const passcodeHash = await bcrypt.hash(defaultPasscode, 10);
+        const passcodeHash = await bcrypt.hash(defaultPasscode, 8);
 
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
@@ -197,8 +197,8 @@ export async function POST(req: NextRequest) {
             }
 
             await prisma.spoc.upsert({
-              where: { department },
-              update: { email, name, facultyId: faculty.id },
+              where: { email },
+              update: { department, name, facultyId: faculty.id },
               create: { email, name, department, passcodeHash, facultyId: faculty.id },
             });
             insertedCount++;
@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
       // 4. IMPORT PROJECTS (Supports CHC Service Report & Custom Proposal formats)
       else if (importType === "PROJECTS") {
         const defaultPasscode = process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026";
-        const passcodeHash = await bcrypt.hash(defaultPasscode, 10);
+        const passcodeHash = await bcrypt.hash(defaultPasscode, 8);
 
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
@@ -360,7 +360,7 @@ export async function POST(req: NextRequest) {
       // 5. IMPORT COHORTS (Exact IDP Cohorts Details 5Sep-2026 format)
       else if (importType === "COHORTS") {
         const defaultPasscode = process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026";
-        const passcodeHash = await bcrypt.hash(defaultPasscode, 10);
+        const passcodeHash = await bcrypt.hash(defaultPasscode, 8);
 
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];

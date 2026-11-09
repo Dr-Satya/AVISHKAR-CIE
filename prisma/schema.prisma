@@ -78,7 +78,7 @@ model Spoc {
   id           String    @id @default(cuid())
   email        String    @unique
   name         String
-  department   String    @unique
+  department   String
   passcodeHash String
   facultyId    String?   @unique
   faculty      Faculty?  @relation(fields: [facultyId], references: [id], onDelete: SetNull)

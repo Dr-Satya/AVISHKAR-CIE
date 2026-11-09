@@ -133,3 +133,25 @@ export interface AdminFormData {
   email: string;
   passcode: string;
 }
+
+export interface SpocRecord {
+  id: string;
+  name: string;
+  email: string;
+  spocEmail?: string;
+  department: string;
+  facultyId?: string | null;
+  facultyName?: string;
+  facultyEmail?: string;
+  createdAt?: string;
+}
+
+export interface SpocFormData {
+  id?: string;
+  name: string;
+  email: string;
+  department: string;
+  passcode?: string;
+  facultyId?: string;
+}
+

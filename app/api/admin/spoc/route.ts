@@ -7,6 +7,15 @@ import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
+function canonicalDepartment(dept: string): string {
+  if (!dept) return "";
+  const trimmed = dept.trim();
+  if (/^Cent(er|re)\s+of\s+Aerospace\s+and\s+Energy\s+Studies$/i.test(trimmed)) {
+    return "Centre of Aerospace and Energy Studies";
+  }
+  return trimmed;
+}
+
 function getDepartmentSlug(dept: string): string {
   const map: Record<string, string> = {
     "School of Engineering & Sciences": "engineering",
@@ -24,6 +33,19 @@ function getDepartmentSlug(dept: string): string {
   return map[dept] || dept.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10);
 }
 
+const DEFAULT_DEPARTMENTS = [
+  "Centre of Aerospace and Energy Studies",
+  "Centre Of Excellence: Occupational Health, Safety, Fire & Environment",
+  "School of Agricultural Sciences",
+  "School of Engineering & Sciences",
+  "School of Healthcare and Allied Sciences",
+  "School of Hospitality & Tourism",
+  "School of Law",
+  "School of Liberal Arts",
+  "School of Management",
+  "United World Institute of Design (UID)",
+];
+
 export async function GET() {
   try {
     const session = await getSession();
@@ -31,15 +53,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    // 1. Get all unique departments from faculty
-    const deptRows = await prisma.faculty.findMany({
-      select: { department: true },
-      distinct: ["department"],
-      orderBy: { department: "asc" },
-    });
-    const departments = deptRows.map((d) => d.department).filter(Boolean);
-
-    // 2. Get all SPOC profiles
+    // 1. Get all SPOC profiles
     const spocProfiles = await prisma.spoc.findMany({
       include: {
         faculty: {
@@ -52,29 +66,10 @@ export async function GET() {
           },
         },
       },
-      orderBy: { department: "asc" },
+      orderBy: [{ department: "asc" }, { name: "asc" }],
     });
 
-    // 3. Map SPOCs by department as array
-    const spocByDepartment: Record<string, any[]> = {};
-    spocProfiles.forEach((s) => {
-      const item = {
-        id: s.id,
-        name: s.name,
-        email: s.email, // Dedicated SPOC login email
-        department: s.department,
-        facultyId: s.facultyId,
-        facultyName: s.faculty?.name || "N/A",
-        facultyEmail: s.faculty?.email || "N/A",
-        createdAt: safeIsoString(s.createdAt) || "",
-      };
-      if (!spocByDepartment[s.department]) {
-        spocByDepartment[s.department] = [];
-      }
-      spocByDepartment[s.department].push(item);
-    });
-
-    // 4. Get all faculty list for dropdown selection
+    // 2. Get all faculty list for dropdown selection (optional association)
     const allFaculty = await prisma.faculty.findMany({
       select: {
         id: true,
@@ -87,15 +82,48 @@ export async function GET() {
       orderBy: [{ department: "asc" }, { name: "asc" }],
     });
 
+    // 3. Derive unique canonical departments
+    const deptSet = new Set<string>(DEFAULT_DEPARTMENTS.map(canonicalDepartment));
+    allFaculty.forEach((f) => {
+      if (f.department) deptSet.add(canonicalDepartment(f.department));
+    });
+    spocProfiles.forEach((s) => {
+      if (s.department) deptSet.add(canonicalDepartment(s.department));
+    });
+    const departments = Array.from(deptSet).sort();
+
+    // 4. Map SPOCs by canonical department as array (supports MULTIPLE SPOCs per school)
+    const spocByDepartment: Record<string, any[]> = {};
+    spocProfiles.forEach((s) => {
+      const canonDept = canonicalDepartment(s.department);
+      const item = {
+        id: s.id,
+        name: s.name,
+        email: s.email, // Dedicated SPOC login email
+        department: canonDept,
+        facultyId: s.facultyId,
+        facultyName: s.faculty?.name || "N/A",
+        facultyEmail: s.faculty?.email || "N/A",
+        createdAt: safeIsoString(s.createdAt) || "",
+      };
+      if (!spocByDepartment[canonDept]) {
+        spocByDepartment[canonDept] = [];
+      }
+      spocByDepartment[canonDept].push(item);
+    });
+
     return NextResponse.json({
       departments,
       spocs: spocProfiles.map((s) => ({
         id: s.id,
         name: s.name,
         spocEmail: s.email,
-        department: s.department,
-        facultyName: s.faculty?.name,
-        facultyEmail: s.faculty?.email,
+        email: s.email,
+        department: canonicalDepartment(s.department),
+        facultyId: s.facultyId,
+        facultyName: s.faculty?.name || "N/A",
+        facultyEmail: s.faculty?.email || "N/A",
+        createdAt: safeIsoString(s.createdAt) || "",
       })),
       spocByDepartment,
       facultyList: allFaculty,
@@ -116,27 +144,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
+    const body = await req.json();
     const {
-      facultyId,
+      id,
+      spocId,
       department,
+      name,
+      email,
+      spocEmail,
+      passcode,
+      spocPasscode,
+      facultyId,
       isSpoc,
-      spocEmail: customEmail,
-      spocPasscode: customPasscode,
       action = "ASSIGN",
-    } = await req.json();
+    } = body;
 
-    if (!department) {
-      return NextResponse.json({ error: "Department is required." }, { status: 400 });
-    }
+    const targetDept = canonicalDepartment(department || "");
+    const cleanId = id || spocId;
+    const cleanEmail = (email || spocEmail || "").toLowerCase().trim();
+    const cleanPasscode = (passcode || spocPasscode || "").trim();
+    const cleanName = (name || "").trim();
+    const linkedFacultyId = facultyId || null;
 
-    const slug = getDepartmentSlug(department);
-
-    // 1. REVOKE SPOC
-    if (isSpoc === false || action === "REVOKE") {
-      // Find existing SPOC record
-      const existingSpoc = await prisma.spoc.findUnique({
-        where: { department },
-      });
+    // 1. DELETE / REVOKE / REMOVE SPOC
+    if (isSpoc === false || action === "REVOKE" || action === "DELETE" || action === "REMOVE") {
+      let existingSpoc = null;
+      if (cleanId) {
+        existingSpoc = await prisma.spoc.findUnique({ where: { id: cleanId } });
+      }
+      if (!existingSpoc && cleanEmail) {
+        existingSpoc = await prisma.spoc.findUnique({ where: { email: cleanEmail } });
+      }
+      if (!existingSpoc && targetDept) {
+        existingSpoc = await prisma.spoc.findFirst({ where: { department: targetDept } });
+      }
 
       if (existingSpoc) {
         if (existingSpoc.facultyId) {
@@ -145,7 +186,7 @@ export async function POST(req: NextRequest) {
             data: { isSpoc: false, spocDepartment: null },
           });
         }
-        await prisma.spoc.delete({ where: { department } });
+        await prisma.spoc.delete({ where: { id: existingSpoc.id } });
       } else if (facultyId) {
         await prisma.faculty.update({
           where: { id: facultyId },
@@ -153,55 +194,49 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const auditDept = existingSpoc?.department || targetDept;
       await prisma.auditLog.create({
         data: {
           actor: session.name,
           actorRole: "ADMIN",
-          action: "SPOC_REVOKED",
-          target: department,
-          metadata: JSON.stringify({ department }),
+          action: "SPOC_DELETED",
+          target: `${existingSpoc?.email || "Unknown"} (${auditDept})`,
+          metadata: JSON.stringify({ department: auditDept, spocId: existingSpoc?.id }),
         },
       });
 
-      broadcastEvent("spoc.updated", { department, isSpoc: false });
+      broadcastEvent("spoc.updated", { department: auditDept, isSpoc: false });
 
       return NextResponse.json({
         success: true,
-        message: `SPOC profile revoked for ${department}.`,
+        message: `SPOC profile for ${auditDept} removed successfully.`,
       });
     }
 
     // 2. RESET PASSCODE FOR EXISTING SPOC
     if (action === "RESET_PASSCODE") {
-      let existingSpoc = await prisma.spoc.findUnique({
-        where: { department },
-        include: { faculty: true },
-      });
-
-      if (!existingSpoc && facultyId) {
-        existingSpoc = await prisma.spoc.findUnique({
-          where: { facultyId },
-          include: { faculty: true },
-        });
+      let existingSpoc = null;
+      if (cleanId) {
+        existingSpoc = await prisma.spoc.findUnique({ where: { id: cleanId } });
       }
-
-      if (!existingSpoc && customEmail) {
-        existingSpoc = await prisma.spoc.findUnique({
-          where: { email: customEmail.toLowerCase().trim() },
-          include: { faculty: true },
-        });
+      if (!existingSpoc && cleanEmail) {
+        existingSpoc = await prisma.spoc.findUnique({ where: { email: cleanEmail } });
+      }
+      if (!existingSpoc && targetDept) {
+        existingSpoc = await prisma.spoc.findFirst({ where: { department: targetDept } });
       }
 
       if (!existingSpoc) {
-        return NextResponse.json({ error: "No SPOC profile found for this department." }, { status: 404 });
+        return NextResponse.json({ error: "No SPOC profile found to update passcode." }, { status: 404 });
       }
 
-      if (customPasscode && customPasscode.trim().length < 6) {
+      if (cleanPasscode && cleanPasscode.length < 6) {
         return NextResponse.json({ error: "New passcode must be at least 6 characters long." }, { status: 400 });
       }
 
-      const newPasscode = customPasscode ? customPasscode.trim() : `spoc@${slug}2026`;
-      const passcodeHash = await bcrypt.hash(newPasscode, 10);
+      const slug = getDepartmentSlug(existingSpoc.department);
+      const newPasscode = cleanPasscode || `spoc@${slug}2026`;
+      const passcodeHash = await bcrypt.hash(newPasscode, 8);
 
       await prisma.spoc.update({
         where: { id: existingSpoc.id },
@@ -213,8 +248,8 @@ export async function POST(req: NextRequest) {
           actor: session.name,
           actorRole: "ADMIN",
           action: "SPOC_PASSCODE_RESET",
-          target: `${existingSpoc.email} (${department})`,
-          metadata: JSON.stringify({ department, email: existingSpoc.email }),
+          target: `${existingSpoc.email} (${existingSpoc.department})`,
+          metadata: JSON.stringify({ department: existingSpoc.department, email: existingSpoc.email }),
         },
       });
 
@@ -228,97 +263,237 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. ASSIGN / CREATE SPOC PROFILE
-    if (!facultyId) {
-      return NextResponse.json({ error: "Faculty member selection is required to assign SPOC." }, { status: 400 });
+    // 3. EDIT / UPDATE EXISTING SPOC (Name, Email, Department, optional Passcode, optional FacultyId)
+    if (action === "EDIT" || action === "UPDATE" || (cleanId && action !== "CREATE")) {
+      const existingSpoc = await prisma.spoc.findUnique({ where: { id: cleanId } });
+      if (!existingSpoc) {
+        return NextResponse.json({ error: "SPOC profile not found for editing." }, { status: 404 });
+      }
+
+      const newDept = targetDept || existingSpoc.department;
+      const newEmail = cleanEmail || existingSpoc.email;
+      const newName = cleanName || existingSpoc.name;
+
+      // Validate email uniqueness if changing email
+      if (newEmail !== existingSpoc.email) {
+        const emailConflict = await prisma.spoc.findUnique({ where: { email: newEmail } });
+        if (emailConflict && emailConflict.id !== existingSpoc.id) {
+          return NextResponse.json(
+            { error: `The email "${newEmail}" is already in use by SPOC "${emailConflict.name}" (${emailConflict.department}).` },
+            { status: 400 }
+          );
+        }
+      }
+
+      const updateData: any = {
+        name: newName,
+        email: newEmail,
+        department: newDept,
+      };
+
+      if (linkedFacultyId !== undefined) {
+        updateData.facultyId = linkedFacultyId;
+      }
+
+      if (cleanPasscode) {
+        if (cleanPasscode.length < 6) {
+          return NextResponse.json({ error: "Passcode must be at least 6 characters long." }, { status: 400 });
+        }
+        updateData.passcodeHash = await bcrypt.hash(cleanPasscode, 8);
+      }
+
+      const updatedSpoc = await prisma.spoc.update({
+        where: { id: existingSpoc.id },
+        data: updateData,
+        include: { faculty: true },
+      });
+
+      if (linkedFacultyId) {
+        await prisma.faculty.update({
+          where: { id: linkedFacultyId },
+          data: { isSpoc: true, spocDepartment: newDept },
+        });
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          actor: session.name,
+          actorRole: "ADMIN",
+          action: "SPOC_EDITED",
+          target: `${updatedSpoc.email} (${updatedSpoc.department})`,
+          metadata: JSON.stringify({ spocId: updatedSpoc.id, email: updatedSpoc.email, department: updatedSpoc.department }),
+        },
+      });
+
+      broadcastEvent("spoc.updated", { department: updatedSpoc.department, spocId: updatedSpoc.id, isSpoc: true });
+
+      return NextResponse.json({
+        success: true,
+        message: `SPOC profile for ${updatedSpoc.name} updated successfully.`,
+        spoc: updatedSpoc,
+      });
     }
 
-    const faculty = await prisma.faculty.findUnique({ where: { id: facultyId } });
-    if (!faculty) {
-      return NextResponse.json({ error: "Selected faculty member not found." }, { status: 404 });
+    // 4. CREATE NEW / ADDITIONAL SPOC (Allows MULTIPLE SPOCs per department!)
+    if (!targetDept) {
+      return NextResponse.json({ error: "School / Department is required." }, { status: 400 });
     }
 
-    // Generate dedicated SPOC credentials separate from faculty
-    const spocEmail = (customEmail || `spoc.${slug}@gdgu.org`).toLowerCase().trim();
-    const spocPasscode = customPasscode || `spoc@${slug}2026`;
-    const passcodeHash = await bcrypt.hash(spocPasscode, 10);
+    if (!cleanEmail) {
+      return NextResponse.json({ error: "Login email is required." }, { status: 400 });
+    }
 
-    // Upsert SPOC profile
-    const spocProfile = await prisma.spoc.upsert({
-      where: { department },
-      create: {
-        name: `${faculty.name} (SPOC)`,
-        email: spocEmail,
-        department,
+    // Check email conflict with existing SPOC
+    const emailConflict = await prisma.spoc.findUnique({ where: { email: cleanEmail } });
+    if (emailConflict) {
+      return NextResponse.json(
+        {
+          error: `The email "${cleanEmail}" is already assigned to SPOC "${emailConflict.name}" (${emailConflict.department}). Please use a unique email address or edit that SPOC profile.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const slug = getDepartmentSlug(targetDept);
+    const spocNameFinal = cleanName || `${targetDept} Coordinator`;
+    const spocPasscodeFinal = cleanPasscode || `spoc@${slug}2026`;
+
+    if (spocPasscodeFinal.length < 6) {
+      return NextResponse.json({ error: "Passcode must be at least 6 characters long." }, { status: 400 });
+    }
+
+    const passcodeHash = await bcrypt.hash(spocPasscodeFinal, 8);
+
+    // Optional faculty linkage if facultyId passed or email matches an existing faculty
+    let finalFacultyId: string | null = linkedFacultyId;
+    if (!finalFacultyId) {
+      const matchedFaculty = await prisma.faculty.findUnique({ where: { email: cleanEmail } });
+      if (matchedFaculty) {
+        finalFacultyId = matchedFaculty.id;
+      }
+    }
+
+    // Create a new SPOC record in database (never overwriting existing SPOCs)
+    const spocProfile = await prisma.spoc.create({
+      data: {
+        name: spocNameFinal,
+        email: cleanEmail,
+        department: targetDept,
         passcodeHash,
-        facultyId: faculty.id,
-      },
-      update: {
-        name: `${faculty.name} (SPOC)`,
-        email: spocEmail,
-        passcodeHash,
-        facultyId: faculty.id,
+        facultyId: finalFacultyId,
       },
       include: { faculty: true },
     });
 
-    // Mark faculty record
-    await prisma.faculty.update({
-      where: { id: faculty.id },
-      data: {
-        isSpoc: true,
-        spocDepartment: department,
-      },
-    });
+    if (finalFacultyId) {
+      await prisma.faculty.update({
+        where: { id: finalFacultyId },
+        data: {
+          isSpoc: true,
+          spocDepartment: targetDept,
+        },
+      });
+    }
 
-    // Audit log
     await prisma.auditLog.create({
       data: {
         actor: session.name,
         actorRole: "ADMIN",
         action: "SPOC_PROFILE_CREATED",
-        target: `${spocEmail} (${department})`,
+        target: `${cleanEmail} (${targetDept})`,
         metadata: JSON.stringify({
           spocId: spocProfile.id,
-          spocEmail,
-          department,
-          facultyId: faculty.id,
-          facultyName: faculty.name,
-          facultyEmail: faculty.email,
+          spocEmail: cleanEmail,
+          department: targetDept,
+          name: spocNameFinal,
         }),
       },
     });
 
-    // Broadcast SSE
     broadcastEvent("spoc.updated", {
-      department,
+      department: targetDept,
       spocId: spocProfile.id,
-      facultyId: faculty.id,
       isSpoc: true,
     });
 
     return NextResponse.json({
       success: true,
+      message: `SPOC profile for ${spocNameFinal} (${targetDept}) created successfully!`,
       spoc: {
         id: spocProfile.id,
         name: spocProfile.name,
         spocLoginEmail: spocProfile.email,
-        spocPasscode,
+        spocPasscode: spocPasscodeFinal,
         department: spocProfile.department,
-        facultyName: faculty.name,
-        facultyEmail: faculty.email,
+        facultyName: spocProfile.faculty?.name || spocProfile.name,
+        facultyEmail: spocProfile.faculty?.email || spocProfile.email,
       },
       credentials: {
         spocLoginEmail: spocProfile.email,
-        spocPasscode,
-        facultyLoginEmail: faculty.email,
-        note: "SPOC login credentials and Faculty login credentials are now completely separate.",
+        spocPasscode: spocPasscodeFinal,
       },
     });
   } catch (error: any) {
     console.error("Admin SPOC update error:", error);
     return NextResponse.json(
       { error: cleanErrorMessage(error, "Failed to update SPOC profile.") },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const url = new URL(req.url);
+    const id = url.searchParams.get("id");
+    const department = url.searchParams.get("department");
+
+    let existingSpoc = null;
+    if (id) {
+      existingSpoc = await prisma.spoc.findUnique({ where: { id } });
+    }
+    if (!existingSpoc && department) {
+      existingSpoc = await prisma.spoc.findFirst({ where: { department: canonicalDepartment(department) } });
+    }
+
+    if (!existingSpoc) {
+      return NextResponse.json({ error: "SPOC profile not found." }, { status: 404 });
+    }
+
+    if (existingSpoc.facultyId) {
+      await prisma.faculty.update({
+        where: { id: existingSpoc.facultyId },
+        data: { isSpoc: false, spocDepartment: null },
+      });
+    }
+
+    await prisma.spoc.delete({ where: { id: existingSpoc.id } });
+
+    await prisma.auditLog.create({
+      data: {
+        actor: session.name,
+        actorRole: "ADMIN",
+        action: "SPOC_DELETED",
+        target: `${existingSpoc.email} (${existingSpoc.department})`,
+        metadata: JSON.stringify({ department: existingSpoc.department, spocId: existingSpoc.id }),
+      },
+    });
+
+    broadcastEvent("spoc.updated", { department: existingSpoc.department, isSpoc: false });
+
+    return NextResponse.json({
+      success: true,
+      message: `SPOC profile for ${existingSpoc.name} (${existingSpoc.department}) deleted successfully.`,
+    });
+  } catch (error: any) {
+    console.error("Admin SPOC delete error:", error);
+    return NextResponse.json(
+      { error: cleanErrorMessage(error, "Failed to delete SPOC profile.") },
       { status: 500 }
     );
   }
