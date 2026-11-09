@@ -33,28 +33,27 @@ async function getAdminProjectGlobalStats(): Promise<GlobalProjectStats> {
     return cachedGlobalProjectStats.data;
   }
 
-  const [
-    totalProjectsCount,
-    completedCount,
-    pendingCount,
-    rejectedCount,
-    notSubmittedCount,
-    allProjectsSample,
-  ] = await Promise.all([
-    prisma.project.count(),
-    prisma.project.count({ where: { submissionStatus: "APPROVED" } }),
-    prisma.project.count({ where: { submissionStatus: "PENDING" } }),
-    prisma.project.count({ where: { submissionStatus: "REJECTED" } }),
-    prisma.project.count({ where: { submissionStatus: "NOT_SUBMITTED" } }),
-    prisma.project.findMany({
-      select: {
-        department: true,
-        submissionStatus: true,
-        semester: true,
-        artifacts: { select: { semester: true, type: true } },
-      },
-    }),
-  ]);
+  const allProjectsSample = await prisma.project.findMany({
+    select: {
+      department: true,
+      submissionStatus: true,
+      semester: true,
+      artifacts: { select: { semester: true, type: true } },
+    },
+  });
+
+  const totalProjectsCount = allProjectsSample.length;
+  let completedCount = 0;
+  let pendingCount = 0;
+  let rejectedCount = 0;
+  let notSubmittedCount = 0;
+
+  for (const p of allProjectsSample) {
+    if (p.submissionStatus === "APPROVED") completedCount++;
+    else if (p.submissionStatus === "PENDING") pendingCount++;
+    else if (p.submissionStatus === "REJECTED") rejectedCount++;
+    else notSubmittedCount++;
+  }
 
   let bothSemestersCompletedCount = 0;
   let sem1OnlyCount = 0;
@@ -113,7 +112,18 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
-    if (searchParams.get("all") === "true") {
+    const isExport =
+      searchParams.get("export") === "true" ||
+      searchParams.get("export") === "tabular" ||
+      searchParams.get("unpaginated") === "true";
+
+    const isFiltered =
+      Boolean(searchParams.get("search")?.trim()) ||
+      (searchParams.has("category") && searchParams.get("category") !== "all") ||
+      (searchParams.has("status") && searchParams.get("status") !== "all") ||
+      (searchParams.has("school") && searchParams.get("school") !== "all");
+
+    if (searchParams.get("all") === "true" && !isExport && !isFiltered && searchParams.get("simple") !== "false") {
       const allProjects = await prisma.project.findMany({
         orderBy: { projectId: "asc" },
         include: {
@@ -182,29 +192,28 @@ export async function GET(req: NextRequest) {
         }
         sql += ` ORDER BY p.department ASC, p.projectId ASC`;
 
-        const [projectsRes, artifactsRes, studentsRes] = await Promise.all([
-          cfDb.prepare(sql).bind(...params).all(),
-          cfDb.prepare(`
-            SELECT id, projectId, type, title, fileName, fileUrl, fileSize, semester, similarityPercent, aiPercent, plagiarismReportFileName, plagiarismReportUrl, status, submittedAt
-            FROM ProjectArtifact
-            ORDER BY createdAt DESC
-          `).all(),
-          cfDb.prepare(`
-            SELECT 
-              r.projectId, 
-              s.enrollmentNumber, 
-              s.name, 
-              s.department, 
-              s.programme, 
-              s.semester, 
-              s.batch, 
-              s.attendancePercent, 
-              s.internalMarks, 
-              s.externalMarks 
-            FROM Registration r 
-            JOIN Student s ON r.studentId = s.id
-          `).all(),
-        ]);
+        // Sequential execution on D1 to avoid concurrency contention
+        const projectsRes = await cfDb.prepare(sql).bind(...params).all();
+        const artifactsRes = await cfDb.prepare(`
+          SELECT id, projectId, type, title, fileName, fileUrl, fileSize, semester, similarityPercent, aiPercent, plagiarismReportFileName, plagiarismReportUrl, status, submittedAt
+          FROM ProjectArtifact
+          ORDER BY createdAt DESC
+        `).all();
+        const studentsRes = await cfDb.prepare(`
+          SELECT 
+            r.projectId, 
+            s.enrollmentNumber, 
+            s.name, 
+            s.department, 
+            s.programme, 
+            s.semester, 
+            s.batch, 
+            s.attendancePercent, 
+            s.internalMarks, 
+            s.externalMarks 
+          FROM Registration r 
+          JOIN Student s ON r.studentId = s.id
+        `).all();
 
         const artifactsByProject: Record<string, any[]> = {};
         for (const a of artifactsRes.results || []) {
@@ -281,59 +290,59 @@ export async function GET(req: NextRequest) {
       if (statusFilter !== "all") where.submissionStatus = statusFilter;
       if (schoolFilter !== "all") where.department = schoolFilter;
 
-      const [projectsWithFiles, enrolledStudentsRaw] = await Promise.all([
-        prisma.project.findMany({
-          where,
-          orderBy: [{ department: "asc" }, { projectId: "asc" }],
-          include: {
-            faculty: { select: { name: true, email: true, department: true } },
-            artifacts: {
-              orderBy: { createdAt: "desc" },
-              select: {
-                id: true,
-                type: true,
-                title: true,
-                fileName: true,
-                fileUrl: true,
-                fileSize: true,
-                semester: true,
-                similarityPercent: true,
-                aiPercent: true,
-                plagiarismReportFileName: true,
-                plagiarismReportUrl: true,
-                status: true,
-                submittedAt: true,
-              },
+      // Sequential execution to eliminate WASM Prisma lock contention
+      const projectsWithFiles = await prisma.project.findMany({
+        where,
+        orderBy: [{ department: "asc" }, { projectId: "asc" }],
+        include: {
+          faculty: { select: { name: true, email: true, department: true } },
+          artifacts: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              type: true,
+              title: true,
+              fileName: true,
+              fileUrl: true,
+              fileSize: true,
+              semester: true,
+              similarityPercent: true,
+              aiPercent: true,
+              plagiarismReportFileName: true,
+              plagiarismReportUrl: true,
+              status: true,
+              submittedAt: true,
             },
           },
-        }),
-        prisma.$queryRaw<Array<{
-          projectId: string;
-          enrollmentNumber: string;
-          name: string;
-          department: string;
-          programme: string;
-          semester: number | null;
-          batch: string;
-          attendancePercent: number | null;
-          internalMarks: number | null;
-          externalMarks: number | null;
-        }>>`
-          SELECT 
-            r.projectId, 
-            s.enrollmentNumber, 
-            s.name, 
-            s.department, 
-            s.programme, 
-            s.semester, 
-            s.batch, 
-            s.attendancePercent, 
-            s.internalMarks, 
-            s.externalMarks 
-          FROM Registration r 
-          JOIN Student s ON r.studentId = s.id
-        `,
-      ]);
+        },
+      });
+
+      const enrolledStudentsRaw = await prisma.$queryRaw<Array<{
+        projectId: string;
+        enrollmentNumber: string;
+        name: string;
+        department: string;
+        programme: string;
+        semester: number | null;
+        batch: string;
+        attendancePercent: number | null;
+        internalMarks: number | null;
+        externalMarks: number | null;
+      }>>`
+        SELECT 
+          r.projectId, 
+          s.enrollmentNumber, 
+          s.name, 
+          s.department, 
+          s.programme, 
+          s.semester, 
+          s.batch, 
+          s.attendancePercent, 
+          s.internalMarks, 
+          s.externalMarks 
+        FROM Registration r 
+        JOIN Student s ON r.studentId = s.id
+      `;
 
       const studentsByProject: Record<string, any[]> = {};
       for (const s of enrolledStudentsRaw) {
@@ -395,6 +404,11 @@ export async function GET(req: NextRequest) {
   const statusFilter = searchParams.get("status") || "all";
   const schoolFilter = searchParams.get("school") || "all";
 
+  const isExportQuery =
+    isExport ||
+    (searchParams.get("all") === "true" && searchParams.get("simple") === "false") ||
+    (searchParams.get("all") === "true" && isFiltered);
+
   const where: Prisma.ProjectWhereInput = {};
 
   if (search) {
@@ -419,55 +433,53 @@ export async function GET(req: NextRequest) {
     where.department = schoolFilter;
   }
 
-  const [total, projects, stats] = await Promise.all([
-    prisma.project.count({ where }),
-    prisma.project.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { projectId: "asc" },
-      include: {
-        faculty: { select: { name: true, department: true } },
-        registrations: {
-          select: {
-            id: true,
-            student: {
-              select: {
-                id: true,
-                enrollmentNumber: true,
-                name: true,
-                department: true,
-                programme: true,
-                attendancePercent: true,
-                internalMarks: true,
-                externalMarks: true,
-              },
+  // Sequential execution to eliminate WASM lock contention on D1
+  const total = await prisma.project.count({ where });
+  const projects = await prisma.project.findMany({
+    where,
+    ...(isExportQuery ? {} : { skip: (page - 1) * limit, take: limit }),
+    orderBy: { projectId: "asc" },
+    include: {
+      faculty: { select: { name: true, department: true } },
+      registrations: {
+        select: {
+          id: true,
+          student: {
+            select: {
+              id: true,
+              enrollmentNumber: true,
+              name: true,
+              department: true,
+              programme: true,
+              attendancePercent: true,
+              internalMarks: true,
+              externalMarks: true,
             },
           },
         },
-        artifacts: {
-          select: {
-            id: true,
-            type: true,
-            title: true,
-            fileName: true,
-            fileUrl: true,
-            fileSize: true,
-            semester: true,
-            academicYear: true,
-            similarityPercent: true,
-            aiPercent: true,
-            plagiarismReportUrl: true,
-            plagiarismReportFileName: true,
-            status: true,
-            spocNote: true,
-            submittedAt: true,
-          },
+      },
+      artifacts: {
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          fileName: true,
+          fileUrl: true,
+          fileSize: true,
+          semester: true,
+          academicYear: true,
+          similarityPercent: true,
+          aiPercent: true,
+          plagiarismReportUrl: true,
+          plagiarismReportFileName: true,
+          status: true,
+          spocNote: true,
+          submittedAt: true,
         },
       },
-    }),
-    getAdminProjectGlobalStats(),
-  ]);
+    },
+  });
+  const stats = await getAdminProjectGlobalStats();
 
   const {
     totalProjectsCount,
@@ -585,11 +597,12 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     projects: rows,
+    total: isExportQuery ? rows.length : total,
     pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
+      page: isExportQuery ? 1 : page,
+      limit: isExportQuery ? rows.length : limit,
+      total: isExportQuery ? rows.length : total,
+      totalPages: isExportQuery ? 1 : Math.ceil(total / limit),
     },
     completionStats: {
       total: totalProjectsCount,

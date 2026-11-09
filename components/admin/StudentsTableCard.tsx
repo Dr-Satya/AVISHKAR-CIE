@@ -50,9 +50,11 @@ interface StudentsTableCardProps {
   setStudentSortOrder: (v: "asc" | "desc") => void;
   unregisteredStats?: {
     totalUnregistered: number;
+    total?: number;
     bySchool: Record<string, number>;
     byBranch: Record<string, number>;
     byGender: Record<string, number>;
+    hasGenderData?: boolean;
   };
   filterOptions?: {
     schools: string[];
@@ -113,6 +115,34 @@ export function StudentsTableCard({
   onUnmapClick,
 }: StudentsTableCardProps) {
   const [selectedStudentDetails, setSelectedStudentDetails] = React.useState<any | null>(null);
+  const [exportingType, setExportingType] = React.useState<"csv" | "xlsx" | "pdf" | null>(null);
+
+  const fetchAllStudentsForExport = async (): Promise<any[]> => {
+    if (studentTotal === 0) return [];
+    if (studentTotal <= students.length && students.length > 0) {
+      return students;
+    }
+
+    const params = new URLSearchParams({
+      export: "true",
+      search: studentSearch || "",
+      registered: studentFilter || "all",
+      academicYear: studentAcademicYear || "",
+      school: studentSchool || "all",
+      branch: studentBranch || "all",
+      gender: studentGender || "all",
+      sortBy: studentSortBy || "enrollmentNumber",
+      sortOrder: studentSortOrder || "asc",
+    });
+
+    const res = await fetch(`/api/admin/students?${params.toString()}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to fetch student records for export.");
+    }
+    const data = await res.json();
+    return data.students || [];
+  };
 
   const handleSortToggle = (columnKey: string) => {
     let nextOrder: "asc" | "desc" = "asc";
@@ -145,75 +175,117 @@ export function StudentsTableCard({
     );
   };
 
-  const handleExportCsv = () => {
-    const rows = students.map((s, idx) => ({
-      "Sr. No": idx + 1,
-      "Enrollment Number": s.enrollment,
-      "Student Name": s.name,
-      "Gender": s.gender || "Unspecified",
-      "School": s.department,
-      "Branch": s.program || "N/A",
-      "Semester": s.sem,
-      "Batch": s.batch,
-      "Academic Year": s.academicYear || "2025-2026",
-      "Phone": s.phone || "N/A",
-      "Phone Verified": s.phoneVerified ? "Yes" : "No",
-      "Attendance (%)": `${s.attendance}%`,
-      "Internal Marks (/50)": s.internals,
-      "External Marks (/50)": s.externals,
-      "Total Marks (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
-      "Registered": s.registered ? "Yes" : "No",
-      "Project Code": s.projectCode || "N/A",
-      "Project Title": s.projectTitle || "N/A",
-      "Project Category": s.projectCategory || "N/A",
-      "Faculty Guide": s.facultyName || "N/A",
-      "Faculty Email": s.facultyEmail || "N/A",
-    }));
-    exportToCsv(rows, `GDGU_Students_${studentFilter.toUpperCase()}`);
+  const handleExportCsv = async () => {
+    if (exportingType) return;
+    setExportingType("csv");
+    try {
+      const exportStudents = await fetchAllStudentsForExport();
+      if (!exportStudents || exportStudents.length === 0) {
+        alert("No student records found to export.");
+        return;
+      }
+      const rows = exportStudents.map((s, idx) => ({
+        "Sr. No": idx + 1,
+        "Enrollment Number": s.enrollment,
+        "Student Name": s.name,
+        "Gender": s.gender || "Unspecified",
+        "School": s.department,
+        "Branch": s.program || "N/A",
+        "Semester": s.sem,
+        "Batch": s.batch,
+        "Academic Year": s.academicYear || "2025-2026",
+        "Phone": s.phone || "N/A",
+        "Phone Verified": s.phoneVerified ? "Yes" : "No",
+        "Attendance (%)": `${s.attendance}%`,
+        "Internal Marks (/50)": s.internals,
+        "External Marks (/50)": s.externals,
+        "Total Marks (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
+        "Registered": s.registered ? "Yes" : "No",
+        "Project Code": s.projectCode || "N/A",
+        "Project Title": s.projectTitle || "N/A",
+        "Project Category": s.projectCategory || "N/A",
+        "Faculty Guide": s.facultyName || "N/A",
+        "Faculty Email": s.facultyEmail || "N/A",
+      }));
+      await exportToCsv(rows, `GDGU_Students_${studentFilter.toUpperCase()}`);
+    } catch (err: any) {
+      console.error("Export CSV error:", err);
+      alert(err.message || "Failed to export CSV.");
+    } finally {
+      setExportingType(null);
+    }
   };
 
-  const handleExportXlsx = () => {
-    const rows = students.map((s, idx) => ({
-      "Sr. No": idx + 1,
-      "Enrollment Number": s.enrollment,
-      "Student Name": s.name,
-      "Gender": s.gender || "Unspecified",
-      "School": s.department,
-      "Branch": s.program || "N/A",
-      "Semester": s.sem,
-      "Batch": s.batch,
-      "Academic Year": s.academicYear || "2025-2026",
-      "Phone": s.phone || "N/A",
-      "Phone Verified": s.phoneVerified ? "Yes" : "No",
-      "Attendance (%)": `${s.attendance}%`,
-      "Internal Marks (/50)": s.internals,
-      "External Marks (/50)": s.externals,
-      "Total Marks (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
-      "Registered": s.registered ? "Yes" : "No",
-      "Project Code": s.projectCode || "N/A",
-      "Project Title": s.projectTitle || "N/A",
-      "Project Category": s.projectCategory || "N/A",
-      "Faculty Guide": s.facultyName || "N/A",
-      "Faculty Email": s.facultyEmail || "N/A",
-    }));
-    exportToXlsx(rows, `GDGU_Students_${studentFilter.toUpperCase()}`, "Students");
+  const handleExportXlsx = async () => {
+    if (exportingType) return;
+    setExportingType("xlsx");
+    try {
+      const exportStudents = await fetchAllStudentsForExport();
+      if (!exportStudents || exportStudents.length === 0) {
+        alert("No student records found to export.");
+        return;
+      }
+      const rows = exportStudents.map((s, idx) => ({
+        "Sr. No": idx + 1,
+        "Enrollment Number": s.enrollment,
+        "Student Name": s.name,
+        "Gender": s.gender || "Unspecified",
+        "School": s.department,
+        "Branch": s.program || "N/A",
+        "Semester": s.sem,
+        "Batch": s.batch,
+        "Academic Year": s.academicYear || "2025-2026",
+        "Phone": s.phone || "N/A",
+        "Phone Verified": s.phoneVerified ? "Yes" : "No",
+        "Attendance (%)": `${s.attendance}%`,
+        "Internal Marks (/50)": s.internals,
+        "External Marks (/50)": s.externals,
+        "Total Marks (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
+        "Registered": s.registered ? "Yes" : "No",
+        "Project Code": s.projectCode || "N/A",
+        "Project Title": s.projectTitle || "N/A",
+        "Project Category": s.projectCategory || "N/A",
+        "Faculty Guide": s.facultyName || "N/A",
+        "Faculty Email": s.facultyEmail || "N/A",
+      }));
+      await exportToXlsx(rows, `GDGU_Students_${studentFilter.toUpperCase()}`, "Students");
+    } catch (err: any) {
+      console.error("Export Excel error:", err);
+      alert(err.message || "Failed to export Excel.");
+    } finally {
+      setExportingType(null);
+    }
   };
 
-  const handleExportPdf = () => {
-    const rows = students.map((s, idx) => ({
-      "Sr. No": idx + 1,
-      "Enrollment": s.enrollment,
-      "Name": s.name,
-      "School": s.department,
-      "Branch": s.program || "N/A",
-      "Attendance %": `${s.attendance}%`,
-      "Internals (/50)": s.internals,
-      "Externals (/50)": s.externals,
-      "Total (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
-      "Status": s.registered ? "Registered" : "Unregistered",
-      "Project": s.projectCode || "N/A",
-    }));
-    exportToPdf(rows, `GDGU Student Academic & Registration Roster (${studentFilter.toUpperCase()})`);
+  const handleExportPdf = async () => {
+    if (exportingType) return;
+    setExportingType("pdf");
+    try {
+      const exportStudents = await fetchAllStudentsForExport();
+      if (!exportStudents || exportStudents.length === 0) {
+        alert("No student records found to export.");
+        return;
+      }
+      const rows = exportStudents.map((s, idx) => ({
+        "Sr. No": idx + 1,
+        "Enrollment": s.enrollment,
+        "Name": s.name,
+        "School": s.department,
+        "Branch": s.program || "N/A",
+        "Attendance %": `${s.attendance}%`,
+        "Internals (/50)": s.internals,
+        "Externals (/50)": s.externals,
+        "Total (/100)": Number(s.internals ?? 0) + Number(s.externals ?? 0),
+        "Status": s.registered ? "Registered" : "Unregistered",
+        "Project": s.projectCode || "N/A",
+      }));
+      exportToPdf(rows, `GDGU Student Academic & Registration Roster (${studentFilter.toUpperCase()})`);
+    } catch (err: any) {
+      console.error("Export PDF error:", err);
+      alert(err.message || "Failed to export PDF.");
+    } finally {
+      setExportingType(null);
+    }
   };
 
   const isUnregisteredMode = studentFilter === "no";
@@ -306,29 +378,50 @@ export function StudentsTableCard({
             <button
               type="button"
               onClick={handleExportCsv}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1"
+              disabled={exportingType !== null}
+              className={`px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 flex items-center gap-1 transition-colors ${
+                exportingType !== null ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
               title="Export CSV"
             >
-              <FileText className="w-3.5 h-3.5 text-blue-600" />
-              <span>CSV</span>
+              {exportingType === "csv" ? (
+                <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+              ) : (
+                <FileText className="w-3.5 h-3.5 text-blue-600" />
+              )}
+              <span>{exportingType === "csv" ? "Exporting..." : "CSV"}</span>
             </button>
             <button
               type="button"
               onClick={handleExportXlsx}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1"
+              disabled={exportingType !== null}
+              className={`px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 flex items-center gap-1 transition-colors ${
+                exportingType !== null ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
               title="Export Excel"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" />
-              <span>Excel</span>
+              {exportingType === "xlsx" ? (
+                <Loader2 className="w-3.5 h-3.5 text-green-600 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" />
+              )}
+              <span>{exportingType === "xlsx" ? "Exporting..." : "Excel"}</span>
             </button>
             <button
               type="button"
               onClick={handleExportPdf}
-              className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1"
+              disabled={exportingType !== null}
+              className={`px-2 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 flex items-center gap-1 transition-colors ${
+                exportingType !== null ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
               title="Save PDF"
             >
-              <Download className="w-3.5 h-3.5 text-red-600" />
-              <span>PDF</span>
+              {exportingType === "pdf" ? (
+                <Loader2 className="w-3.5 h-3.5 text-red-600 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-red-600" />
+              )}
+              <span>{exportingType === "pdf" ? "Exporting..." : "PDF"}</span>
             </button>
           </div>
         </div>
@@ -346,24 +439,46 @@ export function StudentsTableCard({
               <AlertTriangle className={`w-4 h-4 ${isUnregisteredMode ? "text-amber-600" : "text-slate-500"}`} />
               <span>Unregistered Students Breakdown ({unregisteredStats.totalUnregistered} total without project seats)</span>
             </div>
-            <div className="flex items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span>Gender Split:</span>
-              <span className="text-blue-700 font-bold">Male: {unregisteredStats.byGender.Male || 0}</span>
-              <span>•</span>
-              <span className="text-purple-700 font-bold">Female: {unregisteredStats.byGender.Female || 0}</span>
-              {unregisteredStats.byGender.Other ? (
-                <>
+            {(() => {
+              const byGen = unregisteredStats.byGender || {};
+              const maleCount = byGen.Male ?? byGen.male ?? 0;
+              const femaleCount = byGen.Female ?? byGen.female ?? 0;
+              const otherCount = byGen.Other ?? byGen.other ?? 0;
+              const unspecifiedCount = byGen.Unspecified ?? byGen.unspecified ?? 0;
+              const hasGenderData =
+                typeof unregisteredStats.hasGenderData === "boolean"
+                  ? unregisteredStats.hasGenderData
+                  : (maleCount + femaleCount + otherCount) > 0;
+
+              if (!hasGenderData) return null;
+
+              return (
+                <div className="flex items-center gap-2 text-[11px] font-medium text-slate-500">
+                  <span>Gender Split:</span>
+                  <span className="text-blue-700 font-bold">Male: {maleCount}</span>
                   <span>•</span>
-                  <span className="text-slate-700 font-bold">Other: {unregisteredStats.byGender.Other}</span>
-                </>
-              ) : null}
-            </div>
+                  <span className="text-purple-700 font-bold">Female: {femaleCount}</span>
+                  {otherCount > 0 ? (
+                    <>
+                      <span>•</span>
+                      <span className="text-slate-700 font-bold">Other: {otherCount}</span>
+                    </>
+                  ) : null}
+                  {unspecifiedCount > 0 ? (
+                    <>
+                      <span>•</span>
+                      <span className="text-slate-400 font-medium">Unspecified: {unspecifiedCount}</span>
+                    </>
+                  ) : null}
+                </div>
+              );
+            })()}
           </div>
 
           {/* School pills */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-slate-500 font-semibold mr-1">School Breakdown:</span>
-            {Object.entries(unregisteredStats.bySchool).map(([schoolName, count]) => (
+            {Object.entries(unregisteredStats.bySchool || {}).map(([schoolName, count]) => (
               <button
                 key={schoolName}
                 type="button"
@@ -837,17 +952,33 @@ export function StudentsTableCard({
 
                     {/* Gender */}
                     <td className="py-3 px-2 text-center">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          st.gender === "Female"
-                            ? "bg-purple-50 text-purple-700 border border-purple-200"
-                            : st.gender === "Male"
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {st.gender || "—"}
-                      </span>
+                      {(() => {
+                        const gLower = (st.gender || "").trim().toLowerCase();
+                        const isFemale = gLower === "female" || gLower === "f";
+                        const isMale = gLower === "male" || gLower === "m";
+                        const isOther = gLower === "other" || gLower === "o";
+                        const displayGender = isFemale
+                          ? "Female"
+                          : isMale
+                          ? "Male"
+                          : isOther
+                          ? "Other"
+                          : st.gender?.trim() || "—";
+
+                        return (
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              isFemale
+                                ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                : isMale
+                                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {displayGender}
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     {/* School */}
@@ -1060,7 +1191,16 @@ export function StudentsTableCard({
               </div>
               <div>
                 <span className="text-slate-400 text-[10px] uppercase font-semibold">Gender</span>
-                <p className="font-bold text-slate-800">{selectedStudentDetails.gender || "Unspecified"}</p>
+                <p className="font-bold text-slate-800">
+                  {(() => {
+                    const g = (selectedStudentDetails.gender || "").trim().toLowerCase();
+                    if (g === "female" || g === "f") return "Female";
+                    if (g === "male" || g === "m") return "Male";
+                    if (g === "other" || g === "o") return "Other";
+                    if (!g || g === "unspecified") return "Unspecified";
+                    return selectedStudentDetails.gender;
+                  })()}
+                </p>
               </div>
               <div>
                 <span className="text-slate-400 text-[10px] uppercase font-semibold">Cohort</span>

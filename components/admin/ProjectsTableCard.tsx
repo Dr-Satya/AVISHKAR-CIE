@@ -7,6 +7,7 @@ import {
   AlertCircle,
   FileCheck,
   FileText,
+  FileSpreadsheet,
   BarChart3,
   School,
   FileUp,
@@ -29,6 +30,7 @@ import {
   ProgressInfo,
   ProjectExportData,
 } from "@/lib/zip-export";
+import { exportToCsv, exportToXlsx, exportToPdf } from "@/lib/export";
 import { cleanErrorMessage } from "@/lib/error-utils";
 
 interface CompletionStats {
@@ -219,6 +221,122 @@ export function ProjectsTableCard({
     }
   };
 
+  const [exportingFormat, setExportingFormat] = useState<"csv" | "xlsx" | "pdf" | null>(null);
+
+  const fetchAllProjectsForExport = async (): Promise<any[]> => {
+    if (projectTotal === 0) return [];
+    if (projectTotal <= projects.length && projects.length > 0) {
+      return projects;
+    }
+
+    const params = new URLSearchParams({
+      export: "true",
+      search: projectSearch || "",
+      category: projectCategoryFilter || "all",
+      status: projectStatusFilter || "all",
+      school: projectSchoolFilter || "all",
+    });
+
+    const res = await fetch(`/api/admin/projects?${params.toString()}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to fetch projects for export.");
+    }
+    const data = await res.json();
+    return data.projects || [];
+  };
+
+  const formatProjectRows = (data: any[]) =>
+    data.map((p, idx) => ({
+      "Sr. No": idx + 1,
+      "Project ID": p.projectId,
+      "Project Title": p.title,
+      "Faculty Mentor": p.faculty,
+      "School / Department": p.department,
+      "Category": p.category,
+      "Theme": p.theme || "N/A",
+      "Submission Status": p.submissionStatus || "NOT_SUBMITTED",
+      "Seats Ratio": p.seatsRatio,
+      "Enrolled Students Count": p.students?.length ?? p.seatsFilled ?? 0,
+      "Sem 1 Has Report": p.sem1HasReport ? "Yes" : "No",
+      "Sem 1 Docs Count": p.sem1DocsCount || 0,
+      "Sem 2 Has Report": p.sem2HasReport ? "Yes" : "No",
+      "Sem 2 Docs Count": p.sem2DocsCount || 0,
+      "Both Sems Submitted": p.bothSemestersSubmitted ? "Yes" : "No",
+      "Similarity (%)": p.similarityPercent != null ? `${p.similarityPercent}%` : "N/A",
+      "AI (%)": p.aiPercent != null ? `${p.aiPercent}%` : "N/A",
+      "Manuscript Status": p.isManuscriptPublished
+        ? "Published"
+        : p.hasCommunicatedManuscript
+        ? "Communicated"
+        : p.hasDraftManuscript
+        ? "In Draft"
+        : "Not Linked",
+      "Target Journal": p.journalName || "N/A",
+      "Publication DOI": p.publicationDoi || "N/A",
+    }));
+
+  const handleExportCsv = async () => {
+    if (exportingFormat) return;
+    setExportingFormat("csv");
+    try {
+      const exportData = await fetchAllProjectsForExport();
+      if (!exportData || exportData.length === 0) {
+        alert("No projects matched the selected filters to export.");
+        return;
+      }
+      await exportToCsv(
+        formatProjectRows(exportData),
+        `GDGU_Admin_Projects_${new Date().toISOString().slice(0, 10)}`
+      );
+    } catch (err: any) {
+      alert(cleanErrorMessage(err, "Failed to export projects CSV."));
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
+  const handleExportXlsx = async () => {
+    if (exportingFormat) return;
+    setExportingFormat("xlsx");
+    try {
+      const exportData = await fetchAllProjectsForExport();
+      if (!exportData || exportData.length === 0) {
+        alert("No projects matched the selected filters to export.");
+        return;
+      }
+      await exportToXlsx(
+        formatProjectRows(exportData),
+        `GDGU_Admin_Projects_${new Date().toISOString().slice(0, 10)}`,
+        "Projects"
+      );
+    } catch (err: any) {
+      alert(cleanErrorMessage(err, "Failed to export projects Excel."));
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (exportingFormat) return;
+    setExportingFormat("pdf");
+    try {
+      const exportData = await fetchAllProjectsForExport();
+      if (!exportData || exportData.length === 0) {
+        alert("No projects matched the selected filters to export.");
+        return;
+      }
+      exportToPdf(
+        formatProjectRows(exportData),
+        `GDGU Projects & Submissions Master Report (${projectSchoolFilter !== "all" ? projectSchoolFilter : "All Schools"})`
+      );
+    } catch (err: any) {
+      alert(cleanErrorMessage(err, "Failed to export projects PDF."));
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm relative space-y-6">
       <div className="w-10 h-1 bg-[#cda34f] rounded-full" />
@@ -236,7 +354,7 @@ export function ProjectsTableCard({
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleDownloadBulkZip}
-            disabled={downloadingBulk}
+            disabled={downloadingBulk || exportingFormat !== null}
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#0d2137] text-white hover:bg-[#16365c] text-xs font-semibold shadow-sm transition-all disabled:opacity-50"
             title="Download all submitted files, reports, manuscripts, and marks organized cleanly in a .zip archive"
           >
@@ -248,11 +366,62 @@ export function ProjectsTableCard({
             <span>Download All Files (.zip)</span>
           </button>
 
+          <div className="flex items-center gap-1.5 border-l pl-2 border-slate-200">
+            <button
+              type="button"
+              onClick={handleExportXlsx}
+              disabled={exportingFormat !== null || downloadingBulk}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 text-slate-700 flex items-center gap-1.5 transition-colors ${
+                exportingFormat !== null || downloadingBulk ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
+              title="Export Projects Excel (.xlsx)"
+            >
+              {exportingFormat === "xlsx" ? (
+                <Loader2 className="w-3.5 h-3.5 text-green-600 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" />
+              )}
+              <span>{exportingFormat === "xlsx" ? "Exporting..." : "Excel"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={exportingFormat !== null || downloadingBulk}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 text-slate-700 flex items-center gap-1.5 transition-colors ${
+                exportingFormat !== null || downloadingBulk ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
+              title="Export Projects CSV"
+            >
+              {exportingFormat === "csv" ? (
+                <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+              ) : (
+                <FileText className="w-3.5 h-3.5 text-blue-600" />
+              )}
+              <span>{exportingFormat === "csv" ? "Exporting..." : "CSV"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={exportingFormat !== null || downloadingBulk}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 text-slate-700 flex items-center gap-1.5 transition-colors ${
+                exportingFormat !== null || downloadingBulk ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
+              title="Print / Save PDF Report"
+            >
+              {exportingFormat === "pdf" ? (
+                <Loader2 className="w-3.5 h-3.5 text-red-600 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-red-600" />
+              )}
+              <span>{exportingFormat === "pdf" ? "Exporting..." : "PDF"}</span>
+            </button>
+          </div>
+
           {completionStats && (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
               <BarChart3 className="w-4 h-4 text-[#cda34f]" />
               <span className="font-semibold text-slate-700">Overall Completion:</span>
-              <span className="font-bold text-emerald-700">{completionStats.completionPercentage}%</span>
+              <span className="font-bold text-emerald-700">{completionStats.completionPercentage ?? 0}%</span>
             </div>
           )}
         </div>
@@ -376,7 +545,7 @@ export function ProjectsTableCard({
           )}
 
           {/* School Filter */}
-          {setProjectSchoolFilter && completionStats && (
+          {setProjectSchoolFilter && completionStats && completionStats.schoolBreakdown && (
             <select
               value={projectSchoolFilter}
               aria-label="Filter projects by school"
@@ -387,7 +556,7 @@ export function ProjectsTableCard({
               className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none bg-white text-slate-700 font-medium"
             >
               <option value="all">All Schools</option>
-              {Object.keys(completionStats.schoolBreakdown).map((sch) => (
+              {Object.keys(completionStats.schoolBreakdown || {}).map((sch) => (
                 <option key={sch} value={sch}>
                   {sch}
                 </option>
@@ -762,8 +931,18 @@ export function ProjectsTableCard({
                           <span className="font-semibold text-slate-800 truncate" title={art.title}>
                             {art.title || art.fileName}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 whitespace-nowrap">
-                            Sem {art.semester || 1} · {art.type}
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${
+                              art.type === "CONSENT_FORM"
+                                ? "bg-teal-100 text-teal-800 border border-teal-200"
+                                : art.type === "REPORT"
+                                ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                : art.type === "PPT"
+                                ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            Sem {art.semester || 1} · {art.type === "CONSENT_FORM" ? "Consent Form" : art.type}
                           </span>
                         </div>
 

@@ -6,11 +6,41 @@ import { cleanErrorMessage, safeIsoString, parseNum } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
+const SCHOOL_ACRONYM_MAP: Record<string, string> = {
+  COHSFE: "Centre Of Excellence: Occupational Health, Safety, Fire & Environment",
+  SOAS: "School of Agricultural Sciences",
+  SOES: "School of Engineering & Sciences",
+  SOLA: "School of Liberal Arts",
+  SOHT: "School of Hospitality & Tourism",
+};
+
+function normalizeSchoolName(dept?: string | null): string {
+  if (!dept) return "Other";
+  const trimmed = dept.trim();
+  const upper = trimmed.toUpperCase();
+  if (SCHOOL_ACRONYM_MAP[upper]) {
+    return SCHOOL_ACRONYM_MAP[upper];
+  }
+  return trimmed;
+}
+
+function normalizeGenderTitle(g?: string | null): string {
+  if (!g) return "Unspecified";
+  const trimmed = g.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "male" || lower === "m") return "Male";
+  if (lower === "female" || lower === "f") return "Female";
+  if (lower === "other" || lower === "o") return "Other";
+  if (lower === "unspecified") return "Unspecified";
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
 interface StudentAnalyticsCache {
   unregisteredTotal: number;
   unregBySchool: Record<string, number>;
   unregByBranch: Record<string, number>;
   unregByGender: Record<string, number>;
+  hasGenderData: boolean;
   allSchools: string[];
   allBranches: string[];
 }
@@ -35,39 +65,38 @@ async function getStudentAnalyticsAndDropdowns(academicYearFilter: string): Prom
     ...(academicYearFilter && academicYearFilter !== "all" ? { academicYear: academicYearFilter } : {}),
   };
 
-  const [unregisteredTotal, schoolCounts, branchCounts, genderCounts, allSchoolsRaw, allBranchesRaw] = await Promise.all([
-    prisma.student.count({ where: unregWhere }),
-    prisma.student.groupBy({
-      by: ["department"],
-      where: unregWhere,
-      _count: { id: true },
-    }),
-    prisma.student.groupBy({
-      by: ["programme"],
-      where: unregWhere,
-      _count: { id: true },
-    }),
-    prisma.student.groupBy({
-      by: ["gender"],
-      where: unregWhere,
-      _count: { id: true },
-    }),
-    prisma.student.findMany({
-      distinct: ["department"],
-      select: { department: true },
-      orderBy: { department: "asc" },
-    }),
-    prisma.student.findMany({
-      where: { programme: { not: null } },
-      distinct: ["programme"],
-      select: { programme: true },
-      orderBy: { programme: "asc" },
-    }),
-  ]);
+  // Execute sequentially to avoid D1 SQLite lock contention
+  const unregisteredTotal = await prisma.student.count({ where: unregWhere });
+  const schoolCounts = await prisma.student.groupBy({
+    by: ["department"],
+    where: unregWhere,
+    _count: { id: true },
+  });
+  const branchCounts = await prisma.student.groupBy({
+    by: ["programme"],
+    where: unregWhere,
+    _count: { id: true },
+  });
+  const genderCounts = await prisma.student.groupBy({
+    by: ["gender"],
+    where: unregWhere,
+    _count: { id: true },
+  });
+  const allSchoolsRaw = await prisma.student.findMany({
+    distinct: ["department"],
+    select: { department: true },
+    orderBy: { department: "asc" },
+  });
+  const allBranchesRaw = await prisma.student.findMany({
+    where: { programme: { not: null } },
+    distinct: ["programme"],
+    select: { programme: true },
+    orderBy: { programme: "asc" },
+  });
 
   const unregBySchool: Record<string, number> = {};
   for (const s of schoolCounts) {
-    const d = s.department || "Other";
+    const d = normalizeSchoolName(s.department);
     unregBySchool[d] = (unregBySchool[d] || 0) + s._count.id;
   }
 
@@ -79,19 +108,34 @@ async function getStudentAnalyticsAndDropdowns(academicYearFilter: string): Prom
 
   const unregByGender: Record<string, number> = { Male: 0, Female: 0, Other: 0, Unspecified: 0 };
   for (const g of genderCounts) {
-    const key = g.gender || "Unspecified";
-    if (key in unregByGender) {
-      unregByGender[key] += g._count.id;
+    const raw = (g.gender || "").trim();
+    if (!raw) {
+      unregByGender.Unspecified += g._count.id;
+      continue;
+    }
+    const lowerKey = raw.toLowerCase();
+    if (lowerKey === "male" || lowerKey === "m") {
+      unregByGender.Male += g._count.id;
+    } else if (lowerKey === "female" || lowerKey === "f") {
+      unregByGender.Female += g._count.id;
+    } else if (lowerKey === "other" || lowerKey === "o") {
+      unregByGender.Other += g._count.id;
+    } else if (lowerKey === "unspecified") {
+      unregByGender.Unspecified += g._count.id;
     } else {
-      unregByGender[key] = g._count.id;
+      const key = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+      unregByGender[key] = (unregByGender[key] || 0) + g._count.id;
     }
   }
+
+  const hasGenderData = (unregByGender.Male + unregByGender.Female + unregByGender.Other) > 0;
 
   const result: StudentAnalyticsCache = {
     unregisteredTotal,
     unregBySchool,
     unregByBranch,
     unregByGender,
+    hasGenderData,
     allSchools: allSchoolsRaw.map((s) => s.department).filter(Boolean),
     allBranches: allBranchesRaw.map((b) => b.programme).filter(Boolean) as string[],
   };
@@ -135,7 +179,15 @@ export async function GET(req: NextRequest) {
   }
 
   if (genderFilter && genderFilter !== "all") {
-    where.gender = genderFilter;
+    const lower = genderFilter.toLowerCase();
+    if (lower === "unspecified" || lower === "null") {
+      where.gender = null;
+    } else {
+      const upper = genderFilter.toUpperCase();
+      const title = lower.charAt(0).toUpperCase() + lower.slice(1);
+      const variants = Array.from(new Set([genderFilter, lower, upper, title]));
+      where.gender = { in: variants };
+    }
   }
 
   if (search) {
@@ -177,51 +229,34 @@ export async function GET(req: NextRequest) {
     orderByClause = { enrollmentNumber: sortOrder };
   }
 
-  const [total, students, analytics] = await Promise.all([
-    prisma.student.count({ where }),
-    prisma.student.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: orderByClause,
+  const isExport = searchParams.get("export") === "true" || searchParams.get("all") === "true";
+
+  const studentInclude = {
+    registration: {
       include: {
-        registration: {
-          include: {
-            project: {
-              select: {
-                id: true,
-                projectId: true,
-                title: true,
-                category: true,
-                faculty: {
-                  select: { name: true, email: true, phone: true },
-                },
-              },
+        project: {
+          select: {
+            id: true,
+            projectId: true,
+            title: true,
+            category: true,
+            faculty: {
+              select: { name: true, email: true, phone: true },
             },
           },
         },
       },
-    }),
-    getStudentAnalyticsAndDropdowns(academicYearFilter),
-  ]);
+    },
+  };
 
-  const {
-    unregisteredTotal,
-    unregBySchool,
-    unregByBranch,
-    unregByGender,
-    allSchools,
-    allBranches,
-  } = analytics;
-
-  const rows = students.map((s) => ({
+  const mapStudentRow = (s: any) => ({
     id: s.id,
     enrollment: s.enrollmentNumber,
     name: s.name,
     email: s.email || null,
     department: s.department,
     program: s.programme || "N/A",
-    gender: s.gender || "Unspecified",
+    gender: normalizeGenderTitle(s.gender),
     internals: parseNum(s.internalMarks, 0),
     externals: parseNum(s.externalMarks, 0),
     attendance: parseNum(s.attendancePercent, 100),
@@ -242,7 +277,51 @@ export async function GET(req: NextRequest) {
     facultyEmail: s.registration?.project?.faculty?.email || "",
     facultyPhone: s.registration?.project?.faculty?.phone || "",
     registeredAt: safeIsoString(s.registration?.createdAt),
-  }));
+  });
+
+  if (isExport) {
+    const students = await prisma.student.findMany({
+      where,
+      orderBy: orderByClause,
+      include: studentInclude,
+    });
+
+    const rows = students.map(mapStudentRow);
+
+    return NextResponse.json({
+      students: rows,
+      total: rows.length,
+      pagination: {
+        page: 1,
+        limit: rows.length,
+        total: rows.length,
+        totalPages: 1,
+      },
+    });
+  }
+
+  // Sequential execution to eliminate WASM isolate concurrency deadlocks
+  const total = await prisma.student.count({ where });
+  const students = await prisma.student.findMany({
+    where,
+    skip: (page - 1) * limit,
+    take: limit,
+    orderBy: orderByClause,
+    include: studentInclude,
+  });
+  const analytics = await getStudentAnalyticsAndDropdowns(academicYearFilter);
+
+  const {
+    unregisteredTotal,
+    unregBySchool,
+    unregByBranch,
+    unregByGender,
+    hasGenderData,
+    allSchools,
+    allBranches,
+  } = analytics;
+
+  const rows = students.map(mapStudentRow);
 
   return NextResponse.json({
     students: rows,
@@ -254,14 +333,16 @@ export async function GET(req: NextRequest) {
     },
     unregisteredStats: {
       totalUnregistered: unregisteredTotal,
+      total: unregisteredTotal,
       bySchool: unregBySchool,
       byBranch: unregByBranch,
       byGender: unregByGender,
+      hasGenderData,
     },
     filterOptions: {
       schools: allSchools,
       branches: allBranches,
-      genders: ["Male", "Female", "Other"],
+      genders: ["Male", "Female", "Other", "Unspecified"],
     },
   });
   } catch (err: any) {

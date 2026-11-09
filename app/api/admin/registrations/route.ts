@@ -14,6 +14,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
+    const isExport =
+      searchParams.get("export") === "true" ||
+      searchParams.get("all") === "true" ||
+      searchParams.get("unpaginated") === "true";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(10, parseInt(searchParams.get("limit") || "25", 10)));
     const search = searchParams.get("search")?.trim() || "";
@@ -32,23 +36,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const [total, registrations] = await Promise.all([
-      prisma.registration.count({ where }),
-      prisma.registration.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: "desc" },
-        include: {
-          student: true,
-          project: {
-            include: { faculty: true },
-          },
-        },
-      }),
-    ]);
-
-    const rows = registrations.map((r) => {
+    const mapRegistrationRow = (r: any) => {
       const d = new Date(r.createdAt);
       const formattedTimestamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
         d.getDate()
@@ -68,10 +56,54 @@ export async function GET(req: NextRequest) {
         status: r.status,
         theme: r.project.theme,
       };
+    };
+
+    if (isExport) {
+      const registrations = await prisma.registration.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: {
+          student: true,
+          project: {
+            include: { faculty: true },
+          },
+        },
+      });
+
+      const rows = registrations.map(mapRegistrationRow);
+
+      return NextResponse.json({
+        registrations: rows,
+        total: rows.length,
+        pagination: {
+          page: 1,
+          limit: rows.length,
+          total: rows.length,
+          totalPages: 1,
+        },
+      });
+    }
+
+    // Sequential execution to eliminate WASM lock contention on D1
+    const total = await prisma.registration.count({ where });
+    const registrations = await prisma.registration.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        student: true,
+        project: {
+          include: { faculty: true },
+        },
+      },
     });
+
+    const rows = registrations.map(mapRegistrationRow);
 
     return NextResponse.json({
       registrations: rows,
+      total,
       pagination: {
         page,
         limit,

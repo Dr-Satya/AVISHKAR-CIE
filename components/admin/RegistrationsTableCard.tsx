@@ -32,6 +32,40 @@ export function RegistrationsTableCard({
   onUnmapClick,
 }: RegistrationsTableCardProps) {
   const [downloadingCohorts, setDownloadingCohorts] = useState(false);
+  const [exportingType, setExportingType] = useState<"csv" | "xlsx" | "pdf" | null>(null);
+
+  const fetchAllRegistrationsForExport = async (): Promise<any[]> => {
+    if (registrationTotal === 0) return [];
+    if (registrationTotal <= registrations.length && registrations.length > 0) {
+      return registrations;
+    }
+
+    const params = new URLSearchParams({
+      export: "true",
+      search: registrationSearch || "",
+    });
+
+    const res = await fetch(`/api/admin/registrations?${params.toString()}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to fetch registrations for export.");
+    }
+    const data = await res.json();
+    return data.registrations || [];
+  };
+
+  const formatRegistrationRows = (data: any[]) =>
+    data.map((r, idx) => ({
+      "Sr. No": idx + 1,
+      Timestamp: r.timestamp,
+      Enrollment: r.enrollment,
+      "Student Name": r.studentName,
+      Department: r.department,
+      "Project Code": r.projectCode,
+      "Faculty Mentor": r.facultyName,
+      Status: r.status,
+      Theme: r.theme,
+    }));
 
   const handleDownloadFullCohorts = async () => {
     if (onDownloadCohorts) {
@@ -48,38 +82,65 @@ export function RegistrationsTableCard({
     }
   };
 
-  const handleExportCsv = () => {
-    const rows = registrations.map((r, idx) => ({
-      "Sr. No": idx + 1,
-      Timestamp: r.timestamp,
-      Enrollment: r.enrollment,
-      "Student Name": r.studentName,
-      Department: r.department,
-      "Project Code": r.projectCode,
-      "Faculty Mentor": r.facultyName,
-      Status: r.status,
-      Theme: r.theme,
-    }));
-    exportToCsv(rows, "GDGU_Admin_Registrations");
+  const handleExportCsv = async () => {
+    if (exportingType) return;
+    setExportingType("csv");
+    try {
+      const exportData = await fetchAllRegistrationsForExport();
+      if (!exportData || exportData.length === 0) {
+        alert("No registrations found to export.");
+        return;
+      }
+      await exportToCsv(
+        formatRegistrationRows(exportData),
+        `GDGU_Admin_Registrations_${registrationSearch ? "Filtered" : "All"}`
+      );
+    } catch (err: any) {
+      alert(cleanErrorMessage(err, "Failed to export registrations CSV."));
+    } finally {
+      setExportingType(null);
+    }
   };
 
-  const handleExportXlsx = () => {
-    handleDownloadFullCohorts();
+  const handleExportXlsx = async () => {
+    if (exportingType) return;
+    setExportingType("xlsx");
+    try {
+      const exportData = await fetchAllRegistrationsForExport();
+      if (!exportData || exportData.length === 0) {
+        alert("No registrations found to export.");
+        return;
+      }
+      await exportToXlsx(
+        formatRegistrationRows(exportData),
+        `GDGU_Admin_Registrations_${registrationSearch ? "Filtered" : "All"}`,
+        "Registrations"
+      );
+    } catch (err: any) {
+      alert(cleanErrorMessage(err, "Failed to export registrations Excel."));
+    } finally {
+      setExportingType(null);
+    }
   };
 
-  const handleExportPdf = () => {
-    const rows = registrations.map((r, idx) => ({
-      "Sr. No": idx + 1,
-      Timestamp: r.timestamp,
-      Enrollment: r.enrollment,
-      "Student Name": r.studentName,
-      Department: r.department,
-      "Project Code": r.projectCode,
-      "Faculty Mentor": r.facultyName,
-      Status: r.status,
-      Theme: r.theme,
-    }));
-    exportToPdf(rows, "GDGU Project Registrations Master Report");
+  const handleExportPdf = async () => {
+    if (exportingType) return;
+    setExportingType("pdf");
+    try {
+      const exportData = await fetchAllRegistrationsForExport();
+      if (!exportData || exportData.length === 0) {
+        alert("No registrations found to export.");
+        return;
+      }
+      exportToPdf(
+        formatRegistrationRows(exportData),
+        `GDGU Project Registrations Master Report (${registrationSearch ? "Filter: " + registrationSearch : "All Records"})`
+      );
+    } catch (err: any) {
+      alert(cleanErrorMessage(err, "Failed to export registrations PDF."));
+    } finally {
+      setExportingType(null);
+    }
   };
 
   return (
@@ -111,8 +172,10 @@ export function RegistrationsTableCard({
             <button
               type="button"
               onClick={handleDownloadFullCohorts}
-              disabled={downloadingCohorts}
-              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm transition-all"
+              disabled={downloadingCohorts || exportingType !== null}
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm transition-all ${
+                downloadingCohorts || exportingType !== null ? "opacity-60 cursor-not-allowed" : ""
+              }`}
               title="Download entire student cohort database in official IDP Cohorts Details (.xlsx) format"
             >
               {downloadingCohorts ? (
@@ -124,21 +187,51 @@ export function RegistrationsTableCard({
             </button>
             <button
               type="button"
+              onClick={handleExportXlsx}
+              disabled={exportingType !== null || downloadingCohorts}
+              className={`px-2 py-1 text-[11px] font-semibold rounded border border-slate-200 text-slate-700 flex items-center gap-1 transition-colors ${
+                exportingType !== null || downloadingCohorts ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
+              title="Export Registrations Excel (.xlsx)"
+            >
+              {exportingType === "xlsx" ? (
+                <Loader2 className="w-3 h-3 text-green-600 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-3 h-3 text-green-600" />
+              )}
+              <span>{exportingType === "xlsx" ? "Exporting..." : "Excel"}</span>
+            </button>
+            <button
+              type="button"
               onClick={handleExportCsv}
-              className="px-2 py-1 text-[11px] font-semibold rounded border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1"
+              disabled={exportingType !== null || downloadingCohorts}
+              className={`px-2 py-1 text-[11px] font-semibold rounded border border-slate-200 text-slate-700 flex items-center gap-1 transition-colors ${
+                exportingType !== null || downloadingCohorts ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
               title="Export Current View CSV"
             >
-              <FileText className="w-3 h-3 text-blue-600" />
-              <span>CSV</span>
+              {exportingType === "csv" ? (
+                <Loader2 className="w-3 h-3 text-blue-600 animate-spin" />
+              ) : (
+                <FileText className="w-3 h-3 text-blue-600" />
+              )}
+              <span>{exportingType === "csv" ? "Exporting..." : "CSV"}</span>
             </button>
             <button
               type="button"
               onClick={handleExportPdf}
-              className="px-2 py-1 text-[11px] font-semibold rounded border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1"
+              disabled={exportingType !== null || downloadingCohorts}
+              className={`px-2 py-1 text-[11px] font-semibold rounded border border-slate-200 text-slate-700 flex items-center gap-1 transition-colors ${
+                exportingType !== null || downloadingCohorts ? "opacity-60 cursor-not-allowed" : "hover:bg-slate-50"
+              }`}
               title="Print / Save PDF"
             >
-              <Download className="w-3 h-3 text-red-600" />
-              <span>PDF</span>
+              {exportingType === "pdf" ? (
+                <Loader2 className="w-3 h-3 text-red-600 animate-spin" />
+              ) : (
+                <Download className="w-3 h-3 text-red-600" />
+              )}
+              <span>{exportingType === "pdf" ? "Exporting..." : "PDF"}</span>
             </button>
           </div>
         </div>
