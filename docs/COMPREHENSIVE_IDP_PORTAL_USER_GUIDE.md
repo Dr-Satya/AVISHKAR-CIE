@@ -218,13 +218,17 @@ Once allocated:
 
 ### 6.1 Faculty Onboarding & Security Passcode Management
 1. Access `/faculty/login`.
-2. Login with official email and default passcode (`gdgu@2026`).
-3. Complete the mandatory phone number declaration modal.
+2. Login using either your official university email (`@gdgu.org`) OR your registered 10-digit mobile number, with your passcode (default: `gdgu@2026`).
+3. Complete the mandatory mobile number declaration and verification modal.
 4. Click **Change Passcode** in the top bar to update your account with a private, secure passcode.
 
 ### 6.2 Project Oversight & Real-Time Student Rosters
 - View all assigned projects on your dashboard.
 - Each card shows live capacity (e.g., `10/10 Allocated`), with separate counters for same-department and other-department students.
+- **Quick Action Buttons & Status Pills:**
+  - `+ Consent Form` and `+ Upload for Sem X` quick action buttons.
+  - Interactive status pills: `Final Report (Uploaded/Required)`, `Defense PPT (Uploaded/Required)`, `Consent Form (Uploaded/Pending)`.
+  - Direct `Blank Template (.docx)` download link for the official Student Publication Consent Form.
 - Expanding a project card reveals the live student roster.
 
 ### 6.3 Student Contact Verification & Roster Exporting
@@ -241,18 +245,21 @@ Once allocated:
 3. Define capacity (Max seats: 10, Same-dept: 4, Other-dept: 6).
 4. Click **Submit for SPOC Approval**.
 
-### 6.5 Capstone Deliverables & Plagiarism/AI Screening
-1. On your project card, click **Upload Deliverable**.
-2. Select type (`REPORT`, `PPT`, or `OTHER`).
+### 6.5 Capstone Deliverables, Plagiarism Screening & Consent Forms
+1. On your project card, click **+ Upload for Sem X** or click **+ Consent Form** (or click any status pill directly).
+2. Select type:
+   - `REPORT`: Comprehensive final/interim project report. Requires Turnitin similarity ($\le 10\%$), AI content ($\le 20\%$), and uploaded Turnitin PDF report.
+   - `PPT`: Presentation slide deck for defense.
+   - `CONSENT_FORM`: Official Student Consent Form for Publication. Download blank `.docx` template, get student & mentor signatures, verify Turnitin/AI thresholds and Avishkar CIE attribution, and upload signed `.docx` or `.pdf`.
+   - `OTHER`: Source code, dataset archives, patents.
 3. Attach the deliverable file.
-4. Input official **Similarity Index (%)** and **AI Content Index (%)** (both must be $\le 10\%$).
-5. Upload the certified Plagiarism Report PDF.
-6. Check the self-declaration box and submit for SPOC verification.
+4. Check the relevant declaration checkboxes and submit for SPOC verification.
 
 ### 6.6 Research Manuscript & Avishkar CIE Publication Tracking
 - Access **Manuscript Tracking** on your project card.
 - Track communicated drafts: Target journal name, communicated draft file, and Avishkar CIE affiliation acknowledgment.
 - Track published papers: Publication DOI URL, published PDF file, and Avishkar CIE citation verification.
+- Ensure the signed **Student Publication Consent Form** is uploaded under project artifacts prior to publication endorsement.
 
 ---
 

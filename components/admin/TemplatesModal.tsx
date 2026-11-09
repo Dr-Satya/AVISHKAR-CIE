@@ -45,6 +45,13 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
       downloadUrl: "/api/export?type=TEMPLATE_SPOC",
       filename: "TEMPLATE_GDGU_SPOC.xlsx",
     },
+    {
+      title: "Student Publication Consent Form (.docx)",
+      description:
+        "Official 10-student team consent table for IDP project publication, originality verification (<10% plagiarism, <20% AI), and faculty sign-off.",
+      downloadUrl: "/templates/Consent_Form_IDP_publication.docx",
+      filename: "Consent_Form_IDP_publication.docx",
+    },
   ];
 
   return (
@@ -54,10 +61,10 @@ export function TemplatesModal({ isOpen, onClose }: TemplatesModalProps) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold text-[#0d2137]">
-              Official Bulk Upload Templates (.xlsx)
+              Official Templates &amp; Forms
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Pre-configured Excel templates with valid column headers for direct database ingestion.
+              Pre-configured Excel templates and publication consent documents for direct portal use.
             </p>
           </div>
           <button

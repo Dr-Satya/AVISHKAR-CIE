@@ -230,6 +230,9 @@ export default function AdminPortalPage() {
         const data = await res.json();
         setSpocDepartments(data.departments || []);
         setSpocsByDept(data.spocByDepartment || {});
+        if (Array.isArray(data.facultyList) && data.facultyList.length > 0) {
+          setFaculties((prev) => (prev.length === 0 ? data.facultyList : prev));
+        }
       }
     } catch {}
   };
@@ -243,7 +246,8 @@ export default function AdminPortalPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ facultyId, department: dept, isSpoc: true }),
       });
-      await Promise.all([fetchSpocData(), fetchFacultyAccess()]);
+      await fetchSpocData();
+      await fetchFacultyAccess();
     } catch {
     } finally {
       setSpocUpdating(null);
@@ -258,8 +262,84 @@ export default function AdminPortalPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ facultyId, department: dept, isSpoc: false }),
       });
-      await Promise.all([fetchSpocData(), fetchFacultyAccess()]);
+      await fetchSpocData();
+      await fetchFacultyAccess();
     } catch {
+    } finally {
+      setSpocUpdating(null);
+    }
+  };
+
+  const handleSaveSpocCredentials = async (data: {
+    id?: string;
+    department: string;
+    name?: string;
+    email: string;
+    passcode?: string;
+    action?: "CREATE" | "EDIT";
+  }) => {
+    setSpocUpdating(data.department);
+    try {
+      const res = await fetch("/api/admin/spoc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to save SPOC profile.");
+      }
+      setToastNotification({
+        type: "success",
+        title: "SPOC Saved",
+        message: result.message || `SPOC profile for ${data.department} saved successfully.`,
+      });
+      await fetchSpocData();
+      await fetchFacultyAccess();
+      return result;
+    } catch (err: any) {
+      setToastNotification({
+        type: "error",
+        title: "Error",
+        message: err.message || "Failed to save SPOC credentials.",
+      });
+      throw err;
+    } finally {
+      setSpocUpdating(null);
+    }
+  };
+
+  const handleDeleteSpoc = async (dept: string, spocId?: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to remove this SPOC profile for "${dept}"? This will immediately revoke their access to the SPOC portal.`
+      )
+    ) {
+      return;
+    }
+    setSpocUpdating(dept);
+    try {
+      const res = await fetch(
+        `/api/admin/spoc?id=${spocId || ""}&department=${encodeURIComponent(dept)}`,
+        { method: "DELETE" }
+      );
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to delete SPOC profile.");
+      }
+      setToastNotification({
+        type: "success",
+        title: "SPOC Removed",
+        message: result.message || `SPOC profile for ${dept} was successfully removed.`,
+      });
+      await fetchSpocData();
+      await fetchFacultyAccess();
+    } catch (err: any) {
+      setToastNotification({
+        type: "error",
+        title: "Error",
+        message: err.message || "Failed to delete SPOC.",
+      });
     } finally {
       setSpocUpdating(null);
     }
@@ -466,11 +546,9 @@ export default function AdminPortalPage() {
         title: "Student Removed",
         message: `Student record removed successfully.`,
       });
-      await Promise.all([
-        fetchStudents(studentPage, studentSearch, studentFilter),
-        fetchProjects(projectPage),
-        fetchDashboardData(),
-      ]);
+      await fetchStudents(studentPage, studentSearch, studentFilter);
+      await fetchProjects(projectPage);
+      await fetchDashboardData();
     } catch (err: any) {
       setStudentCrudError(cleanErrorMessage(err, "Network error while deleting student."));
     } finally {
@@ -558,11 +636,9 @@ export default function AdminPortalPage() {
         return;
       }
       setShowDeleteFacultyModal(false);
-      await Promise.all([
-        fetchFacultyAccess(),
-        fetchProjects(projectPage),
-        fetchDashboardData(),
-      ]);
+      await fetchFacultyAccess();
+      await fetchProjects(projectPage);
+      await fetchDashboardData();
     } catch (err: any) {
       setFacultyCrudError(cleanErrorMessage(err, "Network error while deleting faculty."));
     } finally {
@@ -585,11 +661,9 @@ export default function AdminPortalPage() {
       if (!res.ok) {
         throw new Error(cleanErrorMessage(data.error, "Failed to transfer faculty projects."));
       }
-      await Promise.all([
-        fetchFacultyAccess(),
-        fetchProjects(projectPage),
-        fetchDashboardData(),
-      ]);
+      await fetchFacultyAccess();
+      await fetchProjects(projectPage);
+      await fetchDashboardData();
       return true;
     } catch (err: any) {
       throw err;
@@ -607,11 +681,9 @@ export default function AdminPortalPage() {
       if (!res.ok) {
         throw new Error(cleanErrorMessage(data.error, "Failed to reassign mentor."));
       }
-      await Promise.all([
-        fetchProjects(projectPage),
-        fetchFacultyAccess(),
-        fetchDashboardData(),
-      ]);
+      await fetchProjects(projectPage);
+      await fetchFacultyAccess();
+      await fetchDashboardData();
       return true;
     } catch (err: any) {
       throw err;
@@ -678,9 +750,15 @@ export default function AdminPortalPage() {
     setLoadingFacultyAccess(true);
     try {
       const res = await fetch("/api/admin/faculty-access");
-      const data = await res.json();
-      setFaculties(data.faculties || []);
-      setSystemAdmins(data.systemAdmins || []);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.faculties)) {
+          setFaculties(data.faculties);
+        }
+        if (Array.isArray(data.systemAdmins)) {
+          setSystemAdmins(data.systemAdmins);
+        }
+      }
     } catch {
     } finally {
       setLoadingFacultyAccess(false);
@@ -757,13 +835,10 @@ export default function AdminPortalPage() {
         setMappingLoading(false);
         return false;
       }
-      await Promise.all([
-        fetchStudents(studentPage, studentSearch, studentFilter),
-        fetchRegistrations(registrationPage, registrationSearch),
-        fetchDashboardData(),
-        fetchProjects(projectPage, projectSearch, projectCategoryFilter),
-        fetchAllProjectsForMapping(),
-      ]);
+      await fetchStudents(studentPage, studentSearch, studentFilter);
+      await fetchRegistrations(registrationPage, registrationSearch);
+      await fetchProjects(projectPage, projectSearch, projectCategoryFilter);
+      await fetchDashboardData();
       return true;
     } catch (err: any) {
       setMappingError(cleanErrorMessage(err, "Network error while mapping student."));
@@ -789,13 +864,10 @@ export default function AdminPortalPage() {
         setUnmappingLoading(false);
         return false;
       }
-      await Promise.all([
-        fetchStudents(studentPage, studentSearch, studentFilter),
-        fetchRegistrations(registrationPage, registrationSearch),
-        fetchDashboardData(),
-        fetchProjects(projectPage, projectSearch, projectCategoryFilter),
-        fetchAllProjectsForMapping(),
-      ]);
+      await fetchStudents(studentPage, studentSearch, studentFilter);
+      await fetchRegistrations(registrationPage, registrationSearch);
+      await fetchProjects(projectPage, projectSearch, projectCategoryFilter);
+      await fetchDashboardData();
       return true;
     } catch (err: any) {
       setUnmappingError(cleanErrorMessage(err, "Network error while unmapping student."));
@@ -855,17 +927,23 @@ export default function AdminPortalPage() {
       await Promise.all(initialFetches);
       setLoading(false);
 
-      // Asynchronously pre-fetch secondary datasets in background without blocking initial paint
-      setTimeout(() => {
-        Promise.all([
-          fetchStudents(1),
-          fetchProjects(1),
-          fetchRegistrations(1),
-          fetchFacultyAccess(),
-          fetchSpocData(),
-          fetchAllProjectsForMapping(),
-        ]).catch(() => {});
-      }, 100);
+      // Asynchronously pre-fetch secondary datasets sequentially in background without thundering herd
+      (async () => {
+        try {
+          if (targetTab !== "FACULTY") {
+            await fetchFacultyAccess();
+            await fetchSpocData();
+          }
+          if (targetTab !== "REGISTRATION") {
+            await fetchRegistrations(1);
+            await fetchStudents(1);
+          }
+          if (targetTab !== "PROJECTS") {
+            await fetchProjects(1);
+          }
+          await fetchAllProjectsForMapping();
+        } catch {}
+      })();
     };
 
     init();
@@ -925,6 +1003,21 @@ export default function AdminPortalPage() {
       eventSource.close();
     };
   }, []);
+
+  const handleTabChange = (tab: "DASHBOARD" | "REGISTRATION" | "PROJECTS" | "FACULTY" | "DATABASE") => {
+    setActiveDashboardTab(tab);
+    if (tab === "FACULTY") {
+      if (faculties.length === 0) fetchFacultyAccess();
+      if (spocDepartments.length === 0) fetchSpocData();
+    } else if (tab === "REGISTRATION") {
+      if (registrations.length === 0) fetchRegistrations(1, registrationSearch);
+      if (students.length === 0) fetchStudents(1);
+      if (allProjectsList.length === 0) fetchAllProjectsForMapping();
+    } else if (tab === "PROJECTS") {
+      if (projects.length === 0) fetchProjects(1, projectSearch, projectCategoryFilter);
+      if (allProjectsList.length === 0) fetchAllProjectsForMapping();
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -1249,7 +1342,7 @@ export default function AdminPortalPage() {
             {/* Assign SPOC */}
             <button
               type="button"
-              onClick={() => setActiveDashboardTab("FACULTY")}
+              onClick={() => handleTabChange("FACULTY")}
               className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a192f]/5 hover:bg-[#0a192f]/10 text-[#0a192f] border border-[#0a192f]/15 text-xs font-semibold transition-all shadow-subtle"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-[#cda34f]" />
@@ -1273,7 +1366,7 @@ export default function AdminPortalPage() {
             {/* Database Master */}
             <button
               type="button"
-              onClick={() => setActiveDashboardTab("DATABASE")}
+              onClick={() => handleTabChange("DATABASE")}
               className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#cda34f]/15 hover:bg-[#cda34f]/25 text-[#73530e] border border-[#cda34f]/40 text-xs font-bold transition-all shadow-subtle"
             >
               <Database className="w-3.5 h-3.5 text-[#cda34f]" />
@@ -1287,7 +1380,7 @@ export default function AdminPortalPage() {
           {/* Part 1: Dashboard */}
           <button
             type="button"
-            onClick={() => setActiveDashboardTab("DASHBOARD")}
+            onClick={() => handleTabChange("DASHBOARD")}
             className={`flex-1 min-w-[170px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "DASHBOARD"
                 ? "bg-[#0a192f] text-white shadow-elevated"
@@ -1304,7 +1397,7 @@ export default function AdminPortalPage() {
           {/* Part 2: Registrations & Students */}
           <button
             type="button"
-            onClick={() => setActiveDashboardTab("REGISTRATION")}
+            onClick={() => handleTabChange("REGISTRATION")}
             className={`flex-1 min-w-[210px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "REGISTRATION"
                 ? "bg-[#0a192f] text-white shadow-elevated"
@@ -1323,7 +1416,7 @@ export default function AdminPortalPage() {
           {/* Part 3: Projects & Submissions */}
           <button
             type="button"
-            onClick={() => setActiveDashboardTab("PROJECTS")}
+            onClick={() => handleTabChange("PROJECTS")}
             className={`flex-1 min-w-[190px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "PROJECTS"
                 ? "bg-[#0a192f] text-white shadow-elevated"
@@ -1342,7 +1435,7 @@ export default function AdminPortalPage() {
           {/* Part 4: Faculty & SPOC Management */}
           <button
             type="button"
-            onClick={() => setActiveDashboardTab("FACULTY")}
+            onClick={() => handleTabChange("FACULTY")}
             className={`flex-1 min-w-[170px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "FACULTY"
                 ? "bg-[#0a192f] text-white shadow-elevated"
@@ -1359,7 +1452,7 @@ export default function AdminPortalPage() {
           {/* Part 5: Central Database Console */}
           <button
             type="button"
-            onClick={() => setActiveDashboardTab("DATABASE")}
+            onClick={() => handleTabChange("DATABASE")}
             className={`flex-1 min-w-[170px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all tactile-btn ${
               activeDashboardTab === "DATABASE"
                 ? "bg-[#0a192f] text-white shadow-elevated"
@@ -1610,9 +1703,9 @@ export default function AdminPortalPage() {
               spocDepartments={spocDepartments}
               spocsByDept={spocsByDept}
               faculties={faculties}
-              selectedFacultyForDept={selectedFacultyForDept}
-              setSelectedFacultyForDept={setSelectedFacultyForDept}
               spocUpdating={spocUpdating}
+              onSaveSpoc={handleSaveSpocCredentials}
+              onDeleteSpoc={handleDeleteSpoc}
               onAssignSpoc={handleAssignSpoc}
               onRevokeSpoc={handleRevokeSpoc}
               onResetSpocPasscode={(dept, spoc) => {
@@ -1826,14 +1919,12 @@ export default function AdminPortalPage() {
                 setShowUnmapModal(true);
               }}
               onDataChanged={async () => {
-                await Promise.all([
-                  fetchStudents(1),
-                  fetchProjects(1),
-                  fetchRegistrations(1),
-                  fetchFacultyAccess(),
-                  fetchDashboardData(),
-                  fetchConfig(),
-                ]);
+                await fetchDashboardData();
+                await fetchConfig();
+                await fetchStudents(1);
+                await fetchProjects(1);
+                await fetchRegistrations(1);
+                await fetchFacultyAccess();
               }}
             />
           </div>
@@ -2043,7 +2134,10 @@ export default function AdminPortalPage() {
           activeAcademicYear={activeAcademicYear}
           onSuccess={async (msg) => {
             setConfigMessage(msg);
-            await Promise.all([fetchConfig(), fetchDashboardData(), fetchStudents(1), fetchProjects(1)]);
+            await fetchConfig();
+            await fetchDashboardData();
+            await fetchStudents(1);
+            await fetchProjects(1);
             setTimeout(() => setConfigMessage(null), 5000);
           }}
         />
@@ -2053,14 +2147,12 @@ export default function AdminPortalPage() {
           onClose={() => setShowDataModal(false)}
           activeAcademicYear={activeAcademicYear}
           onDataChanged={async () => {
-            await Promise.all([
-              fetchStudents(1),
-              fetchProjects(1),
-              fetchRegistrations(1),
-              fetchFacultyAccess(),
-              fetchDashboardData(),
-              fetchConfig(),
-            ]);
+            await fetchDashboardData();
+            await fetchConfig();
+            await fetchStudents(1);
+            await fetchProjects(1);
+            await fetchRegistrations(1);
+            await fetchFacultyAccess();
           }}
         />
 
@@ -2074,7 +2166,10 @@ export default function AdminPortalPage() {
           onClose={() => setShowImportModal(false)}
           defaultYear={activeAcademicYear}
           onSuccess={async () => {
-            await Promise.all([fetchStudents(1), fetchProjects(1), fetchFacultyAccess(), fetchDashboardData()]);
+            await fetchDashboardData();
+            await fetchStudents(1);
+            await fetchProjects(1);
+            await fetchFacultyAccess();
           }}
         />
         {/* Central Confirmation Toast */}

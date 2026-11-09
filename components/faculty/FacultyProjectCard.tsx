@@ -38,7 +38,11 @@ import {
 
 interface FacultyProjectCardProps {
   project: AssignedProject;
-  onOpenUpload: (proj: AssignedProject, semester?: number) => void;
+  onOpenUpload: (
+    proj: AssignedProject,
+    semester?: number,
+    initialType?: "REPORT" | "PPT" | "CONSENT_FORM" | "OTHER"
+  ) => void;
   onDeleteArtifact: (artifactId: string) => void;
   onExportStudents: (proj: AssignedProject, format: "csv" | "xlsx" | "pdf") => void;
   onRefresh?: (message?: string) => void;
@@ -392,8 +396,11 @@ export function FacultyProjectCard({
 
   const sem1HasReport = sem1Artifacts.some((a) => a.type === "REPORT");
   const sem1HasPpt = sem1Artifacts.some((a) => a.type === "PPT");
+  const sem1HasConsent = sem1Artifacts.some((a) => a.type === "CONSENT_FORM");
+
   const sem2HasReport = sem2Artifacts.some((a) => a.type === "REPORT");
   const sem2HasPpt = sem2Artifacts.some((a) => a.type === "PPT");
+  const sem2HasConsent = sem2Artifacts.some((a) => a.type === "CONSENT_FORM");
 
   // Determine status per semester
   const getSemStatus = (artifacts: typeof allArtifacts, hasReport: boolean) => {
@@ -452,10 +459,18 @@ export function FacultyProjectCard({
               ? "bg-blue-100 text-blue-800 border border-blue-200"
               : art.type === "PPT"
               ? "bg-purple-100 text-purple-800 border border-purple-200"
+              : art.type === "CONSENT_FORM"
+              ? "bg-teal-100 text-teal-800 border border-teal-200"
               : "bg-slate-100 text-slate-800 border border-slate-200"
           }`}
         >
-          {art.type === "REPORT" ? "Project Report" : art.type === "PPT" ? "Presentation PPT" : "Supporting Doc"}
+          {art.type === "REPORT"
+            ? "Project Report"
+            : art.type === "PPT"
+            ? "Presentation PPT"
+            : art.type === "CONSENT_FORM"
+            ? "Student Consent Form"
+            : "Supporting Doc"}
         </span>
         <div>
           <p className="font-semibold text-slate-800">{art.title}</p>
@@ -697,38 +712,78 @@ export function FacultyProjectCard({
               </p>
             </div>
 
-            <button
-              onClick={() => onOpenUpload(proj, baseSem)}
-              className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0d2137] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
-            >
-              <Upload className="w-3 h-3 text-[#0d2137]" />
-              <span>+ Upload for Sem {baseSem}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onOpenUpload(proj, baseSem, "CONSENT_FORM")}
+                className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold flex items-center gap-1.5 transition-colors border border-teal-200 shadow-xs"
+                title="Download template and upload signed Student Consent Form"
+              >
+                <FileCheck className="w-3.5 h-3.5 text-teal-700" />
+                <span>+ Consent Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenUpload(proj, baseSem)}
+                className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0d2137] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
+              >
+                <Upload className="w-3 h-3 text-[#0d2137]" />
+                <span>+ Upload for Sem {baseSem}</span>
+              </button>
+            </div>
           </div>
 
           {/* Checklist Pills for Sem 1 */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
                 sem1HasReport
                   ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                   : "bg-red-50 text-red-800 border-red-200"
               }`}
+              onClick={() => onOpenUpload(proj, baseSem, "REPORT")}
+              title="Click to upload or update Project Report"
             >
               {sem1HasReport ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <AlertCircle className="w-3 h-3 text-red-500" />}
               <span>Interim Report {sem1HasReport ? "(Uploaded)" : "(Required)"}</span>
             </span>
 
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
                 sem1HasPpt
                   ? "bg-purple-50 text-purple-800 border-purple-200"
                   : "bg-slate-50 text-slate-600 border-slate-200"
               }`}
+              onClick={() => onOpenUpload(proj, baseSem, "PPT")}
+              title="Click to upload or update Presentation Slides"
             >
               {sem1HasPpt ? <CheckCircle2 className="w-3 h-3 text-purple-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
               <span>Presentation PPT {sem1HasPpt ? "(Uploaded)" : "(Required)"}</span>
             </span>
+
+            <span
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
+                sem1HasConsent
+                  ? "bg-teal-50 text-teal-800 border-teal-200"
+                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50/50"
+              }`}
+              onClick={() => onOpenUpload(proj, baseSem, "CONSENT_FORM")}
+              title="Click to download template and submit Student Consent Form"
+            >
+              {sem1HasConsent ? <CheckCircle2 className="w-3 h-3 text-teal-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
+              <span>Consent Form {sem1HasConsent ? "(Uploaded)" : "(Pending)"}</span>
+            </span>
+
+            <a
+              href="/templates/Consent_Form_IDP_publication.docx"
+              download="Consent_Form_IDP_publication.docx"
+              className="text-[11px] font-semibold text-teal-700 hover:text-teal-900 inline-flex items-center gap-1 ml-auto underline underline-offset-2"
+              title="Download official publication consent form template"
+            >
+              <Download className="w-3 h-3" />
+              <span>Blank Template (.docx)</span>
+            </a>
           </div>
 
           {/* Sem 1 Artifacts List */}
@@ -761,38 +816,78 @@ export function FacultyProjectCard({
               </p>
             </div>
 
-            <button
-              onClick={() => onOpenUpload(proj, nextSem)}
-              className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0d2137] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
-            >
-              <Upload className="w-3 h-3 text-[#0d2137]" />
-              <span>+ Upload for Sem {nextSem}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onOpenUpload(proj, nextSem, "CONSENT_FORM")}
+                className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold flex items-center gap-1.5 transition-colors border border-teal-200 shadow-xs"
+                title="Download template and upload signed Student Consent Form"
+              >
+                <FileCheck className="w-3.5 h-3.5 text-teal-700" />
+                <span>+ Consent Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenUpload(proj, nextSem)}
+                className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0d2137] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
+              >
+                <Upload className="w-3 h-3 text-[#0d2137]" />
+                <span>+ Upload for Sem {nextSem}</span>
+              </button>
+            </div>
           </div>
 
           {/* Checklist Pills for Sem 2 */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
                 sem2HasReport
                   ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                   : "bg-red-50 text-red-800 border-red-200"
               }`}
+              onClick={() => onOpenUpload(proj, nextSem, "REPORT")}
+              title="Click to upload or update Project Report"
             >
               {sem2HasReport ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <AlertCircle className="w-3 h-3 text-red-500" />}
               <span>Final Report {sem2HasReport ? "(Uploaded)" : "(Required)"}</span>
             </span>
 
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
                 sem2HasPpt
                   ? "bg-purple-50 text-purple-800 border-purple-200"
                   : "bg-slate-50 text-slate-600 border-slate-200"
               }`}
+              onClick={() => onOpenUpload(proj, nextSem, "PPT")}
+              title="Click to upload or update Presentation Slides"
             >
               {sem2HasPpt ? <CheckCircle2 className="w-3 h-3 text-purple-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
               <span>Defense PPT {sem2HasPpt ? "(Uploaded)" : "(Required)"}</span>
             </span>
+
+            <span
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
+                sem2HasConsent
+                  ? "bg-teal-50 text-teal-800 border-teal-200"
+                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50/50"
+              }`}
+              onClick={() => onOpenUpload(proj, nextSem, "CONSENT_FORM")}
+              title="Click to download template and submit Student Consent Form"
+            >
+              {sem2HasConsent ? <CheckCircle2 className="w-3 h-3 text-teal-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
+              <span>Consent Form {sem2HasConsent ? "(Uploaded)" : "(Pending)"}</span>
+            </span>
+
+            <a
+              href="/templates/Consent_Form_IDP_publication.docx"
+              download="Consent_Form_IDP_publication.docx"
+              className="text-[11px] font-semibold text-teal-700 hover:text-teal-900 inline-flex items-center gap-1 ml-auto underline underline-offset-2"
+              title="Download official publication consent form template"
+            >
+              <Download className="w-3 h-3" />
+              <span>Blank Template (.docx)</span>
+            </a>
           </div>
 
           {/* Sem 2 Artifacts List */}

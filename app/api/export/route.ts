@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "node:fs";
+import path from "node:path";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cleanErrorMessage, safeIsoString } from "@/lib/api-response";
@@ -40,6 +42,21 @@ export async function GET(req: NextRequest) {
       const cfCtx = getCloudflareContext();
       if (cfCtx?.env?.DB) cfDb = cfCtx.env.DB;
     } catch (e) {}
+
+    // 0. TEMPLATE_CONSENT_FORM (.docx download)
+    if (scope === "TEMPLATE_CONSENT_FORM") {
+      const templatePath = path.join(process.cwd(), "public", "templates", "Consent_Form_IDP_publication.docx");
+      if (fs.existsSync(templatePath)) {
+        const fileBuffer = fs.readFileSync(templatePath);
+        return new Response(fileBuffer, {
+          headers: {
+            "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": 'attachment; filename="Consent_Form_IDP_publication.docx"',
+            "Cache-Control": "public, max-age=86400",
+          },
+        });
+      }
+    }
 
     let rows: Record<string, any>[] = [];
     let title = "GDGU_IDP_Export";

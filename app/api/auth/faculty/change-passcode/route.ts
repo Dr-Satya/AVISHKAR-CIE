@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Current passcode is incorrect." }, { status: 400 });
     }
 
-    const newHash = await bcrypt.hash(newPasscode, 10);
+    const newHash = await bcrypt.hash(newPasscode, 8);
     await prisma.faculty.update({
       where: { id: faculty.id },
       data: { passcodeHash: newHash },

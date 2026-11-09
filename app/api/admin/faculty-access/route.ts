@@ -13,31 +13,30 @@ export async function GET() {
   }
 
   try {
-    const [faculties, systemAdmins] = await Promise.all([
-      prisma.faculty.findMany({
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          department: true,
-          phone: true,
-          isAdmin: true,
-          isSpoc: true,
-          spocDepartment: true,
-        },
-        orderBy: [{ isSpoc: "desc" }, { isAdmin: "desc" }, { name: "asc" }],
-      }),
-      prisma.admin.findMany({
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "asc" },
-      }),
-    ]);
+    const faculties = await prisma.faculty.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        department: true,
+        phone: true,
+        isAdmin: true,
+        isSpoc: true,
+        spocDepartment: true,
+      },
+      orderBy: [{ isSpoc: "desc" }, { isAdmin: "desc" }, { name: "asc" }],
+    });
+
+    const systemAdmins = await prisma.admin.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
 
     return NextResponse.json({ faculties, systemAdmins });
   } catch (err: any) {
@@ -77,7 +76,7 @@ export async function POST(req: NextRequest) {
     }
 
     const defaultPass = passcode && passcode.trim().length >= 6 ? passcode.trim() : (process.env.DEFAULT_FACULTY_PASSCODE || "gdgu@2026");
-    const passcodeHash = await bcrypt.hash(defaultPass, 10);
+    const passcodeHash = await bcrypt.hash(defaultPass, 8);
 
     const cleanPhone = phone ? phone.replace(/\D/g, "").slice(-10) : null;
 
@@ -126,7 +125,7 @@ export async function POST(req: NextRequest) {
     }
 
     const defaultPass = passcode && passcode.trim().length >= 6 ? passcode.trim() : "gdgu@admin2026";
-    const passcodeHash = await bcrypt.hash(defaultPass, 10);
+    const passcodeHash = await bcrypt.hash(defaultPass, 8);
 
     const createdAdmin = await prisma.admin.create({
       data: {
@@ -167,10 +166,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const [sourceFaculty, targetFaculty] = await Promise.all([
-      prisma.faculty.findUnique({ where: { id: sourceFacultyId } }),
-      prisma.faculty.findUnique({ where: { id: targetFacultyId } }),
-    ]);
+    const sourceFaculty = await prisma.faculty.findUnique({ where: { id: sourceFacultyId } });
+    const targetFaculty = await prisma.faculty.findUnique({ where: { id: targetFacultyId } });
 
     if (!sourceFaculty || !targetFaculty) {
       return NextResponse.json({ error: "Faculty member not found." }, { status: 404 });
@@ -224,7 +221,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    updateData.passcodeHash = await bcrypt.hash(newPasscode, 10);
+    updateData.passcodeHash = await bcrypt.hash(newPasscode, 8);
     await prisma.spoc.updateMany({
       where: { facultyId },
       data: { passcodeHash: updateData.passcodeHash },
@@ -285,7 +282,7 @@ export async function PUT(req: NextRequest) {
       updateData.spocDepartment = isSpoc ? spocDepartment || department : null;
     }
     if (newPasscode && newPasscode.trim().length >= 6) {
-      updateData.passcodeHash = await bcrypt.hash(newPasscode.trim(), 10);
+      updateData.passcodeHash = await bcrypt.hash(newPasscode.trim(), 8);
       await prisma.spoc.updateMany({
         where: { facultyId: id },
         data: { passcodeHash: updateData.passcodeHash },

@@ -48,6 +48,7 @@ export default function FacultyPortalPage() {
   const [phoneModalSuccess, setPhoneModalSuccess] = useState<string | null>(null);
   const [targetProject, setTargetProject] = useState<AssignedProject | null>(null);
   const [uploadSemester, setUploadSemester] = useState<number | undefined>(undefined);
+  const [uploadArtifactType, setUploadArtifactType] = useState<"REPORT" | "PPT" | "CONSENT_FORM" | "OTHER">("REPORT");
   const [toastNotification, setToastNotification] = useState<ToastNotification | null>(null);
 
   const fetchFacultyData = async (confirmMsg?: string) => {
@@ -116,9 +117,14 @@ export default function FacultyPortalPage() {
     window.location.href = "/";
   };
 
-  const handleOpenUpload = (proj: AssignedProject, sem?: number) => {
+  const handleOpenUpload = (
+    proj: AssignedProject,
+    sem?: number,
+    initialType?: "REPORT" | "PPT" | "CONSENT_FORM" | "OTHER"
+  ) => {
     setTargetProject(proj);
     setUploadSemester(sem);
+    setUploadArtifactType(initialType || "REPORT");
     setShowUploadModal(true);
   };
 
@@ -416,9 +422,11 @@ export default function FacultyPortalPage() {
         <ArtifactUploadModal
           project={targetProject}
           initialSemester={uploadSemester}
+          initialType={uploadArtifactType}
           onClose={() => {
             setShowUploadModal(false);
             setUploadSemester(undefined);
+            setUploadArtifactType("REPORT");
           }}
           onSuccess={(msg) => fetchFacultyData(msg || "Project document uploaded and submitted to SPOC successfully!")}
         />

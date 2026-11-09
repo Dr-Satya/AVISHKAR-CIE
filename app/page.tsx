@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
+  Rocket,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -69,6 +70,13 @@ export default function HomePage() {
                   <Sparkles className="w-3 h-3 text-[#c59b27] shrink-0" />
                   <span>Academic Session 2025–2026</span>
                 </span>
+                <Link
+                  href="/launch"
+                  className="text-[10px] xs:text-[11px] font-bold text-amber-950 bg-gradient-to-r from-amber-200 via-amber-300 to-amber-200 hover:from-amber-300 hover:to-amber-400 border border-amber-400/80 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all hover:scale-105 active:scale-95 group"
+                >
+                  <Rocket className="w-3.5 h-3.5 text-amber-800 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+                  <span>🚀 Launch Ceremony Mode</span>
+                </Link>
               </div>
               <h1 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#09131f] tracking-tight leading-tight">
                 IDP <span className="text-[#c59b27]">(Inter-Disciplinary Project)</span> Portal

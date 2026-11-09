@@ -22,6 +22,7 @@ import {
   BookOpen,
   Archive,
   Upload,
+  FileCheck,
 } from "lucide-react";
 import { ProjectData } from "@/types/spoc";
 import { SpocProjectEditModal } from "@/components/spoc/SpocProjectEditModal";
@@ -108,6 +109,8 @@ export function SpocProjectVerificationTab({
                 ? "bg-blue-100 text-blue-800 border border-blue-200"
                 : art.type === "PPT"
                 ? "bg-purple-100 text-purple-800 border border-purple-200"
+                : art.type === "CONSENT_FORM"
+                ? "bg-teal-100 text-teal-800 border border-teal-200"
                 : "bg-slate-100 text-slate-800 border border-slate-200"
             }`}
           >
@@ -115,6 +118,8 @@ export function SpocProjectVerificationTab({
               ? "Project Report"
               : art.type === "PPT"
               ? "Presentation Slide"
+              : art.type === "CONSENT_FORM"
+              ? "Student Consent Form"
               : "Project Document"}
           </span>
           <div>
@@ -416,6 +421,8 @@ export function SpocProjectVerificationTab({
             const sem2Artifacts = proj.artifacts.filter((a) => a.semester === nextSem);
             const sem1HasReport = sem1Artifacts.some((a) => a.type === "REPORT");
             const sem2HasReport = sem2Artifacts.some((a) => a.type === "REPORT");
+            const sem1HasConsent = sem1Artifacts.some((a) => a.type === "CONSENT_FORM");
+            const sem2HasConsent = sem2Artifacts.some((a) => a.type === "CONSENT_FORM");
             const bothComplete = sem1HasReport && sem2HasReport;
             return (
               <div
@@ -524,6 +531,17 @@ export function SpocProjectVerificationTab({
                           <FileText className="w-3 h-3" />
                           Sem {nextSem}: {sem2Artifacts.length} docs {sem2HasReport ? "(Report ✓)" : "(Report Missing)"}
                         </span>
+
+                        {(sem1HasConsent || sem2HasConsent) ? (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1">
+                            <FileCheck className="w-3 h-3 text-teal-700" />
+                            Consent Form: {sem1HasConsent && sem2HasConsent ? `Sem ${baseSem} & ${nextSem} ✓` : sem1HasConsent ? `Sem ${baseSem} ✓` : `Sem ${nextSem} ✓`}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200">
+                            Consent Form Pending
+                          </span>
+                        )}
 
                         {bothComplete ? (
                           <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
@@ -713,6 +731,13 @@ export function SpocProjectVerificationTab({
                             >
                               {sem1HasReport ? "Report Uploaded" : "Report Missing"}
                             </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                sem1HasConsent ? "bg-teal-100 text-teal-800 border border-teal-200" : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {sem1HasConsent ? "Consent Form Uploaded" : "Consent Form Pending"}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
@@ -761,6 +786,13 @@ export function SpocProjectVerificationTab({
                               }`}
                             >
                               {sem2HasReport ? "Report Uploaded" : "Report Missing"}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                sem2HasConsent ? "bg-teal-100 text-teal-800 border border-teal-200" : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {sem2HasConsent ? "Consent Form Uploaded" : "Consent Form Pending"}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">

@@ -34,74 +34,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Check Faculty record (Primary: Faculty using their own faculty credentials)
-    const faculty = await prisma.faculty.findFirst({
+    // 1. Check dedicated SPOC table (Primary for manual & configured credentials)
+    const spoc = await prisma.spoc.findFirst({
       where: {
         OR: [
           { email: cleanEmail },
           { email: searchEmail },
         ],
       },
-      include: { spocProfile: true },
-    });
-
-    if (faculty) {
-      // Step A: Check faculty passcode
-      const isValid = faculty.passcodeHash ? await bcrypt.compare(passcode, faculty.passcodeHash) : false;
-      if (!isValid) {
-        return NextResponse.json(
-          { error: "Invalid credentials. Incorrect passcode." },
-          { status: 401 }
-        );
-      }
-
-      // Step B: Explicit permission confirmation
-      if (!faculty.isSpoc) {
-        return NextResponse.json(
-          {
-            error: "Access Denied: You do not have Department SPOC permissions. Only faculty members designated as SPOC by the administrator can access this dashboard.",
-          },
-          { status: 403 }
-        );
-      }
-
-      const assignedDepartment = faculty.spocDepartment || faculty.department;
-      if (!assignedDepartment) {
-        return NextResponse.json(
-          { error: "Access Denied: No department assigned to your SPOC profile. Please contact the administrator." },
-          { status: 403 }
-        );
-      }
-
-      // Step C: Access confirmed - Issue session token
-      const token = await signSessionToken({
-        role: "SPOC",
-        id: faculty.spocProfile?.id || faculty.id,
-        email: faculty.email,
-        name: faculty.name,
-        department: assignedDepartment,
-        spocDepartment: assignedDepartment,
-        isSpoc: true,
-      });
-
-      const response = NextResponse.json({
-        success: true,
-        spoc: {
-          id: faculty.spocProfile?.id || faculty.id,
-          name: faculty.name,
-          email: faculty.email,
-          department: assignedDepartment,
-          facultyName: faculty.name,
-        },
-      });
-
-      setSessionCookie(response, token);
-      return response;
-    }
-
-    // 2. Fallback: Check dedicated SPOC table (backwards compatibility)
-    const spoc = await prisma.spoc.findUnique({
-      where: { email: cleanEmail },
       include: { faculty: true },
     });
 
@@ -132,6 +72,68 @@ export async function POST(req: NextRequest) {
           email: spoc.email,
           department: spoc.department,
           facultyName: spoc.faculty?.name || spoc.name,
+        },
+      });
+
+      setSessionCookie(response, token);
+      return response;
+    }
+
+    // 2. Fallback: Check Faculty record (if faculty is using personal faculty credentials)
+    const faculty = await prisma.faculty.findFirst({
+      where: {
+        OR: [
+          { email: cleanEmail },
+          { email: searchEmail },
+        ],
+      },
+      include: { spocProfile: true },
+    });
+
+    if (faculty) {
+      const isValid = faculty.passcodeHash ? await bcrypt.compare(passcode, faculty.passcodeHash) : false;
+      if (!isValid) {
+        return NextResponse.json(
+          { error: "Invalid credentials. Incorrect passcode." },
+          { status: 401 }
+        );
+      }
+
+      if (!faculty.isSpoc) {
+        return NextResponse.json(
+          {
+            error: "Access Denied: You do not have Department SPOC permissions. Only designated SPOCs can access this dashboard.",
+          },
+          { status: 403 }
+        );
+      }
+
+      const assignedDepartment = faculty.spocDepartment || faculty.department;
+      if (!assignedDepartment) {
+        return NextResponse.json(
+          { error: "Access Denied: No department assigned to your SPOC profile. Please contact the administrator." },
+          { status: 403 }
+        );
+      }
+
+      const token = await signSessionToken({
+        role: "SPOC",
+        id: faculty.spocProfile?.id || faculty.id,
+        email: faculty.email,
+        name: faculty.name,
+        department: assignedDepartment,
+        spocDepartment: assignedDepartment,
+        isSpoc: true,
+      });
+
+      const response = NextResponse.json({
+        success: true,
+        spoc: {
+          id: faculty.spocProfile?.id || faculty.id,
+          name: faculty.name,
+          email: faculty.email,
+          department: assignedDepartment,
+          facultyName: faculty.name,
         },
       });
 

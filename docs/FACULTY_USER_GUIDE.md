@@ -54,8 +54,8 @@ Faculty members serve as primary academic and technical mentors for multidiscipl
 +-------------------------------------------------------------+
 |                      FACULTY LOGIN                          |
 |                                                             |
-|  Email:    [ debajyoti.roy@gdgu.org                       ] |
-|  Passcode: [ ********                                     ] |
+|  Email/Phone: [ debajyoti.roy@gdgu.org / 9810012345       ] |
+|  Passcode:    [ ********                                  ] |
 |                                                             |
 |                    [ Sign In to Portal ]                    |
 +-------------------------------------------------------------+
@@ -63,17 +63,22 @@ Faculty members serve as primary academic and technical mentors for multidiscipl
 
 ### 2.1 Logging In
 1. Navigate to `/faculty/login`.
-2. Enter your institutional email address (e.g., `debajyoti.roy@gdgu.org`).
+2. Enter either:
+   - Your registered institutional email ending in `@gdgu.org` (e.g., `debajyoti.roy@gdgu.org`), OR
+   - Your registered 10-digit mobile number.
 3. Enter your assigned passcode. (The default initial passcode for newly provisioned accounts is `gdgu@2026`).
 4. Click **Sign In to Portal**.
+> *Note: Dual authentication allows supervisors to access their workspace using either their official university email or their mobile number.*
 
 ### 2.2 Mandatory Phone Number Verification
-On first login (or whenever your contact profile is incomplete), a security modal appears:
+This is a **one-time prompt**. If a verified mobile number is already on file in the database, **the modal is bypassed automatically upon login**, and you are taken directly to your workspace.
+
+If your profile does not yet have a phone number:
 1. Enter your active 10-digit mobile number in the **Mobile Number** field.
 2. Re-enter the exact same 10 digits in **Confirm Mobile Number**.
 3. Check the consent box allowing the portal to share this contact number with your registered students.
 4. Click **Save Contact Number**.
-> *Note: This number is displayed directly on your registered students' dashboards so they can coordinate lab sessions and project meetings with you.*
+> *Note: If you ever need to change your number later, you can click the **Update Phone** button in the top navigation bar at any time.*
 
 ### 2.3 Updating Your Security Passcode
 1. In the top navigation bar, click the **Change Passcode** button.
@@ -126,6 +131,14 @@ Each assigned project appears as an interactive card displaying:
   - *Total Enrolled vs Max Seats* (e.g., `8 / 10`).
   - *Same-Department Count* (e.g., `4 / 4` CSE students).
   - *Other-Department Count* (e.g., `4 / 6` non-CSE students).
+- **Quick Deliverable Action Buttons:**
+  - `+ Consent Form`: Opens the upload modal pre-selected for the Student Publication Consent Form.
+  - `+ Upload for Sem X`: Opens the upload modal for general semester deliverables.
+- **Interactive Deliverable Status Pills:**
+  - `Interim / Final Report`: Indicates `(Uploaded)` (Green) or `(Required)` (Red). Click directly to upload/update.
+  - `Defense PPT`: Indicates `(Uploaded)` (Purple) or `(Required)` (Slate). Click directly to upload/update.
+  - `Consent Form`: Indicates `(Uploaded)` (Teal) or `(Pending)` (Slate). Click directly to upload/update.
+  - `Blank Template (.docx)`: Instant one-click download link for the standardized `Consent_Form_IDP_publication.docx` template.
 
 ### 4.2 Student Roster Inspection
 Clicking on a project expands the verified student roster table:
@@ -198,12 +211,13 @@ At mid-term and semester conclusion, faculty mentors must submit verified team d
 |                 UPLOAD PROJECT DELIVERABLE                  |
 |                                                             |
 |  Deliverable Type:  (*) Final Report  ( ) Presentation (PPT)|
-|  Deliverable Title: [ Final Project Synthesis Report      ] |
+|                     ( ) Student Consent Form  ( ) Others    |
+|  Deliverable Title: [ P080 Sem 4 Project Report           ] |
 |  Document File:     [ Browse: Final_Report_P080.pdf       ] |
 |                                                             |
 |  PLAGIARISM & AI INTEGRITY VERIFICATION                     |
 |  Similarity Percentage: [ 8.5  ] % (Max allowable: 10%)    |
-|  AI Generated Content:  [ 4.2  ] % (Max allowable: 10%)    |
+|  AI Generated Content:  [ 4.2  ] % (Max allowable: 20%)    |
 |  Plagiarism Report:     [ Browse: Turnitin_Report_P080.pdf] |
 |                                                             |
 |  [x] I declare that the submitted document has undergone    |
@@ -214,22 +228,34 @@ At mid-term and semester conclusion, faculty mentors must submit verified team d
 +-------------------------------------------------------------+
 ```
 
-### 6.1 Uploading Project Reports & Presentations
-1. On the relevant project card, click **Upload Deliverable**.
+### 6.1 Uploading Project Reports, Presentations & Consent Forms
+1. On the relevant project card, click **+ Upload for Sem X** or click **+ Consent Form** (or click any status pill directly).
 2. Select the deliverable type:
-   - `REPORT`: Comprehensive final project documentation.
-   - `PPT`: Capstone presentation slide deck.
+   - `REPORT`: Comprehensive final/interim project documentation.
+   - `PPT`: Capstone presentation slide deck for viva defense.
+   - `CONSENT_FORM`: Official Student Consent Form for Publication.
    - `OTHER`: Source code archives, patents, or supplementary datasets.
-3. Attach the main document file (`.pdf`, `.docx`, or `.pptx`).
+3. Attach the main document file (`.pdf`, `.docx`, or `.pptx` up to 15 MB).
 
-### 6.2 Plagiarism & AI Content Verification Standards
+### 6.2 Student Publication Consent Form Workflow
+Before any student project can be endorsed for conference or journal publication:
+1. **Download the Official Template:** Inside the upload modal or on the project card, click **Download Blank Template (.docx)** to retrieve `Consent_Form_IDP_publication.docx`.
+2. **Student Co-Author Endorsement:** Ensure all registered student team members sign and date the document.
+3. **Faculty Mentor Sign-Off:** Faculty supervisor verifies and signs the consent form.
+4. **Complete 4 Mandatory Declarations:**
+   - [x] *All student team members have reviewed and signed this publication consent form.*
+   - [x] *The research paper adheres to strict Turnitin similarity (< 10%) and AI limits (< 20%).*
+   - [x] *"Avishkar Centre for Innovation and Entrepreneurship (CIE), G.D. Goenka University, Haryana" is explicitly cited in author affiliations.*
+   - [x] *Faculty supervisor has reviewed the manuscript and endorsed this submission.*
+5. Upload the signed `.docx` or `.pdf` file.
+> *Note: Plagiarism report attachments are waived for administrative consent forms.*
+
+### 6.3 Plagiarism & AI Content Verification Standards (Reports & Presentations)
 GDGU upholds strict academic integrity guidelines for all IDP projects:
 - **Maximum Allowable Similarity Index:** $\le 10\%$ (excluding bibliography and standard methodology phrasing).
-- **Maximum Allowable AI Generated Content:** $\le 10\%$.
+- **Maximum Allowable AI Generated Content:** $\le 20\%$.
 - Enter the exact numerical percentages reported by your institutional screening software (e.g., Turnitin, DrillBit, or iThenticate).
-
-### 6.3 Mandatory Plagiarism Report Upload
-- You must attach the official PDF copy of the generated similarity report.
+- Attach the official PDF copy of the generated similarity report.
 - Tick the mandatory academic integrity self-declaration checkbox.
 - Click **Submit Artifact**.
 
@@ -269,9 +295,10 @@ To incentivize high-impact research, the IDP portal includes a specialized track
   3. Enter the exact **Journal / Conference Name**.
   4. Upload the communicated draft document.
 
-### 7.2 Avishkar CIE Institutional Affiliation Requirements
+### 7.2 Avishkar CIE Institutional Affiliation & Author Consent Requirements
 - All publications arising from IDP work must cite the institutional support of **Avishkar Center for Innovation & Entrepreneurship (CIE), G D Goenka University**.
 - Check the confirmation box: *"Avishkar Affiliation Included in Manuscript Authorship/Acknowledgment"*.
+- **Mandatory Consent Form:** Ensure the signed **Student Publication Consent Form** has been uploaded under project artifacts prior to paper submission to ensure transparent student co-authorship.
 
 ### 7.3 Published Manuscript, DOI, and Final Indexing
 - Upon acceptance and publication:

@@ -178,13 +178,20 @@ function collectProjectTasks(
   // 1. Process Artifacts (Reports, PPTs, Plagiarism files)
   const artifacts = proj.artifacts || [];
   artifacts.forEach((art, idx) => {
-    const semName = art.semester === 2 ? "Semester 2" : art.semester === 1 ? "Semester 1" : "General Artifacts";
+    const semName = art.semester ? `Semester ${art.semester}` : "General Artifacts";
     const semFolder = [...projFolder, semName];
 
     // Primary File
     if (art.fileUrl) {
       const base = extractFileBasename(art.fileName || art.fileUrl);
-      const typeLabel = art.type === "REPORT" ? "Report" : art.type === "PPT" ? "Presentation" : "Document";
+      const typeLabel =
+        art.type === "REPORT"
+          ? "Report"
+          : art.type === "PPT"
+          ? "Presentation"
+          : art.type === "CONSENT_FORM"
+          ? "Consent_Form"
+          : "Document";
       const fileName = sanitizeFileName(`${typeLabel}_${idx + 1}_${base}`);
       tasks.push({
         url: art.fileUrl,

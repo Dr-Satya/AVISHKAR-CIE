@@ -62,7 +62,9 @@ function createResilientD1Binding(rawDb: any): any {
           msg.includes("d1_reset_do") ||
           msg.includes("timeout") ||
           msg.includes("too many requests") ||
-          msg.includes("temporarily unavailable");
+          msg.includes("temporarily unavailable") ||
+          msg.includes("network error") ||
+          msg.includes("rate limit");
 
         if (!isTransient || attempt === maxRetries) {
           throw err;
@@ -73,6 +75,25 @@ function createResilientD1Binding(rawDb: any): any {
       }
     }
     throw lastErr;
+  };
+
+  const wrapD1Statement = (stmt: any): any => {
+    if (!stmt) return stmt;
+    return new Proxy(stmt, {
+      get(stmtTarget, stmtProp, stmtReceiver) {
+        if (stmtProp === "bind") {
+          return (...bindArgs: any[]) => {
+            const bound = stmtTarget.bind(...bindArgs);
+            return wrapD1Statement(bound);
+          };
+        }
+        if (["all", "run", "first", "raw"].includes(stmtProp as string)) {
+          return (...args: any[]) =>
+            retryAsync(() => (stmtTarget as any)[stmtProp](...args));
+        }
+        return Reflect.get(stmtTarget, stmtProp, stmtReceiver);
+      },
+    });
   };
 
   return new Proxy(rawDb, {
@@ -86,15 +107,7 @@ function createResilientD1Binding(rawDb: any): any {
       if (prop === "prepare") {
         return (query: string) => {
           const stmt = target.prepare(query);
-          return new Proxy(stmt, {
-            get(stmtTarget, stmtProp, stmtReceiver) {
-              if (["all", "run", "first", "raw"].includes(stmtProp as string)) {
-                return (...args: any[]) =>
-                  retryAsync(() => (stmtTarget as any)[stmtProp](...args));
-              }
-              return Reflect.get(stmtTarget, stmtProp, stmtReceiver);
-            },
-          });
+          return wrapD1Statement(stmt);
         };
       }
       return Reflect.get(target, prop, receiver);

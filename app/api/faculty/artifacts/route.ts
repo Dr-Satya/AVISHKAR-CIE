@@ -144,6 +144,13 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+    } else if (type === "CONSENT_FORM") {
+      if (!file || typeof file !== "object" || file.size === 0) {
+        return NextResponse.json(
+          { error: "Completed and signed Student Consent Form document (.docx or .pdf) is required." },
+          { status: 400 }
+        );
+      }
     } else if (similarityPercentStr) {
       const parsed = parseFloat(similarityPercentStr);
       if (!isNaN(parsed)) similarityPercent = parsed;
@@ -263,7 +270,7 @@ export async function POST(req: NextRequest) {
       prisma.projectArtifact.create({
         data: {
           projectId: project.id,
-          type: type as "REPORT" | "PPT" | "OTHER",
+          type: type as any,
           title: title.trim(),
           fileName: r2Key,
           fileUrl,

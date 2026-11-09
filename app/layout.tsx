@@ -10,8 +10,15 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#0a192f",
+};
 
 export const metadata: Metadata = {
   title: "IDP (Inter-Disciplinary Project) Portal | GDGU",

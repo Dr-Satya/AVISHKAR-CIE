@@ -13,21 +13,19 @@ export async function GET() {
     }
 
     if (session.role === "STUDENT") {
-      const [student, globalConfig] = await Promise.all([
-        prisma.student.findUnique({
-          where: { id: session.id },
-          include: {
-            registration: {
-              include: {
-                project: {
-                  include: { faculty: true },
-                },
+      const globalConfig = await getCachedGlobalConfig();
+      const student = await prisma.student.findUnique({
+        where: { id: session.id },
+        include: {
+          registration: {
+            include: {
+              project: {
+                include: { faculty: true },
               },
             },
           },
-        }),
-        getCachedGlobalConfig(),
-      ]);
+        },
+      });
 
       if (!student) {
         const response = NextResponse.json({ authenticated: false }, { status: 401 });

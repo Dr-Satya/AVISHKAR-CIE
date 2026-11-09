@@ -85,15 +85,15 @@ export default function FacultyLoginPage() {
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
               <label htmlFor="faculty-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Faculty Official Email
+                Faculty Official Email or Mobile Number
               </label>
               <div className="relative">
                 <input
                   id="faculty-email"
                   name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="Enter official email address"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="Official email or 10-digit mobile number"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-300/90 bg-slate-50/50 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a192f] focus:border-transparent transition-all"
