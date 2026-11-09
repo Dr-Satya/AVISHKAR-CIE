@@ -7,12 +7,31 @@
 [![Prisma](https://img.shields.io/badge/ORM-Prisma-2D3748?logo=prisma)](https://www.prisma.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![Tests](https://img.shields.io/badge/Tests-199%20Passing-brightgreen)](./scripts/)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](./LICENSE)
 
 Official Inter-Disciplinary Project (IDP) Registration and Lifecycle Management Portal for **G D Goenka University**, engineered by the **Avishkar Centre for Innovation and Entrepreneurship (CIE)**.
 
+> **Latest Release — November 2026:** Multi-SPOC per school, full-dataset CSV/Excel/PDF exports, gender analytics normalization, 199 automated regression tests.
+
 Deployed at scale on the Cloudflare Edge network to deliver millisecond-latency student registration, project lifecycle tracking, milestone evaluations, and automated multi-tier quota enforcement.
 
-🌐 **Production Application:** [https://gdgu-idp-portal.cie-1e4.workers.dev](https://gdgu-idp-portal.cie-1e4.workers.dev)
+🌐 **Production:** [https://gdgu-idp-portal.cie-1e4.workers.dev](https://gdgu-idp-portal.cie-1e4.workers.dev)  
+🔒 **Admin Panel:** [`/admin/login`](https://gdgu-idp-portal.cie-1e4.workers.dev/admin/login)  
+📋 **Faculty Portal:** [`/faculty/login`](https://gdgu-idp-portal.cie-1e4.workers.dev/faculty/login)  
+🏫 **SPOC Portal:** [`/spoc/login`](https://gdgu-idp-portal.cie-1e4.workers.dev/spoc/login)
+
+---
+
+## 🆕 What's New (November 2026)
+
+| Feature | Detail |
+|---------|--------|
+| **Multi-SPOC per School** | Assign multiple Department SPOCs to any school. Full create / edit / delete management from the admin panel with no overwrite risk. |
+| **Full-Dataset Exports** | CSV / Excel / PDF downloads now fetch the **complete filtered dataset** from the API — not just the 25 rows on the current page. |
+| **Gender Analytics Fix** | Student gender stored in mixed case (`male`, `MALE`, `Male`) is now normalised before aggregation. Gender split in Admin & SPOC dashboards shows correct counts. |
+| **School Acronym Normalisation** | `SOES`, `COHSFE`, `SoLaw`, etc. are canonicalised before all KPI breakdowns so school stats merge correctly. |
+| **199 Regression Tests** | 68 export tests · 96 KPI breakdowns · 28 SPOC metrics · 7 multi-SPOC CRUD — all green on every deploy. |
 
 ---
 
@@ -105,13 +124,25 @@ Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🧪 Testing Suites
 
-Run automated verification suites covering concurrency, API endpoints, and database constraints:
+Run automated verification suites covering concurrency, exports, KPI analytics, and SPOC metrics:
 
 ```bash
-# Concurrency & Zero-Overbooking Stress Test
+# Full-dataset export tests (68 assertions)
+npm run test:export
+
+# KPI breakdowns & gender analytics (96 assertions)
+npm run test:kpi
+
+# SPOC department metrics (28 assertions)
+npx tsx scripts/test-spoc-kpis.ts
+
+# Multi-SPOC CRUD correctness (7 assertions)
+npx tsx scripts/test-multiple-spocs.ts
+
+# Concurrency & zero-overbooking stress test
 npm run test:concurrency
 
-# End-to-End API Endpoints & Business Logic Test
+# End-to-end API endpoints & business logic
 npm run test:e2e
 ```
 
@@ -171,7 +202,11 @@ npx wrangler d1 time-travel restore gdgu_idp_db --bookmark=<bookmark-id>
 │   ├── patch-worker.mjs      # OpenNext worker patch for scheduled warmups
 │   ├── sync-to-remote-d1.ts  # D1 remote migration synchronizer
 │   ├── test-concurrency.ts   # Concurrent registration race-condition test
-│   └── test-all-buttons-and-endpoints.ts # E2E API suite
+│   ├── test-all-buttons-and-endpoints.ts # E2E API suite
+│   ├── test-exports.ts       # Full-dataset export regression suite (68 tests)
+│   ├── test-kpi-and-breakdowns.ts # KPI & gender analytics suite (96 tests)
+│   ├── test-spoc-kpis.ts     # SPOC department metrics suite (28 tests)
+│   └── test-multiple-spocs.ts # Multi-SPOC CRUD correctness (7 tests)
 ├── services/                  # Business logic services
 │   └── registration.service.ts # Core seat reservation transaction engine
 ├── types/                     # TypeScript domain type definitions
@@ -188,10 +223,14 @@ npx wrangler d1 time-travel restore gdgu_idp_db --bookmark=<bookmark-id>
    - Level 2: Project-Specific Limits (`Project.sameDeptLimit`, `Project.otherDeptLimit`)
    - Level 3: Global Institutional Configuration (`GlobalConfig`)
 2. **Edge Export Optimization:**
-   - Cohort details and full database exports execute in under 2.5 seconds via direct D1 SQL batch queries with zero Worker CPU time limit violations (`Error 1102`).
-3. **Pre-Wipe Safety Guarantee:**
+   - Full-dataset CSV / Excel / PDF exports bypass pagination and stream directly from D1 SQL batch queries — zero `Error 1102` CPU limit violations.
+3. **Multi-SPOC Architecture:**
+   - Any school can have multiple active SPOCs simultaneously. SPOC identity is scoped by email (unique), not department. Creating a new SPOC never overwrites an existing one.
+4. **Pre-Wipe Safety Guarantee:**
    - Any bulk wipe action is gated by an automated verification export to Cloudflare R2 before any records can be modified.
-4. **Data Privacy & FERPA Compliance:**
+5. **Gender & School Analytics Normalisation:**
+   - All gender values (`male`, `MALE`, `Male`, `M`) and school acronyms (`SOES`, `SoEngineering`, etc.) are canonicalised server-side before aggregation so KPI dashboards always show accurate breakdowns.
+6. **Data Privacy & FERPA Compliance:**
    - Passcodes hashed using bcrypt. Student mobile numbers and credentials stored securely with consent logs and no public exposure.
 
 ---
@@ -200,12 +239,29 @@ npx wrangler d1 time-travel restore gdgu_idp_db --bookmark=<bookmark-id>
 
 Developed for **G D Goenka University** under the leadership of:
 
-- **Dr. Satya Prakash** — Avishkar Centre for Innovation and Entrepreneurship (CIE), School of Engineering and Sciences, G.D. Goenka University
-- **Potla Sri Sharan** — Avishkar Centre for Innovation and Entrepreneurship (CIE), G.D. Goenka University
-- **Sarthak Singh** — Avishkar Centre for Innovation and Entrepreneurship (CIE), G.D. Goenka University
+| Name | Role | Affiliation |
+|------|------|-------------|
+| **Dr. Satya Prakash** | Project Lead & Principal Investigator | Avishkar CIE, School of Engineering & Sciences, GD Goenka University |
+| **Potla Sri Sharan** | Lead Developer & Systems Architect | Avishkar CIE, GD Goenka University |
+| **Sarthak Singh** | Developer & Operations | Avishkar CIE, GD Goenka University |
+
+---
+
+## 📊 Platform Statistics (November 2026)
+
+| Metric | Value |
+|--------|-------|
+| Total Students | 2,238+ |
+| Active Projects | 188+ |
+| Schools Covered | 11 |
+| Test Coverage | 199 assertions across 6 suites |
+| Uptime Target | 99.9% (Cloudflare SLA) |
+| Export Speed | Full dataset < 2.5 s |
 
 ---
 
 ## 📄 License
 
-Proprietary — All rights reserved by **Avishkar Centre for Innovation and Entrepreneurship (CIE)**, G D Goenka University, Gurugram, Haryana, India.
+This software is proprietary and confidential.  
+© 2024–2026 **Avishkar Centre for Innovation and Entrepreneurship (CIE)**, G D Goenka University, Gurugram, Haryana, India.  
+All rights reserved. See [LICENSE](./LICENSE) for full terms.
