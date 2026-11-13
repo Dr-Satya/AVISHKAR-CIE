@@ -249,7 +249,7 @@ export function StudentModals({
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. 2025"
+                    placeholder="e.g. 2026"
                     value={studentForm.batch}
                     onChange={(e) => setStudentForm({ ...studentForm, batch: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#0d2137]"

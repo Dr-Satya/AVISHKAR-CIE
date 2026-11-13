@@ -282,7 +282,7 @@ export default function StudentLoginPage() {
 
             {/* Footer */}
             <div className="px-5 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-[11px] text-slate-400">Effective for Academic Year 2026</span>
+              <span className="text-[11px] text-slate-400">Effective for Academic Year 2026–2027</span>
               <div className="flex gap-2 w-full sm:w-auto justify-end">
                 <button
                   type="button"

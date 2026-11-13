@@ -30,7 +30,7 @@ export default function PrivacyPolicyPage() {
               <span>G D Goenka University · Avishkar CIE</span>
             </span>
             <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
-              Session 2025–2026
+              Session 2026–2027
             </span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-[#09131f] tracking-tight">
