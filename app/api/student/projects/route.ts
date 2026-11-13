@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     const studentDeptNorm = normalizeDept(studentDepartment);
 
     const config = await getCachedGlobalConfig();
-    const activeYear = config?.activeAcademicYear || "2025-2026";
+    const activeYear = config?.activeAcademicYear || "2026-2027";
 
     // Micro-cache projects query for 3 seconds per year+category+theme to absorb heavy traffic bursts
     const cacheKey = `${activeYear}:${category}:${theme}`;

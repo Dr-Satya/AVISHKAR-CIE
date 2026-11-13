@@ -440,7 +440,7 @@ export function SpocProjectVerificationTab({
 
                         {proj.semester && (
                           <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                            Sem {proj.semester} · {proj.academicYear || "2025-2026"}
+                            Sem {proj.semester} · {proj.academicYear || "2026-2027"}
                           </span>
                         )}
 

@@ -25,7 +25,7 @@ export async function GET() {
   }
 
   const config = await getCachedGlobalConfig();
-  const activeYear = config?.activeAcademicYear || "2025-2026";
+  const activeYear = config?.activeAcademicYear || "2026-2027";
 
   // Fetch unique categories and themes for active academic year
   const projects = await prisma.project.findMany({

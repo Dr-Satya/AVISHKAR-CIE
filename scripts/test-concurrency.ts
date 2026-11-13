@@ -64,7 +64,7 @@ async function runTests() {
         name: `Test Student ${i}`,
         department: isSame ? "School of Engineering & Sciences" : "School of Management",
         semester: 3,
-        batch: "2025",
+        batch: "2026",
         email: `${enr.toLowerCase()}@gdgu.org`,
         phoneVerified: true,
       },

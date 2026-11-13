@@ -338,8 +338,8 @@ export function DataManagementModal({
               >
                 <option value="all">All Academic Cohorts (Entire Database)</option>
                 <option value={activeAcademicYear}>{activeAcademicYear} (Active Session Only)</option>
-                <option value="2026-2027">2026-2027</option>
-                <option value="2025-2026">2025-2026</option>
+                <option value="2026-2027">2026-2027 (Current)</option>
+                <option value="2025-2026">2025-2026 (Previous)</option>
               </select>
             </div>
 
@@ -420,7 +420,8 @@ export function DataManagementModal({
               >
                 <option value="all">All Cohorts (Entire Database)</option>
                 <option value={activeAcademicYear}>{activeAcademicYear} (Active Session Only)</option>
-                <option value="2025-2026">2025-2026</option>
+                <option value="2026-2027">2026-2027 (Current)</option>
+                <option value="2025-2026">2025-2026 (Previous)</option>
               </select>
             </div>
 

@@ -158,7 +158,7 @@ export function BulkImportModal({
               type="text"
               value={importYear}
               onChange={(e) => setImportYear(e.target.value.trim())}
-              placeholder="e.g. 2025-2026"
+              placeholder="e.g. 2026-2027"
               className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-[#0d2137] focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
               required
             />

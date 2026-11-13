@@ -305,7 +305,7 @@ Click **Download Complete IDP Cohort Workbook** to generate a five-sheet institu
 - **Restore Point:** In the event of system corruption or erroneous data import, select a verified timestamped backup from the list and confirm restoration.
 
 ### 8.5 Academic Year Rollover & Archival Procedures
-At the completion of an academic cycle (e.g., transition from `2025-2026` to `2026-2027`):
+At the completion of an academic cycle (e.g., transition from `2026-2027` to `2026-2027`):
 1. Click **Academic Year Rollover**.
 2. Enter the new Academic Year string (e.g., `2026-2027`) and active semester (e.g., `3`).
 3. Select archival options:

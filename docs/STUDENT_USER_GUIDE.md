@@ -189,7 +189,7 @@ Once registered, your portal transitions into read-only locked status.
 
 ### 5.1 Registration Confirmation & Lock Status
 - Displays your allocated Project Code and complete title.
-- Shows your academic year (e.g., `2025-2026`) and active semester.
+- Shows your academic year (e.g., `2026-2027`) and active semester.
 - **Lock Policy:** Students cannot cancel, drop, or swap projects on their own. This prevents seat-swapping and ensures stable group rosters.
 
 ### 5.2 Faculty Mentor Contact Information

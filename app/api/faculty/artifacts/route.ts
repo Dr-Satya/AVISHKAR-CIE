@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     // Fetch current system academic year and active semester
     const globalConfig = await prisma.globalConfig.findUnique({ where: { id: "default" } });
-    const academicYear = project.academicYear || globalConfig?.activeAcademicYear || "2025-2026";
+    const academicYear = project.academicYear || globalConfig?.activeAcademicYear || "2026-2027";
     const activeSemester = globalConfig?.activeSemester || 3;
     const semester = formData.get("semester") ? parseInt(formData.get("semester") as string, 10) : activeSemester;
 

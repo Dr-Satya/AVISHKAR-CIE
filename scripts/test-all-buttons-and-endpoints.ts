@@ -37,7 +37,7 @@ async function runCompleteButtonAndEndpointTest() {
   }
 
   const runId = `btn_test_${Date.now()}`;
-  const testYear = "2025-2026";
+  const testYear = "2026-2027";
   const defaultPasscode = "Secret@2026";
   const hashedPasscode = await bcrypt.hash(defaultPasscode, 10);
 
@@ -95,7 +95,7 @@ async function runCompleteButtonAndEndpointTest() {
       programme: "B.Tech CSE",
       academicYear: testYear,
       semester: 3,
-      batch: "2025",
+      batch: "2026",
       internalMarks: 40,
       externalMarks: 38,
       attendancePercent: 90,

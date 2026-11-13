@@ -20,8 +20,8 @@ model Student {
   externalMarks    Float?            @default(0)
   attendancePercent Float?           @default(100)
   semester         Int               @default(3)
-  batch            String            @default("2025")
-  academicYear     String            @default("2025-2026")
+  batch            String            @default("2026")
+  academicYear     String            @default("2026-2027")
   email            String?           @unique
   googleId         String?           @unique
   phone            String?
@@ -111,7 +111,7 @@ model Project {
   theme            String
   category         String
   sdgMapping       String?
-  academicYear     String            @default("2025-2026")
+  academicYear     String            @default("2026-2027")
   semester         Int               @default(3)
   maxSeats         Int?
   sameDeptLimit    Int?
@@ -165,7 +165,7 @@ model ProjectArtifact {
   fileUrl           String
   fileSize          Int?
   mimeType          String?
-  academicYear      String    @default("2025-2026")
+  academicYear      String    @default("2026-2027")
   semester          Int       @default(3)
   similarityPercent Float?
   aiPercent         Float?
@@ -213,7 +213,7 @@ model GlobalConfig {
   maxSeats           Int      @default(10)
   sameDeptLimit      Int      @default(4)
   otherDeptLimit     Int      @default(6)
-  activeAcademicYear String   @default("2025-2026")
+  activeAcademicYear String   @default("2026-2027")
   activeSemester     Int      @default(3)
   updatedAt          DateTime @updatedAt
 }

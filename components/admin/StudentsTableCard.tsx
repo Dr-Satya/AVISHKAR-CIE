@@ -193,7 +193,7 @@ export function StudentsTableCard({
         "Branch": s.program || "N/A",
         "Semester": s.sem,
         "Batch": s.batch,
-        "Academic Year": s.academicYear || "2025-2026",
+        "Academic Year": s.academicYear || "2026-2027",
         "Phone": s.phone || "N/A",
         "Phone Verified": s.phoneVerified ? "Yes" : "No",
         "Attendance (%)": `${s.attendance}%`,
@@ -234,7 +234,7 @@ export function StudentsTableCard({
         "Branch": s.program || "N/A",
         "Semester": s.sem,
         "Batch": s.batch,
-        "Academic Year": s.academicYear || "2025-2026",
+        "Academic Year": s.academicYear || "2026-2027",
         "Phone": s.phone || "N/A",
         "Phone Verified": s.phoneVerified ? "Yes" : "No",
         "Attendance (%)": `${s.attendance}%`,
@@ -670,8 +670,8 @@ export function StudentsTableCard({
           >
             <option value="all">All Cohorts</option>
             <option value={activeAcademicYear}>Active ({activeAcademicYear})</option>
-            <option value="2025-2026">2025-2026</option>
-            <option value="2026-2027">2026-2027</option>
+            <option value="2026-2027">2026-2027 (Current)</option>
+            <option value="2025-2026">2025-2026 (Previous)</option>
           </select>
         </div>
 
@@ -1205,7 +1205,7 @@ export function StudentsTableCard({
               <div>
                 <span className="text-slate-400 text-[10px] uppercase font-semibold">Cohort</span>
                 <p className="font-bold text-slate-800">
-                  Sem {selectedStudentDetails.sem} • {selectedStudentDetails.academicYear || "2025-2026"}
+                  Sem {selectedStudentDetails.sem} • {selectedStudentDetails.academicYear || "2026-2027"}
                 </p>
               </div>
               {selectedStudentDetails.phone && (

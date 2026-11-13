@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     // Determine current active academic year
     const config = await prisma.globalConfig.findUnique({ where: { id: "default" } });
-    const activeAcademicYear = config?.activeAcademicYear || "2025-2026";
+    const activeAcademicYear = config?.activeAcademicYear || "2026-2027";
     const activeSemester = semester ? parseInt(semester, 10) : config?.activeSemester || 3;
 
     // Generate next sequential Project ID (e.g., P189, P190...)

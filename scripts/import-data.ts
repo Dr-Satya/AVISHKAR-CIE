@@ -44,7 +44,7 @@ async function main() {
       maxSeats: 10,
       sameDeptLimit: 4,
       otherDeptLimit: 6,
-      activeAcademicYear: "2025-2026",
+      activeAcademicYear: "2026-2027",
       activeSemester: 3,
     },
     create: {
@@ -53,11 +53,11 @@ async function main() {
       maxSeats: 10,
       sameDeptLimit: 4,
       otherDeptLimit: 6,
-      activeAcademicYear: "2025-2026",
+      activeAcademicYear: "2026-2027",
       activeSemester: 3,
     },
   });
-  console.log("✓ Global configuration initialized (2025-2026, Semester 3)");
+  console.log("✓ Global configuration initialized (2026-2027, Semester 3)");
 
   // 2. Setup System Admin
   await prisma.admin.upsert({
@@ -250,7 +250,7 @@ async function main() {
         department: p.department,
         facultyId: facultyId,
         sdgMapping: p.sdgMapping,
-        academicYear: "2025-2026",
+        academicYear: "2026-2027",
         semester: 3,
         maxSeats: p.maxSeats,
         sameDeptLimit: 4,
@@ -265,7 +265,7 @@ async function main() {
         department: p.department,
         facultyId: facultyId,
         sdgMapping: p.sdgMapping,
-        academicYear: "2025-2026",
+        academicYear: "2026-2027",
         semester: 3,
         maxSeats: p.maxSeats,
         sameDeptLimit: 4,
@@ -322,7 +322,7 @@ async function main() {
     const name = cleanStr(row["Name"]) || "Student";
     const dept = cleanStr(row["Department"]) || "General";
     const prog = cleanStr(row["Programme"]) || undefined;
-    const batch = cleanStr(row["Batch Year"]) || "2025";
+    const batch = cleanStr(row["Batch Year"]) || "2026";
     const genderRaw = cleanStr(row["Gender"]).toLowerCase();
     const gender = genderRaw ? genderRaw : undefined;
     const phone = cleanStr(row["Phone Number"]) || undefined;
@@ -360,7 +360,7 @@ async function main() {
       gender,
       semester: sem,
       batch,
-      academicYear: "2025-2026",
+      academicYear: "2026-2027",
       email,
       phone,
     });
@@ -394,8 +394,8 @@ async function main() {
         programme: prog,
         gender: undefined,
         semester: 3,
-        batch: "2025",
-        academicYear: "2025-2026",
+        batch: "2026",
+        academicYear: "2026-2027",
         email,
         phone: undefined,
       });

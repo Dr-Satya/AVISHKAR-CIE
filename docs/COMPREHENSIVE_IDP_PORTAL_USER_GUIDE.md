@@ -4,7 +4,7 @@
 > **Document Classification:** Master Institutional Standard Operating Procedure (SOP)  
 > **System Name:** GDGU Inter-Disciplinary Project (IDP) Registration & Management Portal  
 > **Affiliated Center:** Avishkar Center for Innovation & Entrepreneurship (CIE)  
-> **Academic Session:** 2025–2026 / 2026–2027  
+> **Academic Session:** 2026–2027 / 2026–2027  
 > **Version:** 2.0 (Production Release)
 
 ---

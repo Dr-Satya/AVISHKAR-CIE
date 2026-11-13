@@ -262,7 +262,7 @@ export async function registerStudentForProject(
       throw new Error("Registration is currently closed by administration.");
     }
 
-    const activeYear = globalConfig?.activeAcademicYear || "2025-2026";
+    const activeYear = globalConfig?.activeAcademicYear || "2026-2027";
 
     // 2. Atomic Database Operations with Concurrency Mutex
     let newRegistration: any;
@@ -477,7 +477,7 @@ export async function executeBulkRegistration(
 ): Promise<BulkRegistrationProgress> {
   // 1. Fetch Global Config & Active Cohort
   const globalConfig = await prisma.globalConfig.findUnique({ where: { id: "default" } });
-  const activeYear = globalConfig?.activeAcademicYear || "2025-2026";
+  const activeYear = globalConfig?.activeAcademicYear || "2026-2027";
   const globalMaxSeats = globalConfig?.maxSeats ?? 10;
   const globalSameDeptLimit = globalConfig?.sameDeptLimit ?? 4;
   const globalOtherDeptLimit = globalConfig?.otherDeptLimit ?? 6;

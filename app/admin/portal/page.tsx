@@ -167,7 +167,7 @@ export default function AdminPortalPage() {
   const [spocResetPasscodeMessage, setSpocResetPasscodeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Academic Year & Semester
-  const [activeAcademicYear, setActiveAcademicYear] = useState("2025-2026");
+  const [activeAcademicYear, setActiveAcademicYear] = useState("2026-2027");
   const [activeSemester, setActiveSemester] = useState(3);
   const [showYearModal, setShowYearModal] = useState(false);
   const [showDataModal, setShowDataModal] = useState(false);
@@ -194,9 +194,9 @@ export default function AdminPortalPage() {
     externalMarks: 40,
     attendancePercent: 85,
     semester: 3,
-    batch: "2025",
+    batch: "2026",
     admissionNumber: "",
-    academicYear: "2025-2026",
+    academicYear: "2026-2027",
   });
   const [studentCrudLoading, setStudentCrudLoading] = useState(false);
   const [studentCrudError, setStudentCrudError] = useState<string | null>(null);
@@ -371,7 +371,7 @@ export default function AdminPortalPage() {
       const data = await res.json();
       if (data.config) {
         setConfig(data.config);
-        const yr = data.config.activeAcademicYear || "2025-2026";
+        const yr = data.config.activeAcademicYear || "2026-2027";
         const sem = data.config.activeSemester || 3;
         setActiveAcademicYear(yr);
         setActiveSemester(sem);
@@ -484,7 +484,7 @@ export default function AdminPortalPage() {
         department: "School of Engineering & Sciences",
         programme: "",
         semester: 3,
-        batch: "2025",
+        batch: "2026",
         admissionNumber: "",
         academicYear: activeAcademicYear,
       });
@@ -1289,7 +1289,7 @@ export default function AdminPortalPage() {
                   externalMarks: 40,
                   attendancePercent: 85,
                   semester: activeSemester,
-                  batch: "2025",
+                  batch: "2026",
                   admissionNumber: "",
                   academicYear: activeAcademicYear,
                 });
@@ -1564,7 +1564,7 @@ export default function AdminPortalPage() {
                   externalMarks: 40,
                   attendancePercent: 85,
                   semester: activeSemester,
-                  batch: "2025",
+                  batch: "2026",
                   admissionNumber: "",
                   academicYear: activeAcademicYear,
                 });
@@ -1585,7 +1585,7 @@ export default function AdminPortalPage() {
                   externalMarks: st.externals ?? 40,
                   attendancePercent: st.attendance ?? 85,
                   semester: st.sem || 3,
-                  batch: st.batch || "2025",
+                  batch: st.batch || "2026",
                   admissionNumber: st.admissionNumber || "",
                   academicYear: st.academicYear || activeAcademicYear,
                 });
@@ -1606,7 +1606,7 @@ export default function AdminPortalPage() {
                   externalMarks: st.externals ?? 40,
                   attendancePercent: st.attendance ?? 85,
                   semester: st.sem || 3,
-                  batch: st.batch || "2025",
+                  batch: st.batch || "2026",
                   admissionNumber: st.admissionNumber || "",
                   academicYear: st.academicYear || activeAcademicYear,
                 });
@@ -1859,7 +1859,7 @@ export default function AdminPortalPage() {
                   externalMarks: 40,
                   attendancePercent: 85,
                   semester: activeSemester,
-                  batch: "2025",
+                  batch: "2026",
                   admissionNumber: "",
                   academicYear: activeAcademicYear,
                 });
@@ -1880,7 +1880,7 @@ export default function AdminPortalPage() {
                   externalMarks: st.externals ?? 40,
                   attendancePercent: st.attendance ?? 85,
                   semester: st.sem || 3,
-                  batch: st.batch || "2025",
+                  batch: st.batch || "2026",
                   admissionNumber: st.admissionNumber || "",
                   academicYear: st.academicYear || activeAcademicYear,
                 });
@@ -1901,7 +1901,7 @@ export default function AdminPortalPage() {
                   externalMarks: st.externals ?? 40,
                   attendancePercent: st.attendance ?? 85,
                   semester: st.sem || 3,
-                  batch: st.batch || "2025",
+                  batch: st.batch || "2026",
                   admissionNumber: st.admissionNumber || "",
                   academicYear: st.academicYear || activeAcademicYear,
                 });

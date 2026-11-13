@@ -77,7 +77,7 @@ The top section of the SPOC portal presents real-time health metrics for your de
 
 ```
 +---------------------------------------------------------------------------------------+
-| DEPARTMENT: Computer Science & Engineering (2025-2026)                                |
+| DEPARTMENT: Computer Science & Engineering (2026-2027)                                |
 |                                                                                       |
 | [ 42 Projects ]     [ 28 Faculty ]     [ 380 Students ]     [ 98% Allocated ]         |
 |                                                                                       |

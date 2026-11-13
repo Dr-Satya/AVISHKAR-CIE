@@ -281,7 +281,7 @@ async function verifyWiring() {
 
   // Check 4.1: Student Portal Project List Query (Simulation)
   const availableProjectsQuery = await prisma.project.findMany({
-    where: { academicYear: "2025-2026", semester: 3 },
+    where: { academicYear: "2026-2027", semester: 3 },
     include: {
       faculty: { select: { name: true, email: true, department: true } },
       registrations: { select: { id: true } },

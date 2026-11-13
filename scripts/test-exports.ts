@@ -150,7 +150,7 @@ async function runExportTestSuite() {
   const soesDbCount = await prisma.student.count({ where: { department: "School of Engineering & Sciences" } });
   const maleDbCount = await prisma.student.count({ where: { gender: "male" } });
   const femaleDbCount = await prisma.student.count({ where: { gender: "female" } });
-  const yearDbCount = await prisma.student.count({ where: { academicYear: "2025-2026" } });
+  const yearDbCount = await prisma.student.count({ where: { academicYear: "2026-2027" } });
 
   // 2a. Standard paginated query returns paginated slice (clamped to limit)
   const paginatedStudentsRes = await getStudents(new NextRequest("http://localhost:3000/api/admin/students?page=1&limit=25"));
@@ -240,11 +240,11 @@ async function runExportTestSuite() {
   );
 
   // 2h. Active filter: academicYear
-  const yearRes = await getStudents(new NextRequest("http://localhost:3000/api/admin/students?export=true&academicYear=2025-2026"));
+  const yearRes = await getStudents(new NextRequest("http://localhost:3000/api/admin/students?export=true&academicYear=2026-2027"));
   const yearData = await yearRes.json();
   assert(
-    yearData.students?.length === yearDbCount && yearData.students.every((s: any) => s.academicYear === "2025-2026"),
-    `Students Filter: academicYear=2025-2026 matches DB count (${yearDbCount})`
+    yearData.students?.length === yearDbCount && yearData.students.every((s: any) => s.academicYear === "2026-2027"),
+    `Students Filter: academicYear=2026-2027 matches DB count (${yearDbCount})`
   );
 
   // 2i. Active filter: search query
@@ -280,7 +280,7 @@ async function runExportTestSuite() {
     "Branch": s.program || "N/A",
     "Semester": s.sem,
     "Batch": s.batch,
-    "Academic Year": s.academicYear || "2025-2026",
+    "Academic Year": s.academicYear || "2026-2027",
     "Phone": s.phone || "N/A",
     "Phone Verified": s.phoneVerified ? "Yes" : "No",
     "Attendance (%)": `${s.attendance}%`,

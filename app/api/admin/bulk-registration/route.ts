@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       // If no academic year specified, fetch the current active academic year
       if (!academicYear) {
         const config = await prisma.globalConfig.findUnique({ where: { id: "default" } });
-        academicYear = config?.activeAcademicYear || "2025-2026";
+        academicYear = config?.activeAcademicYear || "2026-2027";
       }
 
       const buffer = Buffer.from(await file.arrayBuffer());
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
           const programme = cleanStr(r["Programme Name"] || r["Programme"]) || null;
           const gender = cleanStr(r["Gender"] || r["Sex"] || r["gender"]) || null;
           const semester = parseInt(cleanStr(r["Semester"]), 10) || 3;
-          const batch = cleanStr(r["Batch"]) || "2025";
+          const batch = cleanStr(r["Batch"]) || "2026";
           const admissionNumber = cleanStr(r["Admission No."] || r["AdmissionNumber"] || r["Admission No"]) || null;
           const phone = cleanStr(r["Contact No."] || r["Phone"] || r["Mobile"] || r["Mobile No."] || r["Phone Number"]) || null;
           const email = `${enrollmentNumber.toLowerCase()}@gdgu.org`;
@@ -462,7 +462,7 @@ export async function POST(req: NextRequest) {
                 email: studentEmail,
                 academicYear,
                 semester: 3,
-                batch: "2025",
+                batch: "2026",
                 phone: studentPhone,
                 internalMarks: internalMarks ?? 0,
                 externalMarks: externalMarks ?? 0,

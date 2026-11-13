@@ -397,7 +397,7 @@ export async function POST(req: NextRequest) {
     let year = academicYear?.trim();
     if (!year) {
       const config = await prisma.globalConfig.findUnique({ where: { id: "default" } });
-      year = config?.activeAcademicYear || "2025-2026";
+      year = config?.activeAcademicYear || "2026-2027";
     }
 
     const email = `${cleanEnroll.toLowerCase()}@gdgu.org`;
@@ -416,7 +416,7 @@ export async function POST(req: NextRequest) {
         externalMarks: externalMarks !== undefined ? Math.min(50, Math.max(0, parseFloat(externalMarks))) : 40,
         attendancePercent: attendancePercent !== undefined ? parseFloat(attendancePercent) : 85,
         semester: parseInt(semester, 10) || 3,
-        batch: batch?.trim() || "2025",
+        batch: batch?.trim() || "2026",
         admissionNumber: admissionNumber?.trim() || null,
         email,
         academicYear: year,

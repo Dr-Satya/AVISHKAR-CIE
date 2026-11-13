@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
     }
 
     const globalConfig = await prisma.globalConfig.findUnique({ where: { id: "default" } });
-    const academicYear = project.academicYear || globalConfig?.activeAcademicYear || "2025-2026";
+    const academicYear = project.academicYear || globalConfig?.activeAcademicYear || "2026-2027";
 
     // Parse options
     const hasDraftManuscript = formData.get("hasDraftManuscript") === "true";

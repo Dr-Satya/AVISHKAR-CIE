@@ -93,7 +93,7 @@ If your profile does not yet have a phone number:
 
 ### 3.1 Top Navigation Bar
 - **Faculty Identity:** Displays your full name, assigned department, and institutional email.
-- **Academic Term Badge:** Identifies the active academic session (e.g., `2025-2026 · Semester 3`).
+- **Academic Term Badge:** Identifies the active academic session (e.g., `2026-2027 · Semester 3`).
 - **Quick Action Controls:**
   - `+ Propose Project`: Open the proposal creation drawer.
   - `Update Phone`: Edit or re-verify your student-facing mobile number.
