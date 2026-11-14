@@ -67,6 +67,7 @@ export default function SpocPortalPage() {
   const [studentList, setStudentList] = useState<StudentRecord[]>([]);
 
   // Navigation & Filtering
+  const [activeSemester, setActiveSemester] = useState<number>(3);
   const [activeTab, setActiveTab] = useState<
     "VERIFICATION" | "FACULTY" | "STUDENTS" | "EXPORTS"
   >("VERIFICATION");
@@ -135,6 +136,9 @@ export default function SpocPortalPage() {
       setProjects(data.projects || []);
       setFacultyList(data.faculty || []);
       setStudentList(data.students || []);
+      if (data.activeSemester) {
+        setActiveSemester(data.activeSemester);
+      }
 
       // If admin, load all departments for department switcher
       if (authData.user.role === "ADMIN") {
@@ -169,6 +173,9 @@ export default function SpocPortalPage() {
       fetchSpocData(department);
     });
     eventSource.addEventListener("project.updated", () => {
+      fetchSpocData(department);
+    });
+    eventSource.addEventListener("configuration.updated", () => {
       fetchSpocData(department);
     });
 
@@ -594,6 +601,7 @@ export default function SpocPortalPage() {
         {activeTab === "VERIFICATION" && (
           <SpocProjectVerificationTab
             projects={projects}
+            activeSemester={activeSemester}
             onOpenReview={handleOpenReview}
             onRefresh={() => fetchSpocData(department)}
             onDownloadProjectZip={handleDownloadSingleProjectZip}

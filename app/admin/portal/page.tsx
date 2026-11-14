@@ -445,10 +445,11 @@ export default function AdminPortalPage() {
       });
       if (res.ok) {
         setActiveSemester(nextSem);
+        setConfig((c) => ({ ...c, activeSemester: nextSem }));
         setConfigMessage(
-          `Switched active semester milestone to Semester ${
-            nextSem === 3 ? "1 (Sem 3 - PPT)" : "2 (Sem 4 - Report)"
-          }.`
+          `Switched active upload window to Semester ${nextSem} (Semester ${
+            nextSem === 3 ? "3 · Interim" : "4 · Final Defense"
+          }). Only Semester ${nextSem} uploads are open.`
         );
         setTimeout(() => setConfigMessage(null), 3500);
       }
@@ -1039,6 +1040,9 @@ export default function AdminPortalPage() {
         body: JSON.stringify(config),
       });
       if (res.ok) {
+        if (config.activeSemester) {
+          setActiveSemester(config.activeSemester);
+        }
         setConfigMessage("Configuration saved successfully.");
         setTimeout(() => setConfigMessage(null), 3000);
       }

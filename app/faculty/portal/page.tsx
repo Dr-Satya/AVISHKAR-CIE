@@ -47,6 +47,7 @@ export default function FacultyPortalPage() {
   const [phoneModalError, setPhoneModalError] = useState<string | null>(null);
   const [phoneModalSuccess, setPhoneModalSuccess] = useState<string | null>(null);
   const [targetProject, setTargetProject] = useState<AssignedProject | null>(null);
+  const [activeSemester, setActiveSemester] = useState<number>(3);
   const [uploadSemester, setUploadSemester] = useState<number | undefined>(undefined);
   const [uploadArtifactType, setUploadArtifactType] = useState<"REPORT" | "PPT" | "CONSENT_FORM" | "OTHER">("REPORT");
   const [toastNotification, setToastNotification] = useState<ToastNotification | null>(null);
@@ -73,6 +74,9 @@ export default function FacultyPortalPage() {
       const data = await res.json();
       setFaculty(data.faculty);
       setProjects(data.projects || []);
+      if (data.activeSemester) {
+        setActiveSemester(data.activeSemester);
+      }
       if (!data.faculty.phone || !data.faculty.phone.trim()) {
         setShowPhoneModal(true);
         setPhoneConsent(false);
@@ -100,6 +104,9 @@ export default function FacultyPortalPage() {
       fetchFacultyData();
     });
     eventSource.addEventListener("submission.reviewed", () => {
+      fetchFacultyData();
+    });
+    eventSource.addEventListener("configuration.updated", () => {
       fetchFacultyData();
     });
 
@@ -339,11 +346,16 @@ export default function FacultyPortalPage() {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-[#0d2137]">
-                Assigned Projects ({projects.length})
-              </h2>
-              <p className="text-xs text-slate-500">
-                Upload reports & PPTs with plagiarism verification, and export student rosters.
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-lg font-bold text-[#0d2137]">
+                  Assigned Projects ({projects.length})
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#c59b27]/20 text-[#0a192f] border border-[#c59b27]/40 shadow-2xs">
+                  Semester {activeSemester} Uploads Open
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Active Upload Window: Semester {activeSemester} only is enabled for document uploads by Administrator.
               </p>
             </div>
 
@@ -407,6 +419,7 @@ export default function FacultyPortalPage() {
               <FacultyProjectCard
                 key={proj.id}
                 project={proj}
+                activeSemester={activeSemester}
                 onOpenUpload={handleOpenUpload}
                 onDeleteArtifact={handleDeleteArtifact}
                 onExportStudents={handleExportStudents}
@@ -421,7 +434,8 @@ export default function FacultyPortalPage() {
       {showUploadModal && targetProject && (
         <ArtifactUploadModal
           project={targetProject}
-          initialSemester={uploadSemester}
+          activeSemester={activeSemester}
+          initialSemester={uploadSemester || activeSemester}
           initialType={uploadArtifactType}
           onClose={() => {
             setShowUploadModal(false);

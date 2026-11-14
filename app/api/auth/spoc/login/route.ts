@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       const isValid = spoc.passcodeHash ? await bcrypt.compare(passcode, spoc.passcodeHash) : false;
       if (!isValid) {
         return NextResponse.json(
-          { error: "Invalid credentials. Incorrect passcode." },
+          { error: "Invalid credentials. Incorrect passcode. Please contact the system administrator (admin@gdgu.org) to change or reset your password." },
           { status: 401 }
         );
       }
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       const isValid = faculty.passcodeHash ? await bcrypt.compare(passcode, faculty.passcodeHash) : false;
       if (!isValid) {
         return NextResponse.json(
-          { error: "Invalid credentials. Incorrect passcode." },
+          { error: "Invalid credentials. Incorrect passcode. Please contact the system administrator (admin@gdgu.org) to change or reset your password." },
           { status: 401 }
         );
       }

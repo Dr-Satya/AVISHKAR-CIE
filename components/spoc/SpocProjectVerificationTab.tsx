@@ -23,6 +23,7 @@ import {
   Archive,
   Upload,
   FileCheck,
+  Lock,
 } from "lucide-react";
 import { ProjectData } from "@/types/spoc";
 import { SpocProjectEditModal } from "@/components/spoc/SpocProjectEditModal";
@@ -31,6 +32,7 @@ import { ManuscriptModal } from "@/components/faculty/ManuscriptModal";
 
 interface SpocProjectVerificationTabProps {
   projects: ProjectData[];
+  activeSemester?: number;
   onOpenReview: (
     project: ProjectData,
     action: "APPROVE" | "REJECT",
@@ -44,6 +46,7 @@ interface SpocProjectVerificationTabProps {
 
 export function SpocProjectVerificationTab({
   projects,
+  activeSemester = 3,
   onOpenReview,
   onRefresh,
   onDownloadProjectZip,
@@ -745,14 +748,21 @@ export function SpocProjectVerificationTab({
                             </span>
                             <button
                               type="button"
+                              disabled={baseSem !== (activeSemester || 3)}
                               onClick={() => {
+                                if (baseSem !== (activeSemester || 3)) return;
                                 setUploadProject(proj);
                                 setUploadSemester(baseSem);
                                 setShowUploadModal(true);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors ${
+                                baseSem === (activeSemester || 3)
+                                  ? "bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200 cursor-pointer"
+                                  : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50 pointer-events-none"
+                              }`}
+                              title={baseSem === (activeSemester || 3) ? `Upload for Semester ${baseSem}` : `Semester ${baseSem} uploads are closed by Administrator.`}
                             >
-                              <Upload className="w-3 h-3" />
+                              {baseSem !== (activeSemester || 3) ? <Lock className="w-3 h-3 text-slate-400" /> : <Upload className="w-3 h-3" />}
                               <span>+ Upload Sem {baseSem}</span>
                             </button>
                           </div>
@@ -801,14 +811,21 @@ export function SpocProjectVerificationTab({
                             </span>
                             <button
                               type="button"
+                              disabled={nextSem !== (activeSemester || 3)}
                               onClick={() => {
+                                if (nextSem !== (activeSemester || 3)) return;
                                 setUploadProject(proj);
                                 setUploadSemester(nextSem);
                                 setShowUploadModal(true);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors ${
+                                nextSem === (activeSemester || 3)
+                                  ? "bg-purple-50 hover:bg-purple-100 text-purple-800 border-purple-200 cursor-pointer"
+                                  : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50 pointer-events-none"
+                              }`}
+                              title={nextSem === (activeSemester || 3) ? `Upload for Semester ${nextSem}` : `Semester ${nextSem} uploads are closed by Administrator.`}
                             >
-                              <Upload className="w-3 h-3" />
+                              {nextSem !== (activeSemester || 3) ? <Lock className="w-3 h-3 text-slate-400" /> : <Upload className="w-3 h-3" />}
                               <span>+ Upload Sem {nextSem}</span>
                             </button>
                           </div>
@@ -1148,7 +1165,8 @@ export function SpocProjectVerificationTab({
       {showUploadModal && uploadProject && (
         <ArtifactUploadModal
           project={uploadProject as any}
-          initialSemester={uploadSemester}
+          activeSemester={activeSemester}
+          initialSemester={uploadSemester || activeSemester}
           onClose={() => {
             setShowUploadModal(false);
             setUploadProject(null);

@@ -360,8 +360,14 @@ export async function GET(req: NextRequest) {
       else notSubmittedCount++;
     });
 
+    const globalConfig = await prisma.globalConfig.findUnique({
+      where: { id: "default" },
+    });
+
     return NextResponse.json({
       department,
+      activeSemester: globalConfig?.activeSemester || 3,
+      activeAcademicYear: globalConfig?.activeAcademicYear || "2026-2027",
       kpis: {
         totalProjects,
         totalFaculty,

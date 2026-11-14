@@ -28,6 +28,9 @@ Deployed at scale on the Cloudflare Edge network to deliver millisecond-latency 
 | Feature | Detail |
 |---------|--------|
 | **Multi-SPOC per School** | Assign multiple Department SPOCs to any school. Full create / edit / delete management from the admin panel with no overwrite risk. |
+| **Faculty & SPOC Password Reset Protocol** | Standardized admin-managed credential reset workflow. Clear in-portal guidance directs users to contact `admin@gdgu.org` upon login failure. |
+| **Active Faculty Mentors KPI Alignment** | Transparent SPOC dashboard analytics distinguishing actively mentoring faculty from unassigned department faculty with project-level 1:1 matching. |
+| **Active Semester Upload Window** | Admin can dynamically view and configure which semester milestone is open (`Semester 3` Interim vs `Semester 4` Final Defense). Only the active semester accepts document uploads across Faculty and SPOC portals; inactive semester buttons and submission actions are locked and unclickable with real-time SSE updates. |
 | **Full-Dataset Exports** | CSV / Excel / PDF downloads now fetch the **complete filtered dataset** from the API — not just the 25 rows on the current page. |
 | **Gender Analytics Fix** | Student gender stored in mixed case (`male`, `MALE`, `Male`) is now normalised before aggregation. Gender split in Admin & SPOC dashboards shows correct counts. |
 | **School Acronym Normalisation** | `SOES`, `COHSFE`, `SoLaw`, etc. are canonicalised before all KPI breakdowns so school stats merge correctly. |
@@ -232,6 +235,8 @@ npx wrangler d1 time-travel restore gdgu_idp_db --bookmark=<bookmark-id>
    - All gender values (`male`, `MALE`, `Male`, `M`) and school acronyms (`SOES`, `SoEngineering`, etc.) are canonicalised server-side before aggregation so KPI dashboards always show accurate breakdowns.
 6. **Data Privacy & FERPA Compliance:**
    - Passcodes hashed using bcrypt. Student mobile numbers and credentials stored securely with consent logs and no public exposure.
+7. **Active Semester Upload Gating:**
+   - Document submissions (reports, presentation slides, consent forms) are strictly locked to the administrator-configured active semester (`Semester 3` or `Semester 4`). Inactive semester upload buttons are disabled and non-clickable on client portals and enforced with HTTP 403 at the API layer.
 
 ---
 
@@ -239,11 +244,13 @@ npx wrangler d1 time-travel restore gdgu_idp_db --bookmark=<bookmark-id>
 
 Developed for **G D Goenka University** under the leadership of:
 
-| Name | Role | Affiliation |
-|------|------|-------------|
-| **Dr. Satya Prakash** | Project Lead & Principal Investigator | Avishkar CIE, School of Engineering & Sciences, GD Goenka University |
-| **Potla Sri Sharan** | Lead Developer & Systems Architect | Avishkar CIE, GD Goenka University |
-| **Sarthak Singh** | Developer & Operations | Avishkar CIE, GD Goenka University |
+| Name | Role | Profile | Affiliation |
+|------|------|---------|-------------|
+| **Dr. Satya Prakash** | Project Lead & Principal Investigator | [@Dr-Satya](https://github.com/Dr-Satya) | Avishkar CIE, School of Engineering & Sciences, GD Goenka University |
+| **Potla Sri Sharan** | Lead Developer & Systems Architect | [@potlasrisharan](https://github.com/potlasrisharan) | Avishkar CIE, GD Goenka University |
+| **Sarthak Singh** | Developer & Operations | [@SarthakSingh](https://github.com/SarthakSingh) | Avishkar CIE, GD Goenka University |
+
+> **Key Contributor & Lead Developer:** **Potla Sri Sharan** ([@potlasrisharan](https://github.com/potlasrisharan)) engineered the core full-stack portal architecture, Cloudflare Edge Workers & D1 database integration, real-time quota controls, and end-to-end multi-role portal security.
 
 ---
 

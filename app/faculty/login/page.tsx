@@ -30,7 +30,7 @@ export default function FacultyLoginPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(cleanErrorMessage(data.error, "Invalid faculty credentials."));
+        setError(cleanErrorMessage(data.error, "Invalid passcode. To change or reset your password, please contact the system administrator at admin@gdgu.org."));
         setLoading(false);
         return;
       }
@@ -78,6 +78,13 @@ export default function FacultyLoginPage() {
               <div>
                 <p className="font-semibold">Authentication Error</p>
                 <p className="mt-0.5 text-xs leading-relaxed">{error}</p>
+                <p className="mt-1.5 text-xs text-red-700">
+                  Cannot log in? Contact the system administrator at{" "}
+                  <a href="mailto:admin@gdgu.org" className="underline font-semibold hover:text-red-900">
+                    admin@gdgu.org
+                  </a>{" "}
+                  to change or reset your password.
+                </p>
               </div>
             </div>
           )}
@@ -130,6 +137,13 @@ export default function FacultyLoginPage() {
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               </div>
+              <p className="mt-1.5 text-[11px] text-slate-500 leading-normal">
+                To change or reset your password, please contact the system administrator at{" "}
+                <a href="mailto:admin@gdgu.org" className="font-semibold text-slate-700 hover:text-[#0a192f] underline">
+                  admin@gdgu.org
+                </a>
+                .
+              </p>
             </div>
 
             <button
@@ -158,15 +172,15 @@ export default function FacultyLoginPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full border border-slate-200 shadow-xl relative">
               <div className="w-10 h-1 bg-[#cda34f] rounded-full mb-3" />
-              <h3 className="text-lg font-bold text-[#0d2137]">Forgot Your Passcode?</h3>
+              <h3 className="text-lg font-bold text-[#0d2137]">Forgot or Change Passcode</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                If you have forgotten your passcode or need a reset, please contact the System Administrator directly at:
+                Password changes cannot be done self-service. If you have forgotten your passcode or need to change or reset your password, you must request it directly from the System Administrator at:
               </p>
               <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-[#0d2137]">
-                📧 <span className="font-semibold">admin@gdgu.org</span>
+                📧 <a href="mailto:admin@gdgu.org" className="font-semibold underline hover:text-[#c59b27]">admin@gdgu.org</a>
               </div>
               <p className="text-[11px] text-slate-500 mt-2">
-                The administrator can reset your passcode instantly from the Faculty Access Management panel.
+                The administrator can update or reset your passcode directly from the Faculty Access Management panel upon request.
               </p>
               <button
                 type="button"

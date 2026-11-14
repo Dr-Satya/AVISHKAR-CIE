@@ -10,11 +10,13 @@ import {
   Download,
   FileCheck,
   FileText,
+  Lock,
 } from "lucide-react";
 import { AssignedProject } from "@/types/faculty";
 
 interface ArtifactUploadModalProps {
   project: AssignedProject;
+  activeSemester?: number;
   initialSemester?: number;
   initialType?: "REPORT" | "PPT" | "CONSENT_FORM" | "OTHER";
   onClose: () => void;
@@ -23,6 +25,7 @@ interface ArtifactUploadModalProps {
 
 export function ArtifactUploadModal({
   project,
+  activeSemester = 3,
   initialSemester,
   initialType = "REPORT",
   onClose,
@@ -30,7 +33,7 @@ export function ArtifactUploadModal({
 }: ArtifactUploadModalProps) {
   const baseSem = project.semester || 3;
   const nextSem = baseSem + 1;
-  const [selectedSemester, setSelectedSemester] = useState<number>(initialSemester || baseSem);
+  const [selectedSemester, setSelectedSemester] = useState<number>(activeSemester || initialSemester || baseSem);
   const [artifactType, setArtifactType] = useState<"REPORT" | "PPT" | "CONSENT_FORM" | "OTHER">(
     initialType
   );
@@ -50,7 +53,7 @@ export function ArtifactUploadModal({
   };
 
   const [artifactTitle, setArtifactTitle] = useState(
-    getInitialTitle(initialType, initialSemester || baseSem)
+    getInitialTitle(initialType, activeSemester || initialSemester || baseSem)
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPlagiarismFile, setSelectedPlagiarismFile] = useState<File | null>(null);
@@ -71,6 +74,7 @@ export function ArtifactUploadModal({
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleSemesterChange = (sem: number) => {
+    if (sem !== activeSemester) return;
     setSelectedSemester(sem);
     if (!titleManuallyEdited) {
       setArtifactTitle(getInitialTitle(artifactType, sem));
@@ -86,6 +90,11 @@ export function ArtifactUploadModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (selectedSemester !== activeSemester) {
+      setError(`Uploads for Semester ${selectedSemester} are closed by Administrator. Only Semester ${activeSemester} uploads are open.`);
+      return;
+    }
 
     if (!selfDeclarationChecked) {
       setError("Please confirm the self-declaration: 'All the above info is correct'.");
@@ -245,43 +254,53 @@ export function ArtifactUploadModal({
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
               <span>Select Submission Semester</span>
-              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                Both Semesters Required
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                Semester {activeSemester} Uploads Open Only
               </span>
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => handleSemesterChange(baseSem)}
+                disabled={baseSem !== activeSemester}
+                onClick={() => baseSem === activeSemester && handleSemesterChange(baseSem)}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-left flex flex-col gap-0.5 ${
                   selectedSemester === baseSem
                     ? "bg-[#0d2137] text-white border-[#0d2137] shadow-sm"
-                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    : baseSem === activeSemester
+                    ? "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50"
                 }`}
+                title={baseSem === activeSemester ? `Upload for Semester ${baseSem}` : `Semester ${baseSem} uploads are closed by Administrator.`}
               >
-                <span className={`text-[10px] uppercase tracking-wider ${selectedSemester === baseSem ? "text-amber-300" : "text-slate-400"}`}>
-                  Phase I · Odd Sem
+                <span className={`text-[10px] uppercase tracking-wider flex items-center gap-1 ${selectedSemester === baseSem ? "text-amber-300" : "text-slate-400"}`}>
+                  {baseSem !== activeSemester && <Lock className="w-2.5 h-2.5" />}
+                  Phase I · Odd Sem {baseSem !== activeSemester ? "(Closed)" : ""}
                 </span>
                 <span>Semester {baseSem} (Interim)</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleSemesterChange(nextSem)}
+                disabled={nextSem !== activeSemester}
+                onClick={() => nextSem === activeSemester && handleSemesterChange(nextSem)}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-left flex flex-col gap-0.5 ${
                   selectedSemester === nextSem
                     ? "bg-[#0d2137] text-white border-[#0d2137] shadow-sm"
-                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    : nextSem === activeSemester
+                    ? "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50"
                 }`}
+                title={nextSem === activeSemester ? `Upload for Semester ${nextSem}` : `Semester ${nextSem} uploads are closed by Administrator.`}
               >
-                <span className={`text-[10px] uppercase tracking-wider ${selectedSemester === nextSem ? "text-amber-300" : "text-slate-400"}`}>
-                  Phase II · Even Sem
+                <span className={`text-[10px] uppercase tracking-wider flex items-center gap-1 ${selectedSemester === nextSem ? "text-amber-300" : "text-slate-400"}`}>
+                  {nextSem !== activeSemester && <Lock className="w-2.5 h-2.5" />}
+                  Phase II · Even Sem {nextSem !== activeSemester ? "(Closed)" : ""}
                 </span>
                 <span>Semester {nextSem} (Final Defense)</span>
               </button>
             </div>
             <p className="text-[10px] text-slate-500 mt-1">
-              Faculty mentors are required to submit reports and presentation slides for <strong>both</strong> semesters.
+              Currently, Administrator has opened uploads strictly for <strong>Semester {activeSemester}</strong>.
             </p>
           </div>
 

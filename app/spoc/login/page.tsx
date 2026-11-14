@@ -14,6 +14,7 @@ export default function SpocLoginPage() {
   const [passcode, setPasscode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +84,9 @@ export default function SpocLoginPage() {
               <div>
                 <p className="font-semibold">Authentication Notice</p>
                 <p className="mt-0.5 text-xs leading-relaxed">{error}</p>
+                <p className="mt-1 text-[11px] text-red-700 leading-normal">
+                  If you cannot log in or need to change or reset your credentials, please contact the administrator at <a href="mailto:admin@gdgu.org" className="font-semibold underline">admin@gdgu.org</a>.
+                </p>
               </div>
             </div>
           )}
@@ -106,9 +110,18 @@ export default function SpocLoginPage() {
             </div>
 
             <div>
-              <label htmlFor="spoc-passcode" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                SPOC Passcode
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="spoc-passcode" className="text-xs font-semibold text-slate-700">
+                  SPOC Passcode
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-xs font-medium text-[#c59b27] hover:text-[#9e7815] transition-colors"
+                >
+                  Forgot passcode?
+                </button>
+              </div>
               <input
                 id="spoc-passcode"
                 name="password"
@@ -120,6 +133,9 @@ export default function SpocLoginPage() {
                 className="w-full px-4 py-3 rounded-2xl border border-slate-300/90 bg-slate-50/50 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a192f] focus:border-transparent transition-all font-mono"
                 required
               />
+              <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                If you cannot log in or need to change your password, please contact the administrator at <a href="mailto:admin@gdgu.org" className="font-semibold text-slate-700 hover:underline">admin@gdgu.org</a>.
+              </p>
             </div>
 
             <button
@@ -151,6 +167,35 @@ export default function SpocLoginPage() {
             </Link>
           </div>
         </div>
+
+        {/* Forgot Passcode Modal */}
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full border border-slate-200 shadow-xl relative">
+              <div className="w-10 h-1 bg-[#c59b27] rounded-full mb-3" />
+              <h3 className="text-lg font-bold text-[#09131f]">Forgot Your Passcode?</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Self-service passcode reset is disabled for Department SPOC accounts. If you have forgotten your passcode or need to change or reset your password, please contact the system administrator directly:
+              </p>
+              <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-[#09131f] flex items-center gap-2">
+                <span>📧</span>
+                <a href="mailto:admin@gdgu.org" className="font-semibold text-[#0a192f] hover:underline">
+                  admin@gdgu.org
+                </a>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2">
+                The administrator can update or re-issue your SPOC passcode from the Central Governance panel.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="mt-5 w-full py-2.5 rounded-xl bg-[#0a192f] text-white text-xs font-semibold hover:bg-[#132c4a] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </main>
       <Footer />
     </>

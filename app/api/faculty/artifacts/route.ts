@@ -95,6 +95,14 @@ export async function POST(req: NextRequest) {
     const activeSemester = globalConfig?.activeSemester || 3;
     const semester = formData.get("semester") ? parseInt(formData.get("semester") as string, 10) : activeSemester;
 
+    // Enforce active semester upload window: only active semester is open
+    if (semester !== activeSemester) {
+      return NextResponse.json(
+        { error: `Uploads for Semester ${semester} are currently closed by Administrator. Only Semester ${activeSemester} uploads are permitted.` },
+        { status: 403 }
+      );
+    }
+
     // Self Declaration Consent Check
     if (!selfDeclaration) {
       return NextResponse.json(
@@ -380,6 +388,16 @@ export async function DELETE(req: NextRequest) {
     if (session.role === "FACULTY" && artifact.status === "APPROVED") {
       return NextResponse.json(
         { error: "Cannot delete an artifact that has already been approved by the Department SPOC." },
+        { status: 403 }
+      );
+    }
+
+    // Protect closed semester artifacts from deletion/modification by faculty
+    const globalConfig = await prisma.globalConfig.findUnique({ where: { id: "default" } });
+    const activeSemester = globalConfig?.activeSemester || 3;
+    if (session.role === "FACULTY" && artifact.semester !== activeSemester) {
+      return NextResponse.json(
+        { error: `Cannot delete documents from Semester ${artifact.semester}. Uploads and modifications for Semester ${artifact.semester} are closed by Administrator.` },
         { status: 403 }
       );
     }

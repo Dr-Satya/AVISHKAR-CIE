@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const isValid = await bcrypt.compare(passcode, faculty.passcodeHash);
     if (!isValid) {
       return NextResponse.json(
-        { error: "Invalid faculty credentials." },
+        { error: "Invalid passcode. To change or reset your password, please contact the system administrator at admin@gdgu.org." },
         { status: 401 }
       );
     }

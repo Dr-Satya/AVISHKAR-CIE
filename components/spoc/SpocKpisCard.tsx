@@ -52,15 +52,24 @@ export function SpocKpisCard({ kpis, department, facultyList }: SpocKpisCardProp
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Faculty Members
+            Faculty Mentors
           </span>
           <Building2 className="w-4 h-4 text-purple-600" />
         </div>
-        <div className="text-2xl font-bold text-[#0d2137] mt-2">
-          {kpis.totalFaculty ?? 0}
+        <div className="flex items-baseline gap-2 mt-2">
+          <span className="text-2xl font-bold text-[#0d2137]">
+            {activeFacultyCount}
+          </span>
+          {kpis.totalFaculty && kpis.totalFaculty > activeFacultyCount && (
+            <span className="text-xs font-medium text-slate-400">
+              / {kpis.totalFaculty} registered
+            </span>
+          )}
         </div>
         <div className="text-[11px] text-slate-500 mt-0.5">
-          In {(department || "").slice(0, 20)}...
+          {kpis.totalFaculty && kpis.totalFaculty > activeFacultyCount
+            ? `${activeFacultyCount} active · ${kpis.totalFaculty - activeFacultyCount} unassigned`
+            : `All ${activeFacultyCount} active in ${(department || "").slice(0, 18)}`}
         </div>
       </div>
 

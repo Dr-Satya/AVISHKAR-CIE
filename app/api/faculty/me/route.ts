@@ -122,6 +122,10 @@ export async function GET() {
       })
     );
 
+    const globalConfig = await prisma.globalConfig.findUnique({
+      where: { id: "default" },
+    });
+
     return NextResponse.json({
       faculty: {
         id: faculty.id,
@@ -134,6 +138,8 @@ export async function GET() {
         spocDepartment: faculty.spocDepartment,
       },
       projects: enrichedProjects,
+      activeSemester: globalConfig?.activeSemester || 3,
+      activeAcademicYear: globalConfig?.activeAcademicYear || "2026-2027",
       smsOtpEnabled: false,
     });
   } catch (err: any) {

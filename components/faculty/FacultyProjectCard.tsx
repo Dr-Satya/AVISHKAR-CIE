@@ -24,6 +24,7 @@ import {
   Eye,
   EyeOff,
   Archive,
+  Lock,
 } from "lucide-react";
 import { exportToXlsx, exportToCsv } from "@/lib/export";
 import { AssignedProject } from "@/types/faculty";
@@ -38,6 +39,7 @@ import {
 
 interface FacultyProjectCardProps {
   project: AssignedProject;
+  activeSemester?: number;
   onOpenUpload: (
     proj: AssignedProject,
     semester?: number,
@@ -50,6 +52,7 @@ interface FacultyProjectCardProps {
 
 export function FacultyProjectCard({
   project: proj,
+  activeSemester = 3,
   onOpenUpload,
   onDeleteArtifact,
   onExportStudents,
@@ -388,6 +391,8 @@ export function FacultyProjectCard({
 
   const baseSem = proj.semester || 3;
   const nextSem = baseSem + 1;
+  const isSem1Open = (activeSemester || 3) === baseSem;
+  const isSem2Open = (activeSemester || 3) === nextSem;
 
   // Separate artifacts by semester
   const allArtifacts = proj.artifacts || [];
@@ -543,13 +548,22 @@ export function FacultyProjectCard({
         )}
 
         {art.status !== "APPROVED" && (
-          <button
-            onClick={() => onDeleteArtifact(art.id)}
-            className="p-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
-            title="Remove artifact"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          (art.semester || baseSem) === activeSemester ? (
+            <button
+              onClick={() => onDeleteArtifact(art.id)}
+              className="p-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+              title="Remove artifact"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <span
+              className="p-1 rounded-lg text-slate-300 cursor-not-allowed"
+              title={`Cannot delete: Semester ${art.semester || baseSem} uploads are closed by Administrator`}
+            >
+              <Lock className="w-3 h-3 text-slate-300" />
+            </span>
+          )
         )}
       </div>
     </div>
@@ -698,14 +712,22 @@ export function FacultyProjectCard({
       {/* Dual-Semester Submissions Container */}
       <div className="p-6 sm:p-7 bg-slate-50/50 border-b border-slate-100 space-y-6">
         {/* SEMESTER 1 (ODD / INTERIM) */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-5 shadow-xs space-y-3.5">
+        <div className={`bg-white rounded-xl border p-5 shadow-xs space-y-3.5 transition-all ${
+          isSem1Open ? "border-slate-200/90" : "border-slate-200/60 bg-slate-50/40"
+        }`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-xs font-bold text-[#0d2137] uppercase tracking-wider">
                   Semester {baseSem} Submissions (Phase I · Interim)
                 </h4>
                 {renderStatusBadge(sem1Status)}
+                {!isSem1Open && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1 shadow-2xs">
+                    <Lock className="w-2.5 h-2.5 text-slate-400" />
+                    Uploads Closed (Sem {activeSemester} Active)
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Interim Project Report with Turnitin plagiarism check, presentation slides, and evaluation logbook.
@@ -715,9 +737,14 @@ export function FacultyProjectCard({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => onOpenUpload(proj, baseSem, "CONSENT_FORM")}
-                className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold flex items-center gap-1.5 transition-colors border border-teal-200 shadow-xs"
-                title="Download template and upload signed Student Consent Form"
+                disabled={!isSem1Open}
+                onClick={() => isSem1Open && onOpenUpload(proj, baseSem, "CONSENT_FORM")}
+                className={`self-start sm:self-center px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border shadow-xs ${
+                  isSem1Open
+                    ? "bg-teal-50 hover:bg-teal-100 text-teal-900 border-teal-200 cursor-pointer"
+                    : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50 pointer-events-none"
+                }`}
+                title={isSem1Open ? "Download template and upload signed Student Consent Form" : `Semester ${baseSem} uploads are closed by Administrator.`}
               >
                 <FileCheck className="w-3.5 h-3.5 text-teal-700" />
                 <span>+ Consent Form</span>
@@ -725,8 +752,14 @@ export function FacultyProjectCard({
 
               <button
                 type="button"
-                onClick={() => onOpenUpload(proj, baseSem)}
-                className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0d2137] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
+                disabled={!isSem1Open}
+                onClick={() => isSem1Open && onOpenUpload(proj, baseSem)}
+                className={`self-start sm:self-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                  isSem1Open
+                    ? "bg-slate-100 hover:bg-slate-200 text-[#0d2137] border-slate-200 cursor-pointer"
+                    : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50 pointer-events-none"
+                }`}
+                title={isSem1Open ? `Upload artifacts for Semester ${baseSem}` : `Semester ${baseSem} uploads are closed by Administrator.`}
               >
                 <Upload className="w-3 h-3 text-[#0d2137]" />
                 <span>+ Upload for Sem {baseSem}</span>
@@ -737,39 +770,45 @@ export function FacultyProjectCard({
           {/* Checklist Pills for Sem 1 */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
-                sem1HasReport
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : "bg-red-50 text-red-800 border-red-200"
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 transition-colors ${
+                !isSem1Open
+                  ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 pointer-events-none"
+                  : sem1HasReport
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200 cursor-pointer"
+                  : "bg-red-50 text-red-800 border-red-200 cursor-pointer"
               }`}
-              onClick={() => onOpenUpload(proj, baseSem, "REPORT")}
-              title="Click to upload or update Project Report"
+              onClick={() => isSem1Open && onOpenUpload(proj, baseSem, "REPORT")}
+              title={isSem1Open ? "Click to upload or update Project Report" : `Semester ${baseSem} uploads are closed by Administrator.`}
             >
               {sem1HasReport ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <AlertCircle className="w-3 h-3 text-red-500" />}
               <span>Interim Report {sem1HasReport ? "(Uploaded)" : "(Required)"}</span>
             </span>
 
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
-                sem1HasPpt
-                  ? "bg-purple-50 text-purple-800 border-purple-200"
-                  : "bg-slate-50 text-slate-600 border-slate-200"
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 transition-colors ${
+                !isSem1Open
+                  ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 pointer-events-none"
+                  : sem1HasPpt
+                  ? "bg-purple-50 text-purple-800 border-purple-200 cursor-pointer"
+                  : "bg-slate-50 text-slate-600 border-slate-200 cursor-pointer"
               }`}
-              onClick={() => onOpenUpload(proj, baseSem, "PPT")}
-              title="Click to upload or update Presentation Slides"
+              onClick={() => isSem1Open && onOpenUpload(proj, baseSem, "PPT")}
+              title={isSem1Open ? "Click to upload or update Presentation Slides" : `Semester ${baseSem} uploads are closed by Administrator.`}
             >
               {sem1HasPpt ? <CheckCircle2 className="w-3 h-3 text-purple-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
               <span>Presentation PPT {sem1HasPpt ? "(Uploaded)" : "(Required)"}</span>
             </span>
 
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
-                sem1HasConsent
-                  ? "bg-teal-50 text-teal-800 border-teal-200"
-                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50/50"
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 transition-colors ${
+                !isSem1Open
+                  ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 pointer-events-none"
+                  : sem1HasConsent
+                  ? "bg-teal-50 text-teal-800 border-teal-200 cursor-pointer"
+                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50/50 cursor-pointer"
               }`}
-              onClick={() => onOpenUpload(proj, baseSem, "CONSENT_FORM")}
-              title="Click to download template and submit Student Consent Form"
+              onClick={() => isSem1Open && onOpenUpload(proj, baseSem, "CONSENT_FORM")}
+              title={isSem1Open ? "Click to download template and submit Student Consent Form" : `Semester ${baseSem} uploads are closed by Administrator.`}
             >
               {sem1HasConsent ? <CheckCircle2 className="w-3 h-3 text-teal-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
               <span>Consent Form {sem1HasConsent ? "(Uploaded)" : "(Pending)"}</span>
@@ -795,21 +834,31 @@ export function FacultyProjectCard({
             <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
               <p className="text-xs text-slate-600 font-medium">No documents uploaded for Semester {baseSem} yet.</p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Click &ldquo;+ Upload for Sem {baseSem}&rdquo; to attach the required Interim Report and PPT.
+                {isSem1Open
+                  ? `Click "+ Upload for Sem ${baseSem}" to attach the required Interim Report and PPT.`
+                  : `Uploads for Semester ${baseSem} are currently closed by Administrator.`}
               </p>
             </div>
           )}
         </div>
 
         {/* SEMESTER 2 (EVEN / FINAL) */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-5 shadow-xs space-y-3.5">
+        <div className={`bg-white rounded-xl border p-5 shadow-xs space-y-3.5 transition-all ${
+          isSem2Open ? "border-slate-200/90" : "border-slate-200/60 bg-slate-50/40"
+        }`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-xs font-bold text-[#0d2137] uppercase tracking-wider">
                   Semester {nextSem} Submissions (Phase II · Final Defense)
                 </h4>
                 {renderStatusBadge(sem2Status)}
+                {!isSem2Open && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1 shadow-2xs">
+                    <Lock className="w-2.5 h-2.5 text-slate-400" />
+                    Uploads Closed (Sem {activeSemester} Active)
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Final Capstone Project Report with Turnitin plagiarism check, defense slides, and final deliverables.
@@ -819,9 +868,14 @@ export function FacultyProjectCard({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => onOpenUpload(proj, nextSem, "CONSENT_FORM")}
-                className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold flex items-center gap-1.5 transition-colors border border-teal-200 shadow-xs"
-                title="Download template and upload signed Student Consent Form"
+                disabled={!isSem2Open}
+                onClick={() => isSem2Open && onOpenUpload(proj, nextSem, "CONSENT_FORM")}
+                className={`self-start sm:self-center px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border shadow-xs ${
+                  isSem2Open
+                    ? "bg-teal-50 hover:bg-teal-100 text-teal-900 border-teal-200 cursor-pointer"
+                    : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50 pointer-events-none"
+                }`}
+                title={isSem2Open ? "Download template and upload signed Student Consent Form" : `Semester ${nextSem} uploads are closed by Administrator.`}
               >
                 <FileCheck className="w-3.5 h-3.5 text-teal-700" />
                 <span>+ Consent Form</span>
@@ -829,8 +883,14 @@ export function FacultyProjectCard({
 
               <button
                 type="button"
-                onClick={() => onOpenUpload(proj, nextSem)}
-                className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0d2137] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
+                disabled={!isSem2Open}
+                onClick={() => isSem2Open && onOpenUpload(proj, nextSem)}
+                className={`self-start sm:self-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                  isSem2Open
+                    ? "bg-slate-100 hover:bg-slate-200 text-[#0d2137] border-slate-200 cursor-pointer"
+                    : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50 pointer-events-none"
+                }`}
+                title={isSem2Open ? `Upload artifacts for Semester ${nextSem}` : `Semester ${nextSem} uploads are closed by Administrator.`}
               >
                 <Upload className="w-3 h-3 text-[#0d2137]" />
                 <span>+ Upload for Sem {nextSem}</span>
@@ -841,39 +901,45 @@ export function FacultyProjectCard({
           {/* Checklist Pills for Sem 2 */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
-                sem2HasReport
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : "bg-red-50 text-red-800 border-red-200"
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 transition-colors ${
+                !isSem2Open
+                  ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 pointer-events-none"
+                  : sem2HasReport
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200 cursor-pointer"
+                  : "bg-red-50 text-red-800 border-red-200 cursor-pointer"
               }`}
-              onClick={() => onOpenUpload(proj, nextSem, "REPORT")}
-              title="Click to upload or update Project Report"
+              onClick={() => isSem2Open && onOpenUpload(proj, nextSem, "REPORT")}
+              title={isSem2Open ? "Click to upload or update Project Report" : `Semester ${nextSem} uploads are closed by Administrator.`}
             >
               {sem2HasReport ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <AlertCircle className="w-3 h-3 text-red-500" />}
               <span>Final Report {sem2HasReport ? "(Uploaded)" : "(Required)"}</span>
             </span>
 
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
-                sem2HasPpt
-                  ? "bg-purple-50 text-purple-800 border-purple-200"
-                  : "bg-slate-50 text-slate-600 border-slate-200"
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 transition-colors ${
+                !isSem2Open
+                  ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 pointer-events-none"
+                  : sem2HasPpt
+                  ? "bg-purple-50 text-purple-800 border-purple-200 cursor-pointer"
+                  : "bg-slate-50 text-slate-600 border-slate-200 cursor-pointer"
               }`}
-              onClick={() => onOpenUpload(proj, nextSem, "PPT")}
-              title="Click to upload or update Presentation Slides"
+              onClick={() => isSem2Open && onOpenUpload(proj, nextSem, "PPT")}
+              title={isSem2Open ? "Click to upload or update Presentation Slides" : `Semester ${nextSem} uploads are closed by Administrator.`}
             >
               {sem2HasPpt ? <CheckCircle2 className="w-3 h-3 text-purple-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
               <span>Defense PPT {sem2HasPpt ? "(Uploaded)" : "(Required)"}</span>
             </span>
 
             <span
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 cursor-pointer transition-colors ${
-                sem2HasConsent
-                  ? "bg-teal-50 text-teal-800 border-teal-200"
-                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50/50"
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border flex items-center gap-1.5 transition-colors ${
+                !isSem2Open
+                  ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 pointer-events-none"
+                  : sem2HasConsent
+                  ? "bg-teal-50 text-teal-800 border-teal-200 cursor-pointer"
+                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50/50 cursor-pointer"
               }`}
-              onClick={() => onOpenUpload(proj, nextSem, "CONSENT_FORM")}
-              title="Click to download template and submit Student Consent Form"
+              onClick={() => isSem2Open && onOpenUpload(proj, nextSem, "CONSENT_FORM")}
+              title={isSem2Open ? "Click to download template and submit Student Consent Form" : `Semester ${nextSem} uploads are closed by Administrator.`}
             >
               {sem2HasConsent ? <CheckCircle2 className="w-3 h-3 text-teal-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
               <span>Consent Form {sem2HasConsent ? "(Uploaded)" : "(Pending)"}</span>
@@ -899,7 +965,9 @@ export function FacultyProjectCard({
             <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
               <p className="text-xs text-slate-600 font-medium">No documents uploaded for Semester {nextSem} yet.</p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Click &ldquo;+ Upload for Sem {nextSem}&rdquo; to attach the required Final Report and Defense PPT.
+                {isSem2Open
+                  ? `Click "+ Upload for Sem ${nextSem}" to attach the required Final Report and Defense PPT.`
+                  : `Uploads for Semester ${nextSem} are currently closed by Administrator.`}
               </p>
             </div>
           )}

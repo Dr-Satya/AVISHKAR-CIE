@@ -21,6 +21,7 @@ os.makedirs(DOCS_DIR, exist_ok=True)
 BRAIN_STEPS = '/Users/potlasrisharanchowdary/.gemini/antigravity/brain/45708729-9c46-47cb-9c74-f2c26ec2b9fe/.system_generated/steps'
 LANDING_IMG = os.path.join(DOCS_DIR, 'assets/landing.png')
 QR_IMG = os.path.join(DOCS_DIR, 'assets/qr_code.png')
+CONSENT_MODAL_IMG = os.path.join(DOCS_DIR, 'assets/faculty_consent_form_modal.png')
 
 def get_font(size, bold=True):
     candidates = [
@@ -150,14 +151,22 @@ fac_step6_img = annotate_image(
     ]
 )
 
-fac_step7_img = annotate_image(
-    f'{BRAIN_STEPS}/133/media_0.png', 'fac_step7.jpg',
-    crop_box=(245, 110, 1270, 1370),
+fac_step7_col1_img = annotate_image(
+    CONSENT_MODAL_IMG, 'fac_step7_col1.jpg',
+    crop_box=(380, 95, 896, 780),
     boxes=[
-        {'coords': (56, 210, 970, 320), 'stroke': 4, 'num': 1, 'label': 'Select Submission Semester (Sem 3 vs Sem 4)', 'pill_pos': (410, 172)},
-        {'coords': (56, 432, 970, 512), 'stroke': 4, 'num': 2, 'label': 'Artifact Type (Report / PPT / Consent Form)', 'pill_pos': (270, 392)},
-        {'coords': (56, 592, 970, 800), 'stroke': 4, 'num': 3, 'label': 'Document Title, Template Download & Upload', 'pill_pos': (250, 552)},
-        {'coords': (56, 818, 970, 1252), 'stroke': 4, 'num': 4, 'label': 'Plagiarism (<10%) or 4 Consent Checkboxes', 'pill_pos': (80, 780)}
+        {'coords': (28, 240, 486, 302), 'stroke': 4, 'num': 1, 'label': 'Select Type: Consent Form', 'pill_pos': (40, 200)},
+        {'coords': (44, 460, 252, 668), 'stroke': 4, 'num': 2, 'label': '2. Download Template', 'pill_pos': (44, 420)},
+        {'coords': (262, 460, 470, 668), 'stroke': 4, 'num': 3, 'label': '3. Upload Signed Form', 'pill_pos': (262, 420)}
+    ]
+)
+
+fac_step7_col2_img = annotate_image(
+    CONSENT_MODAL_IMG, 'fac_step7_col2.jpg',
+    crop_box=(380, 780, 896, 1245),
+    boxes=[
+        {'coords': (28, 5, 486, 300), 'stroke': 4, 'num': 4, 'label': '4. 4 Mandatory Verifications', 'pill_pos': (40, 10)},
+        {'coords': (230, 396, 486, 444), 'stroke': 4, 'num': 5, 'label': '5. Submit for SPOC Review', 'pill_pos': (190, 355)}
     ]
 )
 
@@ -569,10 +578,11 @@ def build_pdf(filename, doc_title, subtitle, pages_data):
             cols = pdata['columns']
             col1 = RLImage(cols[0]['path'], width=cols[0]['w'], height=cols[0]['h'])
             col2 = RLImage(cols[1]['path'], width=cols[1]['w'], height=cols[1]['h'])
+            valign_val = pdata.get('col_valign', 'MIDDLE')
             two_col = Table([[col1, col2]], colWidths=[cols[0]['col_w'], cols[1]['col_w']])
             two_col.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('VALIGN', (0, 0), (-1, -1), valign_val),
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
                 ('TOPPADDING', (0, 0), (-1, -1), 4),
@@ -640,9 +650,10 @@ faculty_pages = [
             '2. <b>Security Passcode:</b> Enter your secure faculty passcode (Initial default: <code>gdgu@2026</code>).',
             '3. <b>Dual Authentication Mode:</b> Supports sign-in via either official email or 10-digit mobile number.',
             '4. <b>Login to Faculty Portal:</b> Authenticates and issues a 24-hour encrypted JWT session token.',
+            '5. <b>Changing Passcode After Opening Portal:</b> Faculty can change their password after opening the portal at any time by clicking the <b>Change Passcode</b> button in the top navigation bar.',
             '• Forgot Passcode? Contact your Department SPOC or System Administrator for an emergency credentials reset.'
         ],
-        'callout': ('Security Protocol', 'Never share your faculty passcode. All artifact submissions and grade clearances carry your permanent digital faculty signature in the university database.'),
+        'callout': ('Security Protocol', 'Never share your faculty passcode. Faculty are strongly advised to change the default passcode (gdgu@2026) immediately after opening the portal via the "Change Passcode" button on the dashboard.'),
         'image_path': fac_step2_img,
         'max_h': 290
     },
@@ -706,18 +717,21 @@ faculty_pages = [
         'max_h': 275
     },
     {
-        'step_title': 'Step 7: Uploading Deliverables, Plagiarism Verification & Consent Forms',
+        'step_title': 'Step 7: Student Publication Consent Form & Deliverables Upload',
         'content': [
-            'Mentors submit student group deliverables for formal departmental verification:',
-            '1. <b>Upload Triggers:</b> Click <b>+ Upload for Sem X</b> or <b>+ Consent Form</b> (or click any status pill directly).',
-            '2. <b>Artifact Types:</b> Choose <b>Project Report</b>, <b>Presentation PPT</b>, <b>Student Consent Form</b>, or <b>Others</b>.',
-            '3. <b>Student Publication Consent Form:</b> Download the standardized template (.docx), get signatures from all student authors and mentor, verify Turnitin < 10% / AI < 20% & Avishkar CIE attribution, and upload signed .docx/.pdf.',
-            '4. <b>Plagiarism Verification (Reports/PPTs):</b> Enter Turnitin similarity % (strictly <b>&lt; 10%</b>) and AI content (<b>&lt; 20%</b>), and attach certified similarity PDF report.',
-            '5. <b>Attach Document:</b> Upload deliverable file (Max 15 MB) and submit for SPOC verification.'
+            'Mentors submit student group deliverables and publication consent for formal SPOC verification:',
+            '1. <b>Artifact Document Type:</b> On the project card, click <b>+ Consent Form</b> or <b>+ Upload for Sem X</b> and select <b>Consent Form</b>.',
+            '2. <b>Download Template (.docx):</b> Click <b>Download Template (.docx)</b> to retrieve the standardized 10-student publication consent form.',
+            '3. <b>Upload Signed Form:</b> Collect signatures from all student co-authors and faculty mentor, then upload the completed <code>.docx</code> or <code>.pdf</code>.',
+            '4. <b>Mandatory Verifications:</b> Tick all 4 checks: (1) Student consent recorded & granted, (2) Plagiarism &lt; 10% &amp; AI &lt; 20%, (3) Authorship attribution &amp; non-exclusive rights, and (4) Supervising faculty sign-off.',
+            '5. <b>Submit Deliverable:</b> Confirm self-declaration and click <b>Upload &amp; Submit Consent Form</b> for SPOC clearance.'
         ],
-        'callout': ('Dual-Semester Mandate', 'Both Phase I and Phase II submissions are strictly required for semester completion. Signed Consent Forms are mandatory for student publication endorsement.'),
-        'image_path': fac_step7_img,
-        'max_h': 275
+        'callout': ('Institutional Mandate', 'Signed Student Publication Consent Forms are strictly required prior to research manuscript endorsement or journal submission under Avishkar CIE.'),
+        'columns': [
+            {'path': fac_step7_col1_img, 'w': 252, 'h': 335, 'col_w': 257},
+            {'path': fac_step7_col2_img, 'w': 252, 'h': 227, 'col_w': 257}
+        ],
+        'col_valign': 'TOP'
     },
     {
         'step_title': 'Step 8: Research Manuscript & Publication Governance',

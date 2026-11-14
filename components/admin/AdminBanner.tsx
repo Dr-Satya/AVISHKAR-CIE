@@ -31,12 +31,12 @@ export function AdminBanner({
         <div className="space-y-2">
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#c59b27] text-[#0a192f] shadow-subtle">
-              Active Cohort Session
+              Active Upload Window: Sem {activeSemester}
             </span>
             <span className="text-xs text-slate-300 font-medium">
               {activeSemester === 3
-                ? "Semester 1 Milestone (Sem 3 · PPT Submission)"
-                : "Semester 2 Milestone (Sem 4 · Final Report)"}
+                ? "Semester 3 Uploads Open · Sem 4 Uploads Locked"
+                : "Semester 4 Uploads Open · Sem 3 Uploads Locked"}
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
@@ -53,10 +53,10 @@ export function AdminBanner({
             type="button"
             onClick={onToggleSemester}
             className="px-4 py-2.5 rounded-2xl text-xs font-semibold bg-white/10 hover:bg-white/15 border border-white/15 text-white transition-all tactile-btn flex items-center gap-1.5 shadow-subtle"
-            title="Switch active semester milestone"
+            title={`Switch active upload window (currently Sem ${activeSemester} only is open for faculty)`}
           >
             <RefreshCw className="w-3.5 h-3.5 text-[#c59b27]" />
-            <span>Switch to Sem {activeSemester === 3 ? "4 (Report)" : "3 (PPT)"}</span>
+            <span>Switch to Sem {activeSemester === 3 ? "4 Uploads" : "3 Uploads"}</span>
           </button>
           {onDownloadCohorts && (
             <button

@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Lock, Calendar } from "lucide-react";
 import { GlobalConfigData } from "@/types/admin";
 
 interface GlobalConfigCardProps {
@@ -106,6 +106,104 @@ export function GlobalConfigCard({
               }
               className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0d2137]"
             />
+          </div>
+        </div>
+
+        {/* Active Semester Upload Window */}
+        <div className="border-t border-slate-100 pt-5 mt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#cda34f]" />
+                <span>Active Semester Upload Window</span>
+              </label>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Controls which semester milestone is open for student and faculty submissions. The inactive semester will be locked and non-clickable.
+              </p>
+            </div>
+            <span className="self-start sm:self-auto px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200">
+              Active: Semester {config.activeSemester || 3}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setConfig((c) => ({ ...c, activeSemester: 3 }))}
+              className={`p-3.5 rounded-xl border text-left flex items-start gap-3 transition-all ${
+                (config.activeSemester || 3) === 3
+                  ? "border-[#cda34f] bg-amber-50/70 shadow-xs ring-1 ring-[#cda34f]/30"
+                  : "border-slate-200 bg-white hover:bg-slate-50"
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center flex-shrink-0 ${
+                  (config.activeSemester || 3) === 3
+                    ? "border-[#cda34f] bg-[#cda34f]"
+                    : "border-slate-300"
+                }`}
+              >
+                {(config.activeSemester || 3) === 3 && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-bold text-[#0d2137]">Semester 3 (Interim Phase)</p>
+                  {(config.activeSemester || 3) === 3 ? (
+                    <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      Uploads Open
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-semibold text-slate-400 flex items-center gap-0.5">
+                      <Lock className="w-2.5 h-2.5" /> Locked
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  Only Semester 3 PPT presentations, Interim Reports, and Consent Forms are open for upload. Semester 4 remains locked and unclickable.
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setConfig((c) => ({ ...c, activeSemester: 4 }))}
+              className={`p-3.5 rounded-xl border text-left flex items-start gap-3 transition-all ${
+                config.activeSemester === 4
+                  ? "border-[#cda34f] bg-amber-50/70 shadow-xs ring-1 ring-[#cda34f]/30"
+                  : "border-slate-200 bg-white hover:bg-slate-50"
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center flex-shrink-0 ${
+                  config.activeSemester === 4
+                    ? "border-[#cda34f] bg-[#cda34f]"
+                    : "border-slate-300"
+                }`}
+              >
+                {config.activeSemester === 4 && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-bold text-[#0d2137]">Semester 4 (Final Defense)</p>
+                  {config.activeSemester === 4 ? (
+                    <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      Uploads Open
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-semibold text-slate-400 flex items-center gap-0.5">
+                      <Lock className="w-2.5 h-2.5" /> Locked
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  Only Semester 4 Capstone Reports and Defense PPT presentations are open for upload. Semester 3 remains locked and unclickable.
+                </p>
+              </div>
+            </button>
           </div>
         </div>
 
