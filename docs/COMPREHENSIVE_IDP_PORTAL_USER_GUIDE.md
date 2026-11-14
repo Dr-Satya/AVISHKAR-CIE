@@ -220,7 +220,8 @@ Once allocated:
 1. Access `/faculty/login`.
 2. Login using either your official university email (`@gdgu.org`) OR your registered 10-digit mobile number, with your passcode (default: `gdgu@2026`).
 3. Complete the mandatory mobile number declaration and verification modal.
-4. Click **Change Passcode** in the top bar to update your account with a private, secure passcode.
+4. **Change Passcode After Opening Portal:** Once inside the portal, faculty can immediately change their password/passcode at any time by clicking the **Change Passcode** button in the top navigation bar. Supervisors are strongly urged to change their temporary initial passcode (`gdgu@2026`) upon first login.
+5. If you forget your passcode, contact your Department SPOC or System Administrator (`admin@gdgu.org`) for an emergency administrative reset.
 
 ### 6.2 Project Oversight & Real-Time Student Rosters
 - View all assigned projects on your dashboard.
@@ -246,6 +247,87 @@ Once allocated:
 4. Click **Submit for SPOC Approval**.
 
 ### 6.5 Capstone Deliverables, Plagiarism Screening & Consent Forms
+Mentors submit student group deliverables and publication consent documents for formal departmental verification.
+
+![Student Publication Consent Form Interface](./assets/faculty_consent_form_modal.png)
+
+```
++---------------------------------------------------------------------------------+
+|                            Upload Project Artifact                              |
+| P139 · Hybrid Solar-Biomass Dryer for Agricultural Post-Harvest Processing      |
+|                                                                                 |
+| Select Submission Semester:                                                     |
+| [ PHASE I · ODD SEM: Semester 3 (Interim) ]  [ PHASE II: Semester 4 (Defense) ]  |
+|                                                                                 |
+| Artifact Document Type:                                                         |
+| [ Project Report ]  [ Presentation PPT ]  [ Consent Form ]*  [ Others ]          |
+|                                                                                 |
+| Document Title: [ P139 Sem 3 Student Publication Consent Form                 ] |
+|                                                                                 |
+| +-----------------------------------------------------------------------------+ |
+| |  STUDENT PUBLICATION CONSENT (2-Step Process)                               | |
+| |  Publication of IDP deliverables requires formal student consent, faculty   | |
+| |  authorization, and adherence to originality limits.                        | |
+| |                                                                             | |
+| |  +--------------------------------+   +-----------------------------------+ | |
+| |  | 1. Download Template           |   | 2. Upload Signed Form             | | |
+| |  | Official 10-student table      |   | Fill student details, obtain      | | |
+| |  | format with publication terms  |   | signed consent, and attach file.  | | |
+| |  | and declaration.               |   |                                   | | |
+| |  |                                |   |                                   | | |
+| |  | [ Download Template (.docx) ]  |   | [ Choose Completed Form ]         | | |
+| |  +--------------------------------+   +-----------------------------------+ | |
+| +-----------------------------------------------------------------------------+ |
+|                                                                                 |
+| +-----------------------------------------------------------------------------+ |
+| |  MANDATORY VERIFICATIONS (Tick all 4 to submit)                             | |
+| |  [x] 1. Student Consent Recorded & Granted (All 10 team members signed)     | |
+| |  [x] 2. Academic Integrity Thresholds (Plagiarism < 10% & AI Content < 20%) | |
+| |  [x] 3. Authorship Attribution & Institutional Non-Exclusive License Rights | |
+| |  [x] 4. Supervising Faculty Sign-Off (Faculty mentor verification confirmed) | |
+| +-----------------------------------------------------------------------------+ |
+|                                                                                 |
+| [x] Self Declaration: "I hereby declare that all the above info is correct..."  |
+|                                                                                 |
+|                         [ Cancel ]   [ Upload & Submit Consent Form ]           |
++---------------------------------------------------------------------------------+
+```
+
+#### Standard Institutional Consent Form Template (`Consent_Form_IDP_publication.docx`)
+
+```
++-------------------------------------------------------------------------------------------------------------------+
+|                        STUDENT CONSENT FOR PUBLICATION OF INTERDISCIPLINARY PROJECT (IDP)                         |
+|                               Avishkar Centre for Innovation & Entrepreneurship (CIE)                             |
+|                                            G.D. Goenka University                                                 |
++-------------------------------------------------------------------------------------------------------------------+
+| 1. Purpose: Formal authorization from student researchers to publish IDP deliverables in journals & conferences.  |
+| 2. Terms: Voluntary Consent | Attribution to All Co-Authors | Non-Exclusive Institutional License.                |
+|    Strict Originality Thresholds: (1) Text Similarity < 10%  (2) AI Generated Content < 20%                       |
++-------------------------------------------------------------------------------------------------------------------+
+| 3. STUDENT CO-AUTHOR ROSTER (Up to 10 Students per Team)                                                          |
++-----+----------------------+----------------+--------------------+-----------------------+----------+-------------+
+| SNo | Student Name         | Roll / PRN No. | School & Program   | University Email      | Consent  | Signature   |
++-----+----------------------+----------------+--------------------+-----------------------+----------+-------------+
+|  1  | [Student Name 1]     | [Roll No 1]    | SOES - B.Tech CSE  | student1@gdgu.org     | [x] Grant| ___________ |
+|  2  | [Student Name 2]     | [Roll No 2]    | SOES - B.Tech ECE  | student2@gdgu.org     | [x] Grant| ___________ |
+|  3  | [Student Name 3]     | [Roll No 3]    | SOM - BBA          | student3@gdgu.org     | [x] Grant| ___________ |
+|  4  | [Student Name 4]     | [Roll No 4]    | SOL - BA LLB       | student4@gdgu.org     | [x] Grant| ___________ |
+|  5  | [Student Name 5]     | [Roll No 5]    | SOAS - B.Sc Agri   | student5@gdgu.org     | [x] Grant| ___________ |
+|  6  | [Student Name 6]     | [Roll No 6]    | SOES - B.Tech ME   | student6@gdgu.org     | [x] Grant| ___________ |
+|  7  | [Student Name 7]     | [Roll No 7]    | SOHAS - B.Pharm    | student7@gdgu.org     | [x] Grant| ___________ |
+|  8  | [Student Name 8]     | [Roll No 8]    | SOED - B.Ed        | student8@gdgu.org     | [x] Grant| ___________ |
+|  9  | [Student Name 9]     | [Roll No 9]    | SOES - B.Tech CSE  | student9@gdgu.org     | [x] Grant| ___________ |
+| 10  | [Student Name 10]    | [Roll No 10]   | SOM - MBA          | student10@gdgu.org    | [x] Grant| ___________ |
++-----+----------------------+----------------+--------------------+-----------------------+----------+-------------+
+| 4. PROJECT DETAILS & FACULTY MENTOR SIGN-OFF                                                                      |
+| Project Title: Hybrid Solar-Biomass Dryer for Agricultural Post-Harvest Processing                                |
+| Supervising Faculty: Dr. Annu Rani | Designation: Assistant Professor | School: School of Agricultural Sciences     |
+| Faculty Signature: _________________________________________           Date: ____________________________________ |
++-------------------------------------------------------------------------------------------------------------------+
+```
+
+#### Step-by-Step Deliverables & Consent Form Flow:
 1. On your project card, click **+ Upload for Sem X** or click **+ Consent Form** (or click any status pill directly).
 2. Select type:
    - `REPORT`: Comprehensive final/interim project report. Requires Turnitin similarity ($\le 10\%$), AI content ($\le 20\%$), and uploaded Turnitin PDF report.

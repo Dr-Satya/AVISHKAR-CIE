@@ -113,13 +113,14 @@ Navigate to the **VERIFICATION** tab to inspect and audit project submissions.
 | 1. Final Report (PDF) - Similarity: 7.2% | AI: 3.5%                                   |
 |    [ View Report ]  [ View Plagiarism Report PDF ]                                    |
 | 2. Final Presentation Deck (PPTX)                                                     |
+| 3. Student Publication Consent Form (PDF/DOCX) [ View Consent Form ]                  |
 |                                                                                       |
 | Actions:  [ Approve Submission ]   [ Reject / Request Revisions ]   [ Download ZIP ]   |
 +---------------------------------------------------------------------------------------+
 ```
 
 ### 4.1 Reviewing Submitted Deliverables
-1. On the project card, review the list of uploaded artifacts (`REPORT`, `PPT`, `OTHER`).
+1. On the project card, review the list of uploaded artifacts (`REPORT`, `PPT`, `CONSENT_FORM`, `OTHER`).
 2. Click **View Document** or **Download** to inspect the submitted work.
 3. Verify that student names, enrollment numbers, and project codes on the title page match the portal records.
 

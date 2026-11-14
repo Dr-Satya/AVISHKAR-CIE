@@ -68,7 +68,8 @@ Faculty members serve as primary academic and technical mentors for multidiscipl
    - Your registered 10-digit mobile number.
 3. Enter your assigned passcode. (The default initial passcode for newly provisioned accounts is `gdgu@2026`).
 4. Click **Sign In to Portal**.
-> *Note: Dual authentication allows supervisors to access their workspace using either their official university email or their mobile number.*
+5. **Change Passcode After Opening Portal:** Once logged into your workspace, you can change your password at any time by clicking the **Change Passcode** button in the top navigation bar. It is strongly advised to replace the default initial passcode (`gdgu@2026`) immediately upon first opening the portal.
+> *Note: Dual authentication allows supervisors to access their workspace using either their official university email or their mobile number. If you forget your passcode, contact your Department SPOC or System Administrator (`admin@gdgu.org`) for an administrative reset.*
 
 ### 2.2 Mandatory Phone Number Verification
 This is a **one-time prompt**. If a verified mobile number is already on file in the database, **the modal is bypassed automatically upon login**, and you are taken directly to your workspace.
@@ -81,10 +82,29 @@ If your profile does not yet have a phone number:
 > *Note: If you ever need to change your number later, you can click the **Update Phone** button in the top navigation bar at any time.*
 
 ### 2.3 Updating Your Security Passcode
+Faculty can update their password at any time after opening the portal:
+
+```
++-----------------------------------------------------------------------------------------+
+| Dr. Annu Rani                                                                           |
+| School of Agricultural Sciences · annu.rani@gdgu.org   [ Change Passcode ]   [ Log out ]|
++-----------------------------------------------------------------------------------------+
+
++-------------------------------------------------------------+
+|                      UPDATE PASSCODE                        |
+|                                                             |
+|  Current Passcode:        [ ********                      ] |
+|  New Passcode (Min 6):    [ ********                      ] |
+|  Confirm New Passcode:    [ ********                      ] |
+|                                                             |
+|                 [ Cancel ]  [ Save Passcode ]               |
++-------------------------------------------------------------+
+```
+
 1. In the top navigation bar, click the **Change Passcode** button.
 2. Enter your current passcode.
-3. Enter a new, secure passcode (minimum 8 characters, alphanumeric recommended).
-4. Re-enter to confirm and click **Update Passcode**.
+3. Enter a new, secure passcode (minimum 6 characters, alphanumeric recommended).
+4. Re-enter to confirm and click **Save Passcode**.
 5. A confirmation notification will appear upon successful encryption and update.
 
 ---
@@ -238,8 +258,89 @@ At mid-term and semester conclusion, faculty mentors must submit verified team d
 3. Attach the main document file (`.pdf`, `.docx`, or `.pptx` up to 15 MB).
 
 ### 6.2 Student Publication Consent Form Workflow
-Before any student project can be endorsed for conference or journal publication:
-1. **Download the Official Template:** Inside the upload modal or on the project card, click **Download Blank Template (.docx)** to retrieve `Consent_Form_IDP_publication.docx`.
+
+Before any student project can be endorsed for conference or journal publication, formal student and mentor consent must be documented and archived in the portal.
+
+![Student Publication Consent Form Interface](./assets/faculty_consent_form_modal.png)
+
+```
++---------------------------------------------------------------------------------+
+|                            Upload Project Artifact                              |
+| P139 · Hybrid Solar-Biomass Dryer for Agricultural Post-Harvest Processing      |
+|                                                                                 |
+| Select Submission Semester:                                                     |
+| [ PHASE I · ODD SEM: Semester 3 (Interim) ]  [ PHASE II: Semester 4 (Defense) ]  |
+|                                                                                 |
+| Artifact Document Type:                                                         |
+| [ Project Report ]  [ Presentation PPT ]  [ Consent Form ]*  [ Others ]          |
+|                                                                                 |
+| Document Title: [ P139 Sem 3 Student Publication Consent Form                 ] |
+|                                                                                 |
+| +-----------------------------------------------------------------------------+ |
+| |  STUDENT PUBLICATION CONSENT (2-Step Process)                               | |
+| |  Publication of IDP deliverables requires formal student consent, faculty   | |
+| |  authorization, and adherence to originality limits.                        | |
+| |                                                                             | |
+| |  +--------------------------------+   +-----------------------------------+ | |
+| |  | 1. Download Template           |   | 2. Upload Signed Form             | | |
+| |  | Official 10-student table      |   | Fill student details, obtain      | | |
+| |  | format with publication terms  |   | signed consent, and attach file.  | | |
+| |  | and declaration.               |   |                                   | | |
+| |  |                                |   |                                   | | |
+| |  | [ Download Template (.docx) ]  |   | [ Choose Completed Form ]         | | |
+| |  +--------------------------------+   +-----------------------------------+ | |
+| +-----------------------------------------------------------------------------+ |
+|                                                                                 |
+| +-----------------------------------------------------------------------------+ |
+| |  MANDATORY VERIFICATIONS (Tick all 4 to submit)                             | |
+| |  [x] 1. Student Consent Recorded & Granted (All 10 team members signed)     | |
+| |  [x] 2. Academic Integrity Thresholds (Plagiarism < 10% & AI Content < 20%) | |
+| |  [x] 3. Authorship Attribution & Institutional Non-Exclusive License Rights | |
+| |  [x] 4. Supervising Faculty Sign-Off (Faculty mentor verification confirmed) | |
+| +-----------------------------------------------------------------------------+ |
+|                                                                                 |
+| [x] Self Declaration: "I hereby declare that all the above info is correct..."  |
+|                                                                                 |
+|                         [ Cancel ]   [ Upload & Submit Consent Form ]           |
++---------------------------------------------------------------------------------+
+```
+
+#### Official Student Consent Template Structure (`Consent_Form_IDP_publication.docx`)
+
+```
++-------------------------------------------------------------------------------------------------------------------+
+|                        STUDENT CONSENT FOR PUBLICATION OF INTERDISCIPLINARY PROJECT (IDP)                         |
+|                               Avishkar Centre for Innovation & Entrepreneurship (CIE)                             |
+|                                            G.D. Goenka University                                                 |
++-------------------------------------------------------------------------------------------------------------------+
+| 1. Purpose of the Form: Formal consent to publish IDP deliverables in journals/conferences/institutional repos.  |
+| 2. Terms: Voluntary Participation | Authorship & Attribution | Non-Exclusive Rights | Confidentiality & Ethics.   |
+|    Strict Originality Thresholds: (1) Text Plagiarism < 10%  (2) AI Generated Content < 20%                       |
++-------------------------------------------------------------------------------------------------------------------+
+| 3. STUDENT DETAILS AND CONSENT RECORD (10-Student Team Roster)                                                    |
++-----+----------------------+----------------+--------------------+-----------------------+----------+-------------+
+| SNo | Student Name         | Roll / PRN No. | School & Program   | University Email      | Consent  | Signature   |
++-----+----------------------+----------------+--------------------+-----------------------+----------+-------------+
+|  1  | [Student Name 1]     | [Roll No 1]    | SOES - B.Tech CSE  | student1@gdgu.org     | [x] Grant| ___________ |
+|  2  | [Student Name 2]     | [Roll No 2]    | SOES - B.Tech ECE  | student2@gdgu.org     | [x] Grant| ___________ |
+|  3  | [Student Name 3]     | [Roll No 3]    | SOM - BBA          | student3@gdgu.org     | [x] Grant| ___________ |
+|  4  | [Student Name 4]     | [Roll No 4]    | SOL - BA LLB       | student4@gdgu.org     | [x] Grant| ___________ |
+|  5  | [Student Name 5]     | [Roll No 5]    | SOAS - B.Sc Agri   | student5@gdgu.org     | [x] Grant| ___________ |
+|  6  | [Student Name 6]     | [Roll No 6]    | SOES - B.Tech ME   | student6@gdgu.org     | [x] Grant| ___________ |
+|  7  | [Student Name 7]     | [Roll No 7]    | SOHAS - B.Pharm    | student7@gdgu.org     | [x] Grant| ___________ |
+|  8  | [Student Name 8]     | [Roll No 8]    | SOED - B.Ed        | student8@gdgu.org     | [x] Grant| ___________ |
+|  9  | [Student Name 9]     | [Roll No 9]    | SOES - B.Tech CSE  | student9@gdgu.org     | [x] Grant| ___________ |
+| 10  | [Student Name 10]    | [Roll No 10]   | SOM - MBA          | student10@gdgu.org    | [x] Grant| ___________ |
++-----+----------------------+----------------+--------------------+-----------------------+----------+-------------+
+| 4. PROJECT DETAILS & FACULTY MENTOR SIGN-OFF                                                                      |
+| Project Title: Hybrid Solar-Biomass Dryer for Agricultural Post-Harvest Processing                                |
+| Supervising Faculty: Dr. Annu Rani | Designation: Assistant Professor | School: School of Agricultural Sciences     |
+| Faculty Signature: _________________________________________           Date: ____________________________________ |
++-------------------------------------------------------------------------------------------------------------------+
+```
+
+#### Step-by-Step Submission Procedure:
+1. **Download the Official Template:** Inside the upload modal or on the project card, click **Download Template (.docx)** to retrieve `Consent_Form_IDP_publication.docx`.
 2. **Student Co-Author Endorsement:** Ensure all registered student team members sign and date the document.
 3. **Faculty Mentor Sign-Off:** Faculty supervisor verifies and signs the consent form.
 4. **Complete 4 Mandatory Declarations:**
@@ -247,7 +348,7 @@ Before any student project can be endorsed for conference or journal publication
    - [x] *The research paper adheres to strict Turnitin similarity (< 10%) and AI limits (< 20%).*
    - [x] *"Avishkar Centre for Innovation and Entrepreneurship (CIE), G.D. Goenka University, Haryana" is explicitly cited in author affiliations.*
    - [x] *Faculty supervisor has reviewed the manuscript and endorsed this submission.*
-5. Upload the signed `.docx` or `.pdf` file.
+5. **Upload & Submit:** Attach the signed `.docx` or `.pdf` file and click **Upload & Submit Consent Form** for SPOC clearance.
 > *Note: Plagiarism report attachments are waived for administrative consent forms.*
 
 ### 6.3 Plagiarism & AI Content Verification Standards (Reports & Presentations)

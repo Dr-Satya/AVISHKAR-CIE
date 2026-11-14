@@ -155,18 +155,18 @@ fac_step7_col1_img = annotate_image(
     CONSENT_MODAL_IMG, 'fac_step7_col1.jpg',
     crop_box=(380, 95, 896, 780),
     boxes=[
-        {'coords': (28, 240, 486, 302), 'stroke': 4, 'num': 1, 'label': 'Select Type: Consent Form', 'pill_pos': (40, 200)},
-        {'coords': (44, 460, 252, 668), 'stroke': 4, 'num': 2, 'label': '2. Download Template', 'pill_pos': (44, 420)},
-        {'coords': (262, 460, 470, 668), 'stroke': 4, 'num': 3, 'label': '3. Upload Signed Form', 'pill_pos': (262, 420)}
+        {'coords': (28, 240, 486, 302), 'stroke': 4, 'num': 1, 'label': 'Select Type: Consent Form', 'pill_pos': (30, 198)},
+        {'coords': (44, 460, 252, 668), 'stroke': 4, 'num': 2, 'label': 'Download Template', 'pill_pos': (24, 418)},
+        {'coords': (262, 460, 470, 668), 'stroke': 4, 'num': 3, 'label': 'Upload Signed Form', 'pill_pos': (268, 418)}
     ]
 )
 
 fac_step7_col2_img = annotate_image(
     CONSENT_MODAL_IMG, 'fac_step7_col2.jpg',
-    crop_box=(380, 780, 896, 1245),
+    crop_box=(380, 775, 896, 1245),
     boxes=[
-        {'coords': (28, 5, 486, 300), 'stroke': 4, 'num': 4, 'label': '4. 4 Mandatory Verifications', 'pill_pos': (40, 10)},
-        {'coords': (230, 396, 486, 444), 'stroke': 4, 'num': 5, 'label': '5. Submit for SPOC Review', 'pill_pos': (190, 355)}
+        {'coords': (28, 45, 486, 300), 'stroke': 4, 'num': 4, 'label': '4 Mandatory Integrity Checks', 'pill_pos': (34, 8)},
+        {'coords': (230, 400, 486, 448), 'stroke': 4, 'num': 5, 'label': 'Submit for SPOC Review', 'pill_pos': (180, 358)}
     ]
 )
 
