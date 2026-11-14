@@ -483,6 +483,148 @@ export async function GET(req: NextRequest) {
       const dateStr = new Date().toISOString().split("T")[0];
       title = `IDP_Cohorts_Details_${dateStr}`;
     }
+    // 0.1 ADMIN_MARKS scope (Admin-Only - full student marks & assessments)
+    else if (scope === "ADMIN_MARKS") {
+      if (session.role !== "ADMIN" && !session.isAdmin) {
+        return NextResponse.json(
+          { error: "Forbidden. Only administrators can export university-wide student marks." },
+          { status: 403 }
+        );
+      }
+
+      const schoolParam = searchParams.get("school") || searchParams.get("department");
+      const academicYearParam = searchParams.get("academicYear");
+
+      if (cfDb) {
+        let sql = `
+          SELECT 
+            s.enrollmentNumber,
+            s.name as studentName,
+            s.gender as studentGender,
+            s.department as studentDepartment,
+            s.programme,
+            s.semester,
+            s.batch,
+            s.academicYear,
+            s.attendancePercent,
+            s.internalMarks,
+            s.externalMarks,
+            p.projectId,
+            p.title as projectTitle,
+            p.category as projectCategory,
+            f.name as facultyName,
+            f.email as facultyEmail
+          FROM Registration r
+          JOIN Student s ON r.studentId = s.id
+          JOIN Project p ON r.projectId = p.id
+          LEFT JOIN Faculty f ON p.facultyId = f.id
+          WHERE 1=1
+        `;
+        const binds: any[] = [];
+        if (schoolParam && schoolParam !== "all") {
+          sql += ` AND (p.department = ? OR f.department = ? OR s.department = ?)`;
+          binds.push(schoolParam, schoolParam, schoolParam);
+        }
+        if (academicYearParam && academicYearParam !== "all") {
+          sql += ` AND p.academicYear = ?`;
+          binds.push(academicYearParam);
+        }
+        sql += ` ORDER BY p.department ASC, p.projectId ASC, s.enrollmentNumber ASC`;
+
+        const stmt = binds.length > 0 ? cfDb.prepare(sql).bind(...binds) : cfDb.prepare(sql);
+        const result = await stmt.all();
+        rows = (result.results || []).map((r: any, idx: number) => {
+          const hasInt = r.internalMarks !== null && r.internalMarks !== undefined;
+          const hasExt = r.externalMarks !== null && r.externalMarks !== undefined;
+          const intVal = hasInt ? Number(r.internalMarks) : 0;
+          const extVal = hasExt ? Number(r.externalMarks) : 0;
+          return {
+            "Sr. No": idx + 1,
+            "Enrollment Number": r.enrollmentNumber,
+            "Student Name": r.studentName || "",
+            "Gender": r.studentGender || "Unspecified",
+            "School / Department": r.studentDepartment || "",
+            "Programme": r.programme || "N/A",
+            "Semester": r.semester,
+            "Batch": r.batch,
+            "Academic Year": r.academicYear || "2026-2027",
+            "Project ID": r.projectId || "",
+            "Project Title": r.projectTitle || "",
+            "Project Category": r.projectCategory || "",
+            "Faculty Mentor": r.facultyName || "",
+            "Faculty Email": r.facultyEmail || "",
+            "Attendance (%)": r.attendancePercent !== null && r.attendancePercent !== undefined ? `${r.attendancePercent}%` : "N/A",
+            "Internal Marks (/50)": hasInt ? intVal : 0,
+            "External Marks (/50)": hasExt ? extVal : 0,
+            "Total Marks (/100)": intVal + extVal,
+            "Assessment Status": (hasInt || hasExt) ? "Evaluated" : "Pending",
+          };
+        });
+      } else {
+        const whereRegistration: any = {};
+        if (schoolParam && schoolParam !== "all") {
+          whereRegistration.OR = [
+            { project: { department: schoolParam } },
+            { project: { faculty: { department: schoolParam } } },
+            { student: { department: schoolParam } },
+          ];
+        }
+        if (academicYearParam && academicYearParam !== "all") {
+          whereRegistration.project = {
+            academicYear: academicYearParam,
+          };
+        }
+
+        const registrations = await prisma.registration.findMany({
+          where: whereRegistration,
+          include: {
+            student: true,
+            project: {
+              include: { faculty: true },
+            },
+          },
+          orderBy: [
+            { project: { department: "asc" } },
+            { project: { projectId: "asc" } },
+            { student: { enrollmentNumber: "asc" } },
+          ],
+        });
+
+        rows = registrations.map((r, idx) => {
+          const s = r.student;
+          const p = r.project;
+          const f = p?.faculty;
+          const hasInt = s.internalMarks !== null && s.internalMarks !== undefined;
+          const hasExt = s.externalMarks !== null && s.externalMarks !== undefined;
+          const intVal = hasInt ? Number(s.internalMarks) : 0;
+          const extVal = hasExt ? Number(s.externalMarks) : 0;
+          return {
+            "Sr. No": idx + 1,
+            "Enrollment Number": s.enrollmentNumber,
+            "Student Name": s.name || "",
+            "Gender": s.gender || "Unspecified",
+            "School / Department": s.department || "",
+            "Programme": s.programme || "N/A",
+            "Semester": s.semester,
+            "Batch": s.batch,
+            "Academic Year": s.academicYear || "2026-2027",
+            "Project ID": p?.projectId || "",
+            "Project Title": p?.title || "",
+            "Project Category": p?.category || "",
+            "Faculty Mentor": f?.name || "",
+            "Faculty Email": f?.email || "",
+            "Attendance (%)": s.attendancePercent !== null && s.attendancePercent !== undefined ? `${s.attendancePercent}%` : "N/A",
+            "Internal Marks (/50)": hasInt ? intVal : 0,
+            "External Marks (/50)": hasExt ? extVal : 0,
+            "Total Marks (/100)": intVal + extVal,
+            "Assessment Status": (hasInt || hasExt) ? "Evaluated" : "Pending",
+          };
+        });
+      }
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      title = `GDGU_IDP_Student_Marks_Roster_${dateStr}`;
+    }
     // 1. FACULTY_STUDENTS scope
     else if (scope === "FACULTY_STUDENTS") {
       if (session.role !== "FACULTY" && session.role !== "ADMIN") {
@@ -631,6 +773,103 @@ export async function GET(req: NextRequest) {
             p.artifacts.find((a) => a.type === "REPORT")?.aiPercent ?? "N/A",
         }));
         title = `SPOC_${dept.replace(/[^a-zA-Z0-9]/g, "_")}_Projects`;
+      } else if (scope === "SPOC_MARKS") {
+        if (cfDb) {
+          const sql = `
+            SELECT 
+              s.enrollmentNumber,
+              s.name as studentName,
+              s.gender as studentGender,
+              s.department as studentDepartment,
+              s.programme,
+              s.semester,
+              s.batch,
+              s.attendancePercent,
+              s.internalMarks,
+              s.externalMarks,
+              p.projectId,
+              p.title as projectTitle,
+              p.category as projectCategory,
+              f.name as facultyName,
+              f.email as facultyEmail
+            FROM Registration r
+            JOIN Student s ON r.studentId = s.id
+            JOIN Project p ON r.projectId = p.id
+            LEFT JOIN Faculty f ON p.facultyId = f.id
+            WHERE p.department = ? OR f.department = ? OR s.department = ?
+            ORDER BY p.projectId ASC, s.name ASC
+          `;
+          const res = await cfDb.prepare(sql).bind(dept, dept, dept).all();
+          rows = (res.results || []).map((r: any, idx: number) => {
+            const hasInt = r.internalMarks !== null && r.internalMarks !== undefined;
+            const hasExt = r.externalMarks !== null && r.externalMarks !== undefined;
+            const intVal = hasInt ? Number(r.internalMarks) : 0;
+            const extVal = hasExt ? Number(r.externalMarks) : 0;
+            return {
+              "Sr. No": idx + 1,
+              "Enrollment Number": r.enrollmentNumber,
+              "Student Name": r.studentName,
+              "Gender": r.studentGender || "Unspecified",
+              "Department": r.studentDepartment,
+              "Programme": r.programme || "N/A",
+              "Semester": r.semester,
+              "Batch": r.batch,
+              "Project ID": r.projectId,
+              "Project Title": r.projectTitle,
+              "Category": r.projectCategory || "N/A",
+              "Faculty Mentor": r.facultyName || "N/A",
+              "Attendance (%)": r.attendancePercent !== null && r.attendancePercent !== undefined ? `${r.attendancePercent}%` : "N/A",
+              "Internal Marks (/50)": hasInt ? intVal : 0,
+              "External Marks (/50)": hasExt ? extVal : 0,
+              "Total Marks (/100)": intVal + extVal,
+              "Assessment Status": (hasInt || hasExt) ? "Evaluated" : "Pending",
+            };
+          });
+        } else {
+          const registrations = await prisma.registration.findMany({
+            where: {
+              OR: [
+                { project: { department: dept } },
+                { student: { department: dept } },
+              ],
+            },
+            include: {
+              student: true,
+              project: { include: { faculty: true } },
+            },
+            orderBy: [{ project: { projectId: "asc" } }, { student: { name: "asc" } }],
+          });
+
+          rows = registrations.map((r, idx) => {
+            const s = r.student;
+            const p = r.project;
+            const f = p?.faculty;
+            const hasInt = s.internalMarks !== null && s.internalMarks !== undefined;
+            const hasExt = s.externalMarks !== null && s.externalMarks !== undefined;
+            const intVal = hasInt ? Number(s.internalMarks) : 0;
+            const extVal = hasExt ? Number(s.externalMarks) : 0;
+            return {
+              "Sr. No": idx + 1,
+              "Enrollment Number": s.enrollmentNumber,
+              "Student Name": s.name,
+              "Gender": s.gender || "Unspecified",
+              "Department": s.department,
+              "Programme": s.programme || "N/A",
+              "Semester": s.semester,
+              "Batch": s.batch,
+              "Project ID": p.projectId,
+              "Project Title": p.title,
+              "Category": p.category || "N/A",
+              "Faculty Mentor": f?.name || "N/A",
+              "Attendance (%)": s.attendancePercent !== null && s.attendancePercent !== undefined ? `${s.attendancePercent}%` : "N/A",
+              "Internal Marks (/50)": hasInt ? intVal : 0,
+              "External Marks (/50)": hasExt ? extVal : 0,
+              "Total Marks (/100)": intVal + extVal,
+              "Assessment Status": (hasInt || hasExt) ? "Evaluated" : "Pending",
+            };
+          });
+        }
+        title = `SPOC_${dept.replace(/[^a-zA-Z0-9]/g, "_")}_Marks_Assessment`;
       }
     } else {
       return NextResponse.json({ error: "Invalid scope parameter." }, { status: 400 });
@@ -664,6 +903,7 @@ export async function GET(req: NextRequest) {
     if (format === "xlsx") {
       const wb = XLSX.utils.book_new();
       const isCohortScope = scope === "IDP_COHORTS";
+      const isMarksScope = scope === "ADMIN_MARKS" || scope === "SPOC_MARKS";
       const ws = XLSX.utils.json_to_sheet(
         rows,
         isCohortScope ? { header: [...IDP_COHORT_HEADERS] } : undefined
@@ -683,11 +923,35 @@ export async function GET(req: NextRequest) {
           { wch: 18 }, // Enrollment
           { wch: 30 }, // Student Name
         ];
+      } else if (isMarksScope) {
+        ws["!cols"] = [
+          { wch: 8 },  // Sr. No
+          { wch: 18 }, // Enrollment Number
+          { wch: 28 }, // Student Name
+          { wch: 12 }, // Gender
+          { wch: 35 }, // School / Department
+          { wch: 35 }, // Programme
+          { wch: 10 }, // Semester
+          { wch: 10 }, // Batch
+          { wch: 14 }, // Academic Year
+          { wch: 14 }, // Project ID
+          { wch: 45 }, // Project Title
+          { wch: 22 }, // Project Category
+          { wch: 26 }, // Faculty Mentor
+          { wch: 28 }, // Faculty Email
+          { wch: 16 }, // Attendance (%)
+          { wch: 20 }, // Internal Marks (/50)
+          { wch: 20 }, // External Marks (/50)
+          { wch: 20 }, // Total Marks (/100)
+          { wch: 18 }, // Assessment Status
+        ];
       }
       
       const sheetName =
         scope === "TEMPLATE_PROJECTS" || scope === "TEMPLATE_CHC"
           ? "SERVICE_REQUESTS"
+          : isMarksScope
+          ? "Marks_Assessment"
           : (isCohortScope || scope?.startsWith("TEMPLATE_") ? "Sheet1" : "Data");
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
 

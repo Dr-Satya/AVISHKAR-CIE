@@ -32,6 +32,7 @@ import {
 } from "@/lib/zip-export";
 import { exportToCsv, exportToXlsx, exportToPdf } from "@/lib/export";
 import { cleanErrorMessage } from "@/lib/error-utils";
+import { ProjectFilesModal } from "@/components/common/ProjectFilesModal";
 
 interface CompletionStats {
   total: number;
@@ -87,6 +88,7 @@ export function ProjectsTableCard({
 }: ProjectsTableCardProps) {
   // Modal state for project inspection
   const [inspectProject, setInspectProject] = useState<any | null>(null);
+  const [viewingFilesProject, setViewingFilesProject] = useState<any | null>(null);
 
   // Modal state for changing faculty mentor
   const [changingMentorProject, setChangingMentorProject] = useState<any | null>(null);
@@ -730,6 +732,18 @@ export function ProjectsTableCard({
                     <td className="py-3 px-3 text-center whitespace-nowrap">
                       <div className="inline-flex items-center gap-1.5">
                         <button
+                          onClick={() => setViewingFilesProject(p)}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                            (p.artifactsCount > 0 || (p.artifacts && p.artifacts.length > 0))
+                              ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                              : "bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-200"
+                          }`}
+                          title={`View and download all ${p.artifactsCount || p.artifacts?.length || 0} uploaded files for this project`}
+                        >
+                          <FileText className={`w-3.5 h-3.5 ${(p.artifactsCount > 0 || (p.artifacts && p.artifacts.length > 0)) ? "text-blue-600" : "text-slate-400"}`} />
+                          <span>Files ({p.artifactsCount || p.artifacts?.length || 0})</span>
+                        </button>
+                        <button
                           onClick={() => setInspectProject(p)}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition-colors"
                           title="Inspect all marks, uploaded artifacts, and manuscripts"
@@ -1213,6 +1227,14 @@ export function ProjectsTableCard({
         error={zipError}
         onCancel={handleCancelZip}
         onClose={() => setZipModalOpen(false)}
+      />
+
+      {/* Project Uploaded Files Modal */}
+      <ProjectFilesModal
+        isOpen={viewingFilesProject !== null}
+        project={viewingFilesProject}
+        onClose={() => setViewingFilesProject(null)}
+        onDownloadZip={handleDownloadSingleZip}
       />
     </div>
   );

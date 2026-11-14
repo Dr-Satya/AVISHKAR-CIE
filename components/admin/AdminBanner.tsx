@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, RefreshCw, Download, Upload, Shield, FileSpreadsheet, Database } from "lucide-react";
+import { Calendar, RefreshCw, Download, Upload, Shield, FileSpreadsheet, Database, Award } from "lucide-react";
 
 interface AdminBannerProps {
   activeAcademicYear: string;
@@ -9,6 +9,7 @@ interface AdminBannerProps {
   onOpenImport: () => void;
   onOpenRollover: () => void;
   onDownloadCohorts?: () => void;
+  onDownloadMarks?: () => void;
   onOpenDataManagement?: () => void;
 }
 
@@ -20,6 +21,7 @@ export function AdminBanner({
   onOpenImport,
   onOpenRollover,
   onDownloadCohorts,
+  onDownloadMarks,
   onOpenDataManagement,
 }: AdminBannerProps) {
   return (
@@ -67,6 +69,17 @@ export function AdminBanner({
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-200" />
               <span>Download Cohorts (.xlsx)</span>
+            </button>
+          )}
+          {onDownloadMarks && (
+            <button
+              type="button"
+              onClick={onDownloadMarks}
+              className="px-4 py-2.5 rounded-2xl text-xs font-semibold bg-amber-600/90 hover:bg-amber-600 text-white transition-all tactile-btn flex items-center gap-1.5 shadow-subtle border border-amber-500/40"
+              title="Download full student marks, internals, externals, and assessment records (.xlsx)"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-200" />
+              <span>Export Marks (.xlsx)</span>
             </button>
           )}
           <button

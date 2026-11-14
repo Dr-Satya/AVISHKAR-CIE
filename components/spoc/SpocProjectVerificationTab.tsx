@@ -24,11 +24,13 @@ import {
   Upload,
   FileCheck,
   Lock,
+  Eye,
 } from "lucide-react";
 import { ProjectData } from "@/types/spoc";
 import { SpocProjectEditModal } from "@/components/spoc/SpocProjectEditModal";
 import { ArtifactUploadModal } from "@/components/faculty/ArtifactUploadModal";
 import { ManuscriptModal } from "@/components/faculty/ManuscriptModal";
+import { ProjectFilesModal } from "@/components/common/ProjectFilesModal";
 
 interface SpocProjectVerificationTabProps {
   projects: ProjectData[];
@@ -65,6 +67,7 @@ export function SpocProjectVerificationTab({
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [manuscriptProject, setManuscriptProject] = useState<ProjectData | null>(null);
   const [showManuscriptModal, setShowManuscriptModal] = useState(false);
+  const [viewingFilesProject, setViewingFilesProject] = useState<ProjectData | null>(null);
 
   const toggleExpand = (projectId: string) => {
     setExpandedProjects((prev) => ({
@@ -612,7 +615,33 @@ export function SpocProjectVerificationTab({
                         <span>Upload</span>
                       </button>
 
-                      {proj.submissionStatus !== "APPROVED" ? (
+                      {/* Direct View Uploaded Files Button */}
+                      <button
+                        onClick={() => setViewingFilesProject(proj)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs ${
+                          proj.artifacts.length > 0
+                            ? "bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-200"
+                        }`}
+                        title={
+                          proj.artifacts.length > 0
+                            ? `Inspect all ${proj.artifacts.length} uploaded files and Turnitin reports`
+                            : "No files uploaded by mentor yet"
+                        }
+                      >
+                        <FileText className={`w-3.5 h-3.5 ${proj.artifacts.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
+                        <span>Files ({proj.artifacts.length})</span>
+                      </button>
+
+                      {proj.artifacts.length === 0 ? (
+                        <span
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 text-xs font-medium flex items-center gap-1.5"
+                          title="Faculty mentor has not submitted any project documents yet. Approval and rejection actions become available after documents are uploaded."
+                        >
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Awaiting Uploads</span>
+                        </span>
+                      ) : proj.submissionStatus !== "APPROVED" ? (
                         <>
                           <button
                             onClick={() => onOpenReview(proj, "APPROVE")}
@@ -1036,26 +1065,35 @@ export function SpocProjectVerificationTab({
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-1 max-w-xl">
-                          Confirm that all documents uploaded for this semester satisfy department quality, plagiarism, and AI guidelines. Rejecting will prompt the faculty mentor with your required feedback.
+                          {proj.artifacts.length === 0
+                            ? "Faculty mentor has not submitted any documents for this project yet. Review decisions become available once deliverables are submitted."
+                            : "Confirm that all documents uploaded for this semester satisfy department quality, plagiarism, and AI guidelines. Rejecting will prompt the faculty mentor with your required feedback."}
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">
-                        <button
-                          onClick={() => onOpenReview(proj, "APPROVE")}
-                          className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Approve Entire Project</span>
-                        </button>
-                        <button
-                          onClick={() => onOpenReview(proj, "REJECT")}
-                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Reject Application</span>
-                        </button>
-                      </div>
+                      {proj.artifacts.length === 0 ? (
+                        <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-slate-500 text-xs font-semibold">
+                          <AlertCircle className="w-4 h-4 text-slate-400" />
+                          <span>No Documents Submitted · Decision Disabled</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">
+                          <button
+                            onClick={() => onOpenReview(proj, "APPROVE")}
+                            className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Approve Entire Project</span>
+                          </button>
+                          <button
+                            onClick={() => onOpenReview(proj, "REJECT")}
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Reject Application</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* SECTION 3: ENROLLED STUDENTS & FACULTY MARKS */}
@@ -1195,6 +1233,14 @@ export function SpocProjectVerificationTab({
           }}
         />
       )}
+
+      {/* ALL UPLOADED FILES VIEWER MODAL */}
+      <ProjectFilesModal
+        isOpen={viewingFilesProject !== null}
+        project={viewingFilesProject}
+        onClose={() => setViewingFilesProject(null)}
+        onDownloadZip={onDownloadProjectZip}
+      />
     </div>
   );
 }

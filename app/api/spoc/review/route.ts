@@ -94,6 +94,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // A project with no submitted documents cannot be approved or rejected
+    if (!artifactId && (!project.artifacts || project.artifacts.length === 0) && (action === "REJECT" || action === "APPROVE")) {
+      return NextResponse.json(
+        { error: "Cannot review, approve, or reject a project with no submitted documents. The faculty mentor has not uploaded any deliverables yet." },
+        { status: 400 }
+      );
+    }
+
     const newStatus = action === "APPROVE" ? "APPROVED" : action === "REJECT" ? "REJECTED" : "NEEDS_REVISION";
     const reviewNote = note ? note.trim() : action === "APPROVE" ? "Approved by Department SPOC" : "";
 

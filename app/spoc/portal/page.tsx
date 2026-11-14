@@ -211,12 +211,48 @@ export default function SpocPortalPage() {
 
   // Export actions
   const handleExportData = (
-    type: "STUDENTS" | "FACULTY" | "PROJECTS",
+    type: "STUDENTS" | "FACULTY" | "PROJECTS" | "MARKS",
     format: "csv" | "xlsx" | "pdf"
   ) => {
     const safeDept = department.replace(/[^a-zA-Z0-9]/g, "_");
 
-    if (type === "STUDENTS") {
+    if (type === "MARKS") {
+      if (studentList.length === 0) {
+        alert("No student assessment data available to export.");
+        return;
+      }
+      const rows = studentList.map((s, idx) => {
+        const hasInt = s.internalMarks !== null && s.internalMarks !== undefined;
+        const hasExt = s.externalMarks !== null && s.externalMarks !== undefined;
+        const isSubmitted = hasInt || hasExt;
+        const intMarks = s.internalMarks ?? 0;
+        const extMarks = s.externalMarks ?? 0;
+        const totMarks = intMarks + extMarks;
+        return {
+          "Sr. No": idx + 1,
+          "Enrollment Number": s.enrollmentNumber,
+          "Student Name": s.name,
+          "Gender": s.gender || "Unspecified",
+          "Department": s.department,
+          "Programme": s.programme || "N/A",
+          "Semester": s.semester,
+          "Batch": s.batch,
+          "Project ID": s.projectId,
+          "Project Title": s.projectTitle,
+          "Faculty Mentor": s.facultyName,
+          "Attendance (%)": s.attendancePercent !== undefined && s.attendancePercent !== null ? `${s.attendancePercent}%` : "N/A",
+          "Internal Marks (/50)": hasInt ? intMarks : 0,
+          "External Marks (/50)": hasExt ? extMarks : 0,
+          "Total Marks (/100)": isSubmitted ? totMarks : 0,
+          "Assessment Status": isSubmitted ? "Evaluated" : "Pending",
+        };
+      });
+      const title = `SPOC_${safeDept}_Marks_Assessment`;
+      if (format === "csv") exportToCsv(rows, title);
+      else if (format === "xlsx") exportToXlsx(rows, title, "Marks_Assessment");
+      else if (format === "pdf")
+        exportToPdf(rows, `Student Marks & Assessment Roster · ${department}`);
+    } else if (type === "STUDENTS") {
       if (studentList.length === 0) {
         alert("No student data available to export.");
         return;

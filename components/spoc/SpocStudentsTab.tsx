@@ -305,6 +305,17 @@ export function SpocStudentsTab({
             <span>Upload Marks & Attendance</span>
           </button>
 
+          {/* Direct Marks Export Button */}
+          <button
+            type="button"
+            onClick={() => onExport("xlsx")}
+            className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm transition-all"
+            title="Download full student marks, internals, externals, and attendance spreadsheet (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+            <span>Export Marks (.xlsx)</span>
+          </button>
+
           {/* Export Buttons */}
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
             <button

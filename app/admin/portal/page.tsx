@@ -37,7 +37,7 @@ import { YearRolloverModal } from "@/components/admin/YearRolloverModal";
 import { DataManagementModal, DatabaseDashboardCard } from "@/components/admin/DataManagementModal";
 import { TemplatesModal } from "@/components/admin/TemplatesModal";
 import { BulkImportModal } from "@/components/admin/BulkImportModal";
-import { downloadIdpCohortsXlsx } from "@/lib/export";
+import { downloadIdpCohortsXlsx, downloadMarksXlsx } from "@/lib/export";
 import { cleanErrorMessage } from "@/lib/error-utils";
 import { ConfirmationToast, ToastNotification } from "@/components/common/ConfirmationToast";
 
@@ -350,6 +350,17 @@ export default function AdminPortalPage() {
       await downloadIdpCohortsXlsx("registered", studentSchool !== "all" ? studentSchool : undefined);
     } catch (err: any) {
       alert(cleanErrorMessage(err, "Failed to download cohort details."));
+    }
+  };
+
+  const handleDownloadMarks = async () => {
+    try {
+      await downloadMarksXlsx(
+        studentSchool !== "all" ? studentSchool : undefined,
+        activeAcademicYear !== "all" ? activeAcademicYear : undefined
+      );
+    } catch (err: any) {
+      alert(cleanErrorMessage(err, "Failed to download student marks roster."));
     }
   };
 
@@ -1488,6 +1499,7 @@ export default function AdminPortalPage() {
               onOpenImport={() => setShowImportModal(true)}
               onOpenRollover={() => setShowYearModal(true)}
               onDownloadCohorts={handleDownloadCohorts}
+              onDownloadMarks={handleDownloadMarks}
               onOpenDataManagement={() => setShowDataModal(true)}
             />
 

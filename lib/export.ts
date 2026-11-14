@@ -149,6 +149,35 @@ export async function downloadIdpCohortsXlsx(filter = "registered", school?: str
   URL.revokeObjectURL(url);
 }
 
+export async function downloadMarksXlsx(school?: string, academicYear?: string): Promise<void> {
+  const params = new URLSearchParams({
+    scope: "ADMIN_MARKS",
+    format: "xlsx",
+  });
+  if (school && school !== "all") params.set("school", school);
+  if (academicYear && academicYear !== "all") params.set("academicYear", academicYear);
+
+  const res = await fetch(`/api/export?${params.toString()}`);
+  if (!res.ok) {
+    let errMsg = "Failed to download student marks roster.";
+    try {
+      const err = await res.json();
+      if (err.error) errMsg = err.error;
+    } catch {}
+    throw new Error(errMsg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const dateStr = new Date().toISOString().split("T")[0];
+  a.download = `IDP_Student_Marks_Roster_${dateStr}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadFullDatabaseExport(academicYear?: string): Promise<void> {
   const params = new URLSearchParams({
     action: "EXPORT_ALL",

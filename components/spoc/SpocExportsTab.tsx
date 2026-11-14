@@ -1,14 +1,14 @@
 "use client";
 
 import React from "react";
-import { FileText, FileSpreadsheet, Download, Archive, FolderArchive } from "lucide-react";
+import { FileText, FileSpreadsheet, Download, Archive, FolderArchive, Award } from "lucide-react";
 
 interface SpocExportsTabProps {
   studentCount: number;
   facultyCount: number;
   department: string;
   onExportData: (
-    type: "STUDENTS" | "FACULTY" | "PROJECTS",
+    type: "STUDENTS" | "FACULTY" | "PROJECTS" | "MARKS",
     format: "csv" | "xlsx" | "pdf"
   ) => void;
   onDownloadSubmissionsZip?: (sem?: "ALL" | 1 | 2) => void;
@@ -22,7 +22,7 @@ export function SpocExportsTab({
   onDownloadSubmissionsZip,
 }: SpocExportsTabProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Student Data Extraction Card */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
         <div className="w-10 h-1 bg-blue-600 rounded-full" />
@@ -150,6 +150,55 @@ export function SpocExportsTab({
           </button>
           <button
             onClick={() => onExportData("PROJECTS", "pdf")}
+            className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-red-500 hover:bg-red-50/40 text-xs font-semibold text-slate-700 flex items-center justify-between transition-all"
+          >
+            <span className="flex items-center gap-2">
+              <Download className="w-4 h-4 text-red-600" />
+              Print / Save PDF Report
+            </span>
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* Student Marks & Assessment Dataset Card */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="w-10 h-1 bg-amber-500 rounded-full" />
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            <Award className="w-4 h-4 text-amber-600" />
+            <h3 className="text-base font-bold text-[#0d2137]">
+              Student Marks &amp; Assessment Report
+            </h3>
+          </div>
+          <p className="text-xs text-slate-500">
+            Export comprehensive internal marks (/50), external marks (/50), total scores (/100), and attendance % across all enrolled students in {department}.
+          </p>
+        </div>
+
+        <div className="space-y-2 pt-2">
+          <button
+            onClick={() => onExportData("MARKS", "csv")}
+            className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 text-xs font-semibold text-slate-700 flex items-center justify-between transition-all"
+          >
+            <span className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-600" />
+              Download CSV (.csv)
+            </span>
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+          <button
+            onClick={() => onExportData("MARKS", "xlsx")}
+            className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-green-500 hover:bg-green-50/40 text-xs font-semibold text-slate-700 flex items-center justify-between transition-all"
+          >
+            <span className="flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 text-green-600" />
+              Download Excel (.xlsx)
+            </span>
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+          <button
+            onClick={() => onExportData("MARKS", "pdf")}
             className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-red-500 hover:bg-red-50/40 text-xs font-semibold text-slate-700 flex items-center justify-between transition-all"
           >
             <span className="flex items-center gap-2">

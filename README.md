@@ -12,7 +12,7 @@
 
 Official Inter-Disciplinary Project (IDP) Registration and Lifecycle Management Portal for **G D Goenka University**, engineered by the **Avishkar Centre for Innovation and Entrepreneurship (CIE)**.
 
-> **Latest Release — November 2026:** Multi-SPOC per school, full-dataset CSV/Excel/PDF exports, gender analytics normalization, 199 automated regression tests.
+> **Latest Release — November 2026:** Comprehensive Marks Export for SPOC & Admin, SPOC Premature Rejection Guard, Direct Project Files Modal, Multi-SPOC per school, full-dataset CSV/Excel/PDF exports, 200+ automated regression tests.
 
 Deployed at scale on the Cloudflare Edge network to deliver millisecond-latency student registration, project lifecycle tracking, milestone evaluations, and automated multi-tier quota enforcement.
 
@@ -27,6 +27,11 @@ Deployed at scale on the Cloudflare Edge network to deliver millisecond-latency 
 
 | Feature | Detail |
 |---------|--------|
+| **Student Marks & Assessment Export (SPOC & Admin)** | Department SPOCs and University Administrators can now export comprehensive student marks rosters containing Internal Marks (/50), External Marks (/50), Total Marks (/100), Attendance %, and evaluation statuses in formatted Excel (`.xlsx`), CSV, and printable PDF. |
+| **SPOC Premature Rejection Guard** | Projects with zero submitted documents (`NOT_SUBMITTED` / 0 artifacts) can no longer be prematurely rejected or approved. SPOC verification cards display an informative "Awaiting Uploads" badge, and the review API strictly rejects premature decisions until deliverables are uploaded. |
+| **Direct Project Files Viewer Modal** | SPOCs and Administrators can inspect and download all uploaded deliverables (Reports, Presentations, Consent Forms, Turnitin Similarity reports, Research Manuscripts) via a single-click **Files ({count})** button on every project card. |
+| **Faculty In-Portal Passcode Change** | Faculty mentors can update their temporary initial passcodes (`gdgu@2026`) immediately upon portal entry via the "Change Passcode" top bar navigation action. |
+| **Student Publication Consent Form Protocol** | Standard Operating Procedure and visual dual-column submission workflow for official 10-student publication consent forms (`Consent_Form_IDP_publication.docx`) with Turnitin (<10%) and AI (<20%) verification. |
 | **Multi-SPOC per School** | Assign multiple Department SPOCs to any school. Full create / edit / delete management from the admin panel with no overwrite risk. |
 | **Faculty & SPOC Password Reset Protocol** | Standardized admin-managed credential reset workflow. Clear in-portal guidance directs users to contact `admin@gdgu.org` upon login failure. |
 | **Active Faculty Mentors KPI Alignment** | Transparent SPOC dashboard analytics distinguishing actively mentoring faculty from unassigned department faculty with project-level 1:1 matching. |
@@ -34,7 +39,7 @@ Deployed at scale on the Cloudflare Edge network to deliver millisecond-latency 
 | **Full-Dataset Exports** | CSV / Excel / PDF downloads now fetch the **complete filtered dataset** from the API — not just the 25 rows on the current page. |
 | **Gender Analytics Fix** | Student gender stored in mixed case (`male`, `MALE`, `Male`) is now normalised before aggregation. Gender split in Admin & SPOC dashboards shows correct counts. |
 | **School Acronym Normalisation** | `SOES`, `COHSFE`, `SoLaw`, etc. are canonicalised before all KPI breakdowns so school stats merge correctly. |
-| **199 Regression Tests** | 68 export tests · 96 KPI breakdowns · 28 SPOC metrics · 7 multi-SPOC CRUD — all green on every deploy. |
+| **200+ Regression Tests** | End-to-end automated suites covering exports, marks integrity, rejection guards, KPI breakdowns, SPOC metrics, and multi-SPOC CRUD — all green on every deploy. |
 
 ---
 
@@ -261,7 +266,7 @@ Developed for **G D Goenka University** under the leadership of:
 | Total Students | 2,238+ |
 | Active Projects | 188+ |
 | Schools Covered | 11 |
-| Test Coverage | 199 assertions across 6 suites |
+| Test Coverage | 200+ assertions across 7 suites |
 | Uptime Target | 99.9% (Cloudflare SLA) |
 | Export Speed | Full dataset < 2.5 s |
 
